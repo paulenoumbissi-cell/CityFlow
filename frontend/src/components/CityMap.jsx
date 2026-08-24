@@ -1,0 +1,297 @@
+
+
+import { useState } from "react";
+
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Popup,
+  useMap,
+} from "react-leaflet";
+
+import "leaflet/dist/leaflet.css";
+
+const cities = {
+  Yaoundé: {
+    position: [3.848, 11.502],
+    zoom: 13,
+
+    traffic: [
+      {
+        name: "Mvan",
+        position: [3.822, 11.523],
+        level: "dense",
+        value: 88,
+        description: "Circulation très difficile",
+      },
+      {
+        name: "Nsam",
+        position: [3.829, 11.511],
+        level: "dense",
+        value: 81,
+        description: "Forte congestion",
+      },
+      {
+        name: "Nlongkak",
+        position: [3.890, 11.522],
+        level: "moderate",
+        value: 59,
+        description: "Ralentissements modérés",
+      },
+      {
+        name: "Bastos",
+        position: [3.889, 11.512],
+        level: "moderate",
+        value: 52,
+        description: "Trafic modéré",
+      },
+      {
+        name: "Odza",
+        position: [3.799, 11.523],
+        level: "fluid",
+        value: 28,
+        description: "Circulation fluide",
+      },
+      {
+        name: "Ahala",
+        position: [3.785, 11.505],
+        level: "fluid",
+        value: 24,
+        description: "Circulation fluide",
+      },
+    ],
+  },
+
+  Douala: {
+    position: [4.0511, 9.7679],
+    zoom: 13,
+
+    traffic: [
+      {
+        name: "Akwa",
+        position: [4.0511, 9.7043],
+        level: "dense",
+        value: 91,
+        description: "Circulation très difficile",
+      },
+      {
+        name: "Deido",
+        position: [4.0667, 9.7006],
+        level: "dense",
+        value: 84,
+        description: "Forte congestion",
+      },
+      {
+        name: "Bonabéri",
+        position: [4.0714, 9.6712],
+        level: "moderate",
+        value: 68,
+        description: "Ralentissements importants",
+      },
+      {
+        name: "Bépanda",
+        position: [4.047, 9.727],
+        level: "moderate",
+        value: 61,
+        description: "Trafic modéré",
+      },
+      {
+        name: "Bonamoussadi",
+        position: [4.0867, 9.735],
+        level: "fluid",
+        value: 31,
+        description: "Circulation fluide",
+      },
+      {
+        name: "Logbessou",
+        position: [4.105, 9.776],
+        level: "fluid",
+        value: 26,
+        description: "Circulation fluide",
+      },
+    ],
+  },
+};
+
+const trafficStyles = {
+  dense: {
+    color: "#ef4444",
+    fillColor: "#ef4444",
+  },
+
+  moderate: {
+    color: "#f59e0b",
+    fillColor: "#f59e0b",
+  },
+
+  fluid: {
+    color: "#22c55e",
+    fillColor: "#22c55e",
+  },
+};
+
+function ChangeCity({ city }) {
+  const map = useMap();
+
+  map.flyTo(city.position, city.zoom, {
+    duration: 1.3,
+  });
+
+  return null;
+}
+
+function CityMap() {
+  const [selectedCity, setSelectedCity] = useState("Yaoundé");
+
+  const city = cities[selectedCity];
+
+  return (
+    <div className="city-map-wrapper">
+
+      {/* HEADER DE LA CARTE */}
+
+      <div className="map-topbar">
+
+        <div>
+          <span className="section-label">
+            LOCALISATION
+          </span>
+
+          <h2>
+            Situation du trafic
+          </h2>
+        </div>
+
+        <select
+          value={selectedCity}
+          onChange={(event) =>
+            setSelectedCity(event.target.value)
+          }
+          className="city-select"
+        >
+          <option value="Yaoundé">
+            📍 Yaoundé
+          </option>
+
+          <option value="Douala">
+            📍 Douala
+          </option>
+        </select>
+
+      </div>
+
+      {/* CARTE */}
+
+      <div className="real-map">
+
+        <MapContainer
+          center={city.position}
+          zoom={city.zoom}
+          scrollWheelZoom={true}
+          zoomControl={true}
+        >
+
+          <TileLayer
+            attribution='&copy; OpenStreetMap contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          <ChangeCity city={city} />
+
+          {/* ZONES DE TRAFIC */}
+
+          {city.traffic.map((point) => {
+
+            const style = trafficStyles[point.level];
+
+            return (
+              <CircleMarker
+                key={point.name}
+                center={point.position}
+                radius={13}
+                pathOptions={{
+                  color: "#ffffff",
+                  weight: 3,
+                  fillColor: style.fillColor,
+                  fillOpacity: 0.9,
+                }}
+              >
+
+                <Popup>
+
+                  <div className="traffic-popup">
+
+                    <strong>
+                      {point.name}
+                    </strong>
+
+                    <span
+                      className={`popup-status ${point.level}`}
+                    >
+                      {point.level === "dense" &&
+                        "🔴 Trafic dense"}
+
+                      {point.level === "moderate" &&
+                        "🟠 Trafic modéré"}
+
+                      {point.level === "fluid" &&
+                        "🟢 Trafic fluide"}
+                    </span>
+
+                    <span>
+                      Niveau : {point.value}%
+                    </span>
+
+                    <small>
+                      {point.description}
+                    </small>
+
+                  </div>
+
+                </Popup>
+
+              </CircleMarker>
+            );
+          })}
+
+        </MapContainer>
+
+        {/* LÉGENDE */}
+
+        <div className="map-legend-real">
+
+          <span>
+            <i className="legend-green"></i>
+            Fluide
+          </span>
+
+          <span>
+            <i className="legend-orange"></i>
+            Modéré
+          </span>
+
+          <span>
+            <i className="legend-red"></i>
+            Dense
+          </span>
+
+        </div>
+
+        {/* BADGE */}
+
+        <div className="map-live">
+
+          <span></span>
+
+          Trafic CityFlow
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+export default CityMap;

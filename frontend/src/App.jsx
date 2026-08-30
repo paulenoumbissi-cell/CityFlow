@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+import CityMap from "./components/CityMap";
+
 import MapPage from "./pages/MapPage";
+import RoutesPage from "./pages/RoutesPage";
 
 import "./index.css";
-import CityMap from "./components/CityMap";
 
 
 function Home() {
@@ -574,19 +576,24 @@ function App() {
 
         <Navbar />
 
-        <Routes>
+    <Routes>
 
-          <Route
-            path="/"
-            element={<Home />}
-          />
+         <Route
+             path="/"
+             element={<Home />}
+       />
 
-          <Route
-            path="/carte"
-            element={<MapPage />}
-          />
+         <Route
+           path="/carte"
+           element={<MapPage />}
+        />
 
-        </Routes>
+         <Route
+             path="/routes"
+             element={<RoutesPage />}
+        />
+
+    </Routes>
 
       </div>
 

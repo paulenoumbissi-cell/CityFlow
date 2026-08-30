@@ -17,8 +17,7 @@ function Navbar() {
           />
 
           <div className="brand-text">
-            <span className="brand-name">CityFlow</span>
-            <span className="brand-slogan">Circuler mieux, vivre mieux</span>
+       
           </div>
         </div>
       </div>

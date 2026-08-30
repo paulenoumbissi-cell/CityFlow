@@ -5,6 +5,7 @@ import CityMap from "./components/CityMap";
 
 import MapPage from "./pages/MapPage";
 import RoutesPage from "./pages/RoutesPage";
+import PredictionPage from "./pages/PredictionPage";
 
 import "./index.css";
 
@@ -592,6 +593,10 @@ function App() {
              path="/routes"
              element={<RoutesPage />}
         />
+        <Route
+           path="/prediction"
+           element={<PredictionPage />}
+       />
 
     </Routes>
 

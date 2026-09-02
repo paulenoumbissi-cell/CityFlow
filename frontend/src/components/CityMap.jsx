@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -8,8 +9,9 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
+import { fetchTrafficNodes } from "../services/api";
 
-const cities = {
+const fallbackCities = {
   Yaoundé: {
     position: [3.848, 11.502],
     zoom: 13,
@@ -131,18 +133,11 @@ const cities = {
 };
 
 const trafficStyles = {
-  dense: {
-    color: "#ef4444",
-    fillColor: "#ef4444",
-  },
-  moderate: {
-    color: "#f59e0b",
-    fillColor: "#f59e0b",
-  },
-  fluid: {
-    color: "#22c55e",
-    fillColor: "#22c55e",
-  },
+  dense: { color: "#ef4444", fillColor: "#ef4444" },
+  heavy: { color: "#ef4444", fillColor: "#ef4444" },
+  jammed: { color: "#dc2626", fillColor: "#dc2626" },
+  moderate: { color: "#f59e0b", fillColor: "#f59e0b" },
+  fluid: { color: "#22c55e", fillColor: "#22c55e" },
 };
 
 function ChangeCity({ city }) {
@@ -155,14 +150,52 @@ function ChangeCity({ city }) {
 
 function CityMap({ customRoute, height = "480px" }) {
   const { selectedCity, setSelectedCity } = useCity();
-  const city = cities[selectedCity] || cities["Yaoundé"];
+  const city = fallbackCities[selectedCity] || fallbackCities["Yaoundé"];
+  const [liveNodes, setLiveNodes] = useState([]);
+  const [isLiveApi, setIsLiveApi] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchTrafficNodes(selectedCity).then((data) => {
+      if (!isMounted) return;
+      if (data && data.nodes && data.nodes.length > 0) {
+        setLiveNodes(
+          data.nodes.map((node) => ({
+            name: node.name,
+            position: node.position,
+            level: node.currentCongestion === "jammed" || node.currentCongestion === "heavy"
+              ? "dense"
+              : node.currentCongestion === "moderate"
+              ? "moderate"
+              : "fluid",
+            value: node.congestionValue,
+            speed: node.averageSpeedKmh,
+            delay: node.estimatedDelayMinutes,
+            description: `Vitesse moy : ${node.averageSpeedKmh} km/h • Retard estimé : +${node.estimatedDelayMinutes} min`,
+          }))
+        );
+        setIsLiveApi(true);
+      } else {
+        setLiveNodes(city.traffic);
+        setIsLiveApi(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCity]);
+
+  const trafficPoints = liveNodes.length > 0 ? liveNodes : city.traffic;
 
   return (
     <div className="city-map-wrapper">
       {/* HEADER DE LA CARTE */}
       <div className="map-topbar">
         <div>
-          <span className="section-label">SURVEILLANCE GÉOSPATIALE</span>
+          <span className="section-label">
+            SURVEILLANCE GÉOSPATIALE {isLiveApi ? "• API BACKEND CONNECTÉE" : ""}
+          </span>
           <h2>Situation du trafic en direct</h2>
         </div>
 
@@ -205,8 +238,8 @@ function CityMap({ customRoute, height = "480px" }) {
           )}
 
           {/* ZONES DE TRAFIC */}
-          {city.traffic.map((point) => {
-            const style = trafficStyles[point.level];
+          {trafficPoints.map((point) => {
+            const style = trafficStyles[point.level] || trafficStyles.moderate;
 
             return (
               <CircleMarker
@@ -256,7 +289,7 @@ function CityMap({ customRoute, height = "480px" }) {
         {/* BADGE */}
         <div className="map-live">
           <span></span>
-          CityFlow Live Traffic
+          {isLiveApi ? "CityFlow Live API (Port 3000)" : "CityFlow Local Traffic"}
         </div>
       </div>
     </div>

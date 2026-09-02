@@ -4,12 +4,13 @@ import {
   TileLayer,
   CircleMarker,
   Popup,
-  useMap,
   Polyline,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { CITIES, YAOUNDE_NODES, DOUALA_NODES, CongestionLevels } from "../data/cityData";
 import { apiService } from "../services/api";
+import { useCity } from "../context/CityContext";
 
 const trafficStyles = {
   [CongestionLevels.JAMMED]: {
@@ -44,25 +45,44 @@ const trafficStyles = {
     badgeText: "Fluide",
     badgeClass: "badge-fluid",
   },
+  dense: {
+    color: "#ef4444",
+    fillColor: "#ef4444",
+    fillOpacity: 0.8,
+    radius: 10,
+  },
+  moderate: {
+    color: "#f59e0b",
+    fillColor: "#f59e0b",
+    fillOpacity: 0.8,
+    radius: 9,
+  },
+  fluid: {
+    color: "#10b981",
+    fillColor: "#10b981",
+    fillOpacity: 0.8,
+    radius: 8,
+  },
 };
 
-function ChangeMapView({ coords, zoom }) {
+function ChangeCityView({ center, zoom }) {
   const map = useMap();
-  map.setView(coords, zoom);
+  map.flyTo(center, zoom, { duration: 1.2 });
   return null;
 }
 
-export default function CityMap() {
-  const [selectedCity, setSelectedCity] = useState("Yaounde");
-  const [nodes, setNodes] = useState(YAOUNDE_NODES);
+export default function CityMap({ customRoute, height = "480px" }) {
+  const { selectedCity, setSelectedCity } = useCity();
+  const [nodes, setNodes] = useState(selectedCity === "Douala" ? DOUALA_NODES : YAOUNDE_NODES);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [selectedNode, setSelectedNode] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
-    apiService.getTrafficNodes(selectedCity === "Yaounde" ? "Yaoundé" : "Douala").then((res) => {
+    apiService.getTrafficNodes(selectedCity).then((res) => {
       if (isMounted && res && res.nodes) {
         setNodes(res.nodes);
+      } else if (isMounted) {
+        setNodes(selectedCity === "Douala" ? DOUALA_NODES : YAOUNDE_NODES);
       }
     });
     return () => {
@@ -70,81 +90,62 @@ export default function CityMap() {
     };
   }, [selectedCity]);
 
-  const currentCityConfig = CITIES[selectedCity] || CITIES.Yaounde;
+  const currentCityConfig = selectedCity === "Douala" ? CITIES.Douala : CITIES.Yaounde;
 
   const filteredNodes = nodes.filter((node) => {
     if (activeFilter === "all") return true;
-    if (activeFilter === "critical") return node.currentCongestion === CongestionLevels.JAMMED || node.currentCongestion === CongestionLevels.HEAVY;
-    if (activeFilter === "moderate") return node.currentCongestion === CongestionLevels.MODERATE;
-    if (activeFilter === "fluid") return node.currentCongestion === CongestionLevels.FLUID;
+    if (activeFilter === "critical") return node.currentCongestion === CongestionLevels.JAMMED || node.currentCongestion === CongestionLevels.HEAVY || node.currentCongestion === "dense";
+    if (activeFilter === "moderate") return node.currentCongestion === CongestionLevels.MODERATE || node.currentCongestion === "moderate";
+    if (activeFilter === "fluid") return node.currentCongestion === CongestionLevels.FLUID || node.currentCongestion === "fluid";
     return true;
   });
 
   return (
-    <div className="citymap-container">
+    <div className="city-map-wrapper">
       {/* HEADER DE CONTRÔLE */}
-      <div className="citymap-header">
-        <div className="citymap-city-buttons">
-          <button
-            type="button"
-            className={selectedCity === "Yaounde" ? "active" : ""}
-            onClick={() => {
-              setSelectedCity("Yaounde");
-              setNodes(YAOUNDE_NODES);
-            }}
-          >
-            Yaoundé (7 collines)
-          </button>
-          <button
-            type="button"
-            className={selectedCity === "Douala" ? "active" : ""}
-            onClick={() => {
-              setSelectedCity("Douala");
-              setNodes(DOUALA_NODES);
-            }}
-          >
-            Douala (Wouri)
-          </button>
+      <div className="map-topbar">
+        <div>
+          <span className="section-label">SURVEILLANCE GÉOSPATIALE</span>
+          <h2>Situation du trafic en direct</h2>
         </div>
 
-        <div className="citymap-filters">
-          <button
-            type="button"
-            className={activeFilter === "all" ? "active" : ""}
-            onClick={() => setActiveFilter("all")}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <select
+            value={selectedCity}
+            onChange={(event) => setSelectedCity(event.target.value)}
+            className="city-select"
           >
-            Tous ({nodes.length})
-          </button>
-          <button
-            type="button"
-            className={activeFilter === "critical" ? "active" : ""}
-            onClick={() => setActiveFilter("critical")}
-          >
-            Critique / Dense
-          </button>
-          <button
-            type="button"
-            className={activeFilter === "fluid" ? "active" : ""}
-            onClick={() => setActiveFilter("fluid")}
-          >
-            Fluide
-          </button>
+            <option value="Yaoundé">📍 Yaoundé (7 collines)</option>
+            <option value="Douala">📍 Douala (Wouri)</option>
+          </select>
         </div>
       </div>
 
       {/* CARTE LEAFLET */}
-      <div className="citymap-wrapper" style={{ height: "420px", width: "100%", borderRadius: "16px", overflow: "hidden" }}>
+      <div className="real-map" style={{ height, width: "100%", borderRadius: "16px", overflow: "hidden", position: "relative" }}>
         <MapContainer
           center={currentCityConfig.center}
           zoom={currentCityConfig.zoom}
-          scrollWheelZoom={false}
+          scrollWheelZoom={true}
           style={{ height: "100%", width: "100%" }}
         >
-          <ChangeMapView coords={currentCityConfig.center} zoom={currentCityConfig.zoom} />
+          <ChangeCityView center={currentCityConfig.center} zoom={currentCityConfig.zoom} />
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CartoDB</a> contributors'
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           />
+
+          {/* TRACÉ D'ITINÉRAIRE PERSONNALISÉ OU D'URGENCE */}
+          {customRoute && customRoute.coordinates && (
+            <Polyline
+              positions={customRoute.coordinates}
+              pathOptions={{
+                color: customRoute.color || "#00875A",
+                weight: 6,
+                opacity: 0.9,
+              }}
+            />
+          )}
 
           {/* TRACÉ DES SEGMENTS CONNECTÉS */}
           {filteredNodes.map((node) =>
@@ -164,37 +165,38 @@ export default function CityMap() {
 
           {/* MARQUEURS DES NŒUDS */}
           {filteredNodes.map((node) => {
-            const style = trafficStyles[node.currentCongestion] || trafficStyles[CongestionLevels.MODERATE];
+            const style = trafficStyles[node.currentCongestion] || trafficStyles[CongestionLevels.MODERATE] || trafficStyles.moderate;
             return (
               <CircleMarker
                 key={node.id}
                 center={node.position}
-                radius={style.radius}
+                radius={style.radius || 9}
                 pathOptions={{
                   color: style.color,
                   fillColor: style.fillColor,
-                  fillOpacity: style.fillOpacity,
+                  fillOpacity: style.fillOpacity || 0.8,
                   weight: 2,
-                }}
-                eventHandlers={{
-                  click: () => setSelectedNode(node),
                 }}
               >
                 <Popup>
-                  <div style={{ padding: "4px", minWidth: "180px", color: "#0a2540" }}>
+                  <div style={{ padding: "4px", minWidth: "190px", color: "#0a2540" }}>
                     <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>{node.name}</h3>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
                       <span>Congestion :</span>
-                      <strong>{node.congestionValue}%</strong>
+                      <strong>{node.congestionValue || node.value || 50}%</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
-                      <span>Vitesse moyenne :</span>
-                      <strong>{node.averageSpeedKmh} km/h</strong>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px" }}>
-                      <span>Retard estimé :</span>
-                      <strong style={{ color: style.color }}>+{node.estimatedDelayMinutes} min</strong>
-                    </div>
+                    {node.averageSpeedKmh && (
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
+                        <span>Vitesse moyenne :</span>
+                        <strong>{node.averageSpeedKmh} km/h</strong>
+                      </div>
+                    )}
+                    {node.estimatedDelayMinutes && (
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px" }}>
+                        <span>Retard estimé :</span>
+                        <strong style={{ color: style.color }}>+{node.estimatedDelayMinutes} min</strong>
+                      </div>
+                    )}
                     {node.predictions && node.predictions.length > 0 && (
                       <div style={{ fontSize: "11px", color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }}>
                         Prévision +1h : {node.predictions[0].congestionPercentage}% ({node.predictions[0].weatherInfluence})
@@ -206,19 +208,28 @@ export default function CityMap() {
             );
           })}
         </MapContainer>
-      </div>
 
-      {/* LÉGENDE RAPIDE */}
-      <div className="citymap-legend" style={{ display: "flex", gap: "16px", marginTop: "12px", fontSize: "13px", color: "#475569" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span> Fluide (&gt; 35 km/h)
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }}></span> Modéré (20-35 km/h)
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ef4444", display: "inline-block" }}></span> Dense / Saturé
-        </span>
+        {/* LÉGENDE */}
+        <div className="map-legend-real">
+          <span>
+            <i className="legend-green"></i>
+            Fluide (&lt; 40%)
+          </span>
+          <span>
+            <i className="legend-orange"></i>
+            Modéré (40 - 75%)
+          </span>
+          <span>
+            <i className="legend-red"></i>
+            Dense / Saturé (&gt; 75%)
+          </span>
+        </div>
+
+        {/* BADGE LIVE */}
+        <div className="map-live">
+          <span></span>
+          CityFlow Live Traffic
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import CityMap from "./components/CityMap";
@@ -6,11 +6,14 @@ import CityMap from "./components/CityMap";
 import MapPage from "./pages/MapPage";
 import RoutesPage from "./pages/RoutesPage";
 import PredictionPage from "./pages/PredictionPage";
+import EmergencyPage from "./pages/EmergencyPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import AboutPage from "./pages/AboutPage";
+import { CityProvider } from "./context/CityContext";
+import { AuthProvider } from "./context/AuthContext";
 import "./index.css";
 
 
@@ -545,94 +548,72 @@ function Home() {
 
 
       {/* FOOTER */}
-
       <footer className="footer">
+        <div className="footer-container" style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "32px", padding: "40px 24px" }}>
+          <div style={{ maxWidth: "420px" }}>
+            <strong style={{ fontSize: "20px", color: "var(--cityflow-primary)", display: "block", marginBottom: "8px" }}>
+              CityFlow
+            </strong>
+            <p style={{ color: "#64748b", fontSize: "14px", lineHeight: "1.6" }}>
+              Plateforme intelligente de prédiction du trafic et de gestion des itinéraires prioritaires pour Yaoundé et Douala.
+            </p>
+          </div>
 
-        <div>
+          <div style={{ display: "flex", gap: "40px", flexWrap: "wrap" }}>
+            <div>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Navigation</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
+                <Link to="/" style={{ color: "#475569" }}>Accueil</Link>
+                <Link to="/carte" style={{ color: "#475569" }}>Carte du trafic</Link>
+                <Link to="/routes" style={{ color: "#475569" }}>Itinéraires</Link>
+                <Link to="/prediction" style={{ color: "#475569" }}>Prédictions</Link>
+              </div>
+            </div>
 
-          <strong>
-            CityFlow
-          </strong>
-
-          <span>
-            Votre mobilité, notre intelligence.
-          </span>
-
+            <div>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Services</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
+                <Link to="/urgences" style={{ color: "#dc2626", fontWeight: "600" }}>Couloirs d'urgence 🚨</Link>
+                <Link to="/notifications" style={{ color: "#475569" }}>Centre d'alertes</Link>
+                <Link to="/a-propos" style={{ color: "#475569" }}>À propos du projet</Link>
+                <Link to="/parametres" style={{ color: "#475569" }}>Paramètres</Link>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <p>
-          © 2026 CityFlow — Yaoundé & Douala
-        </p>
-        
-
+        <div style={{ borderTop: "1px solid #e2e8f0", padding: "20px", textAlign: "center", fontSize: "13px", color: "#94a3b8" }}>
+          © 2026 CityFlow — Yaoundé & Douala, Cameroun. Tous droits réservés.
+        </div>
       </footer>
-
     </>
   );
 }
 
-
 function App() {
-
   return (
-
-    <BrowserRouter>
-
-      <div className="app">
-
-        <Navbar />
-
-    <Routes>
-
-         <Route
-             path="/"
-             element={<Home />}
-       />
-
-         <Route
-           path="/carte"
-           element={<MapPage />}
-        />
-
-         <Route
-             path="/routes"
-             element={<RoutesPage />}
-        />
-        <Route
-           path="/prediction"
-           element={<PredictionPage />}
-       />
-       <Route
-          path="/notifications"
-          element={<NotificationsPage />}
-       />
-       <Route
-          path="/profil"
-          element={<ProfilePage />}
-      />
-
-        <Route
-         path="/parametres" 
-         element={<SettingsPage />}
-         />
-        <Route 
-        path="/connexion"
-         element={<AuthPage />}
-          />
-        <Route 
-        path="/a-propos" 
-        element={<AboutPage />} 
-        />
-
-
-    </Routes>
-
-      </div>
-
-    </BrowserRouter>
-
+    <CityProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <div className="app">
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/carte" element={<MapPage />} />
+              <Route path="/routes" element={<RoutesPage />} />
+              <Route path="/prediction" element={<PredictionPage />} />
+              <Route path="/urgences" element={<EmergencyPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/profil" element={<ProfilePage />} />
+              <Route path="/parametres" element={<SettingsPage />} />
+              <Route path="/connexion" element={<AuthPage />} />
+              <Route path="/a-propos" element={<AboutPage />} />
+            </Routes>
+          </div>
+        </BrowserRouter>
+      </AuthProvider>
+    </CityProvider>
   );
 }
-
 
 export default App;

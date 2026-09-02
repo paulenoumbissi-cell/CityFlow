@@ -8,11 +8,49 @@ import {
   Mail,
   CalendarDays,
   ChevronRight,
+  LogOut,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
-
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./ProfilePage.css";
 
 function ProfilePage() {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/connexion");
+  };
+
+  if (!isAuthenticated || !user) {
+    return (
+      <main className="profile-page">
+        <div className="profile-container" style={{ textAlign: "center", padding: "80px 20px" }}>
+          <h2>Vous n'êtes pas encore connecté</h2>
+          <p style={{ color: "#64748b", margin: "14px 0 24px" }}>
+            Connectez-vous pour retrouver vos trajets favoris, votre historique et vos statistiques.
+          </p>
+          <Link
+            to="/connexion"
+            style={{
+              background: "#087f5b",
+              color: "#ffffff",
+              padding: "12px 28px",
+              borderRadius: "20px",
+              fontWeight: "700",
+              display: "inline-block",
+            }}
+          >
+            Se connecter / Créer un compte
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   const recentTrips = [
     {
       departure: "Bastos",
@@ -40,237 +78,133 @@ function ProfilePage() {
   return (
     <main className="profile-page">
       <div className="profile-container">
-
         {/* HEADER */}
-
         <div className="profile-header">
           <div>
-            <span className="profile-label">
-              MON ESPACE
-            </span>
-
+            <span className="profile-label">MON ESPACE CITYFLOW</span>
             <h1>Mon profil</h1>
-
             <p>
-              Gérez vos informations et consultez votre activité
-              sur CityFlow.
+              Gérez vos informations et consultez votre activité sur CityFlow.
             </p>
           </div>
 
-          <button className="edit-profile-button">
-            <Edit3 size={17} />
-            Modifier le profil
-          </button>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <Link to="/parametres" className="edit-profile-button">
+              <Settings size={17} />
+              Paramètres
+            </Link>
+            <button
+              className="edit-profile-button"
+              onClick={handleLogout}
+              style={{ background: "#fee2e2", color: "#dc2626", borderColor: "#fca5a5" }}
+            >
+              <LogOut size={17} />
+              Déconnexion
+            </button>
+          </div>
         </div>
 
         {/* PROFIL PRINCIPAL */}
-
         <section className="profile-card">
-
           <div className="profile-main">
-
             <div className="profile-avatar">
-              PN
+              {user.initials || "PN"}
             </div>
 
             <div className="profile-identity">
-              <h2>Paule Noumbissi</h2>
-
-              <p>
-                Utilisateur CityFlow
-              </p>
+              <h2>{user.name}</h2>
+              <p>{user.role || "Utilisateur CityFlow"}</p>
 
               <div className="profile-location">
                 <MapPin size={15} />
-                Yaoundé, Cameroun
+                {user.city || "Yaoundé"}, Cameroun
               </div>
             </div>
-
           </div>
 
           <div className="profile-status">
             <span></span>
             Compte actif
           </div>
-
         </section>
 
-        {/* INFORMATIONS */}
-
+        {/* INFORMATIONS & STATS */}
         <section className="profile-grid">
+          {/* COORDONNÉES */}
+          <div className="profile-section-card">
+            <h3>Informations du compte</h3>
 
-          <div className="information-card">
-
-            <div className="card-heading">
-              <div className="card-heading-icon">
-                <User size={19} />
-              </div>
-
-              <div>
-                <h2>Informations personnelles</h2>
-                <span>Vos informations de compte</span>
-              </div>
-            </div>
-
-            <div className="information-list">
-
-              <div className="information-item">
-                <Mail size={17} />
+            <div className="profile-info-list">
+              <div className="info-row">
+                <Mail size={16} />
                 <div>
                   <small>Adresse e-mail</small>
-                  <strong>paule@cityflow.cm</strong>
+                  <strong>{user.email}</strong>
                 </div>
               </div>
 
-              <div className="information-item">
-                <CalendarDays size={17} />
+              <div className="info-row">
+                <CalendarDays size={16} />
                 <div>
                   <small>Membre depuis</small>
                   <strong>Août 2026</strong>
                 </div>
               </div>
 
-              <div className="information-item">
-                <MapPin size={17} />
+              <div className="info-row">
+                <ShieldCheck size={16} />
                 <div>
-                  <small>Ville principale</small>
-                  <strong>Yaoundé</strong>
+                  <small>Niveau de confiance</small>
+                  <strong>Vérifié (Score : {user.score || 92}%)</strong>
                 </div>
               </div>
-
-            </div>
-
-          </div>
-
-          {/* PRÉFÉRENCES */}
-
-          <div className="information-card">
-
-            <div className="card-heading">
-              <div className="card-heading-icon">
-                <Settings size={19} />
-              </div>
-
-              <div>
-                <h2>Préférences</h2>
-                <span>Vos préférences de mobilité</span>
-              </div>
-            </div>
-
-            <div className="preference-list">
-
-              <div className="preference-item">
-                <div>
-                  <strong>Ville par défaut</strong>
-                  <span>Yaoundé</span>
-                </div>
-
-                <ChevronRight size={18} />
-              </div>
-
-              <div className="preference-item">
-                <div>
-                  <strong>Type d'itinéraire</strong>
-                  <span>Le plus rapide</span>
-                </div>
-
-                <ChevronRight size={18} />
-              </div>
-
-              <div className="preference-item">
-                <div>
-                  <strong>Alertes trafic</strong>
-                  <span>Activées</span>
-                </div>
-
-                <ChevronRight size={18} />
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* STATISTIQUES */}
-
-        <section className="profile-statistics">
-
-          <div className="statistics-header">
-            <div>
-              <span className="profile-label">
-                MON ACTIVITÉ
-              </span>
-
-              <h2>Mes statistiques</h2>
             </div>
           </div>
 
-          <div className="statistics-grid">
+          {/* STATISTIQUES MOBILITÉ */}
+          <div className="profile-section-card">
+            <h3>Statistiques de mobilité</h3>
 
-            <div className="stat-box">
-              <div className="stat-box-icon">
-                <Route size={21} />
+            <div className="profile-stats-grid">
+              <div className="profile-stat-box">
+                <Route size={20} className="stat-icon-color" />
+                <strong>{user.tripsCount || 47}</strong>
+                <span>Trajets calculés</span>
               </div>
 
-              <div>
-                <strong>24</strong>
-                <span>Trajets effectués</span>
-              </div>
-            </div>
-
-            <div className="stat-box">
-              <div className="stat-box-icon">
-                <MapPin size={21} />
+              <div className="profile-stat-box">
+                <Clock size={20} className="stat-icon-color" />
+                <strong>{user.timeSavedMin || 184} min</strong>
+                <span>Temps gagné</span>
               </div>
 
-              <div>
-                <strong>148 km</strong>
-                <span>Distance parcourue</span>
-              </div>
-            </div>
-
-            <div className="stat-box">
-              <div className="stat-box-icon">
-                <Clock size={21} />
-              </div>
-
-              <div>
-                <strong>7h 24</strong>
-                <span>Temps de trajet</span>
+              <div className="profile-stat-box">
+                <Sparkles size={20} className="stat-icon-color" />
+                <strong>18.4 kg</strong>
+                <span>CO₂ économisé</span>
               </div>
             </div>
-
           </div>
-
         </section>
 
         {/* HISTORIQUE */}
-
         <section className="history-card">
-
           <div className="history-header">
             <div>
-              <span className="profile-label">
-                ACTIVITÉ RÉCENTE
-              </span>
-
+              <span className="profile-label">ACTIVITÉ RÉCENTE</span>
               <h2>Mes derniers trajets</h2>
             </div>
 
-            <button className="history-link">
-              Voir tout
+            <Link to="/routes" className="history-link">
+              Nouveau trajet
               <ChevronRight size={17} />
-            </button>
+            </Link>
           </div>
 
           <div className="trip-list">
-
             {recentTrips.map((trip, index) => (
               <div className="trip-item" key={index}>
-
                 <div className="trip-route">
-
                   <div className="trip-point">
                     <span className="trip-dot start"></span>
                     <strong>{trip.departure}</strong>
@@ -282,7 +216,6 @@ function ProfilePage() {
                     <span className="trip-dot destination"></span>
                     <strong>{trip.destination}</strong>
                   </div>
-
                 </div>
 
                 <div className="trip-details">
@@ -290,14 +223,10 @@ function ProfilePage() {
                   <span>{trip.distance}</span>
                   <small>{trip.date}</small>
                 </div>
-
               </div>
             ))}
-
           </div>
-
         </section>
-
       </div>
     </main>
   );

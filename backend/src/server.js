@@ -6,6 +6,7 @@ import trafficRoutes from "./routes/trafficRoutes.js";
 import routeRoutes from "./routes/routeRoutes.js";
 import alertRoutes from "./routes/alertRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use("/api/traffic", trafficRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

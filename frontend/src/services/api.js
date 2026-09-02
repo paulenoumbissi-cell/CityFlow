@@ -52,6 +52,60 @@ class CityFlowApiService {
     return this.fetchWithFallback(`/traffic/predictions?city=${encodeURIComponent(city)}`, fallback);
   }
 
+  // Prévisions IA multi-horizons avec météo et simulation
+  async getAiForecast({ city = "Yaoundé", weather = "dry", hour = new Date().getHours() }) {
+    const fallback = {
+      city,
+      aiModel: "CityFlow-NeuralTraffic v2.4 (Mode Local)",
+      weather: { label: "Temps sec / Ensoleillé", icon: "☀️", congestionMultiplier: 1.0 },
+      globalForecast: [
+        { horizon: "+15 min", congestionPercentage: 42, status: "Fluide" },
+        { horizon: "+30 min", congestionPercentage: 58, status: "Modéré" },
+        { horizon: "+1 heure", congestionPercentage: 78, status: "Critique" },
+        { horizon: "+2 heures", congestionPercentage: 65, status: "Modéré" },
+        { horizon: "+3 heures", congestionPercentage: 35, status: "Fluide" },
+      ],
+      recommendations: [
+        {
+          title: "Optimisation de départ",
+          message: "L'IA conseille d'anticiper vos trajets de 20 minutes pour éviter le pic de circulation.",
+          priority: "medium",
+          badge: "RECOMMANDATION IA",
+        },
+      ],
+      anomalies: [
+        {
+          nodeName: "Carrefour Nlongkak",
+          type: "SURVEILLANCE_PREDICTIVE",
+          severity: "medium",
+          description: "Sensibilité élevée aux heures de pointe. Flux sous contrôle IA.",
+          recommendedAction: "Voies d'évitement calculées automatiquement.",
+        },
+      ],
+    };
+
+    return this.fetchWithFallback(
+      `/ai/forecast?city=${encodeURIComponent(city)}&weather=${encodeURIComponent(weather)}&hour=${encodeURIComponent(hour)}`,
+      fallback
+    );
+  }
+
+  // Détection d'anomalies en temps réel par l'IA
+  async getAiAnomalies(city = "Yaoundé") {
+    return this.fetchWithFallback(`/ai/anomalies?city=${encodeURIComponent(city)}`, {
+      city,
+      anomaliesCount: 1,
+      anomalies: [
+        {
+          nodeName: "Axe Principal",
+          type: "CONTRÔLE_FLUX",
+          severity: "low",
+          description: "Analyse en direct : aucune perturbation majeure détectée.",
+        },
+      ],
+    });
+  }
+
   // Récupérer le flux des alertes
   async getAlerts(city = "all") {
     const alerts = city === "all" ? INCIDENT_ALERTS : INCIDENT_ALERTS.filter((a) => a.city.toLowerCase() === city.toLowerCase());

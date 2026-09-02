@@ -79,4 +79,48 @@ class CityFlowMobileApiService {
 
     return CityData.getInitialAlerts().where((a) => a.city == city).toList();
   }
+
+  /// Prévisions IA multi-horizons avec météo et simulations
+  static Future<Map<String, dynamic>?> fetchAiForecast({
+    required String city,
+    String weather = 'dry',
+    int? hour,
+  }) async {
+    final targetHour = hour ?? DateTime.now().hour;
+    try {
+      final uri = Uri.parse('$baseUrl/ai/forecast?city=${Uri.encodeComponent(city)}&weather=${Uri.encodeComponent(weather)}&hour=$targetHour');
+      final response = await http.get(uri).timeout(const Duration(seconds: 3));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+
+    // Fallback local
+    return {
+      'city': city,
+      'aiModel': 'CityFlow-NeuralTraffic v2.4 (Hors-Ligne)',
+      'globalForecast': [
+        {'horizon': '+15 min', 'congestionPercentage': 45, 'status': 'Modéré'},
+        {'horizon': '+30 min', 'congestionPercentage': 62, 'status': 'Modéré'},
+        {'horizon': '+1 heure', 'congestionPercentage': 82, 'status': 'Critique'},
+        {'horizon': '+2 heures', 'congestionPercentage': 68, 'status': 'Modéré'},
+        {'horizon': '+3 heures', 'congestionPercentage': 35, 'status': 'Fluide'},
+      ],
+      'recommendations': [
+        {
+          'title': 'Conseil IA Proactif',
+          'message': 'Anticipez un départ d\'ici 15 minutes pour éviter l\'engorgement des grands carrefours.',
+          'badge': 'OPTIMISATION IA',
+        }
+      ],
+      'anomalies': [
+        {
+          'nodeName': 'Axe Principal',
+          'type': 'FLUX_NOMINAL',
+          'description': 'Circulation conforme aux modèles d\'apprentissage.',
+        }
+      ]
+    };
+  }
 }

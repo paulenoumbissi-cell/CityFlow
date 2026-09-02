@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export async function fetchTrafficNodes(city = "Yaoundé") {
   try {
@@ -56,3 +56,28 @@ export async function checkBackendHealth() {
     return false;
   }
 }
+
+class CityFlowApiService {
+  constructor(baseUrl = API_BASE_URL) {
+    this.baseUrl = baseUrl;
+  }
+
+  getTrafficNodes(city) {
+    return fetchTrafficNodes(city);
+  }
+
+  getPredictions(city) {
+    return fetchPredictions(city);
+  }
+
+  getAlerts(city) {
+    return fetchAlerts(city);
+  }
+
+  calculateRoute(params) {
+    return calculateRoute(params.origin, params.destination, params);
+  }
+}
+
+export const apiService = new CityFlowApiService();
+export default apiService;

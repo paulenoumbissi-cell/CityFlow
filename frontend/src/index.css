@@ -1813,4 +1813,22 @@ a {
   .prediction-alert {
     align-items: flex-start;
   }
+  /* CORRECTIF CLIC & NAVIGATION NAVBAR */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+}
+
+.notification-button,
+.profile-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10000;
+}
 }

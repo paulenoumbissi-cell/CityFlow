@@ -6,7 +6,11 @@ import CityMap from "./components/CityMap";
 import MapPage from "./pages/MapPage";
 import RoutesPage from "./pages/RoutesPage";
 import PredictionPage from "./pages/PredictionPage";
-
+import NotificationsPage from "./pages/NotificationsPage";
+import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
+import AuthPage from "./pages/AuthPage";
+import AboutPage from "./pages/AboutPage";
 import "./index.css";
 
 
@@ -559,6 +563,7 @@ function Home() {
         <p>
           © 2026 CityFlow — Yaoundé & Douala
         </p>
+        
 
       </footer>
 
@@ -597,6 +602,28 @@ function App() {
            path="/prediction"
            element={<PredictionPage />}
        />
+       <Route
+          path="/notifications"
+          element={<NotificationsPage />}
+       />
+       <Route
+          path="/profil"
+          element={<ProfilePage />}
+      />
+
+        <Route
+         path="/parametres" 
+         element={<SettingsPage />}
+         />
+        <Route 
+        path="/connexion"
+         element={<AuthPage />}
+          />
+        <Route 
+        path="/a-propos" 
+        element={<AboutPage />} 
+        />
+
 
     </Routes>
 

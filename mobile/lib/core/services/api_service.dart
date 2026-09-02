@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../../models/traffic_node.dart';
 import '../../models/incident_alert.dart';
-import '../../models/priority_route.dart';
 import '../constants/city_data.dart';
 
 class CityFlowMobileApiService {
@@ -30,9 +29,13 @@ class CityFlowMobileApiService {
             final List pos = item['position'] ?? [3.8666, 11.5167];
             final String congestionStr = item['currentCongestion'] ?? 'moderate';
             CongestionLevel level = CongestionLevel.moderate;
-            if (congestionStr == 'jammed') level = CongestionLevel.jammed;
-            else if (congestionStr == 'heavy') level = CongestionLevel.heavy;
-            else if (congestionStr == 'fluid') level = CongestionLevel.fluid;
+            if (congestionStr == 'jammed') {
+              level = CongestionLevel.jammed;
+            } else if (congestionStr == 'heavy') {
+              level = CongestionLevel.heavy;
+            } else if (congestionStr == 'fluid') {
+              level = CongestionLevel.fluid;
+            }
 
             final List predsJson = item['predictions'] ?? [];
             final predictions = predsJson.map((p) => TrafficPrediction(

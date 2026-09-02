@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
 import '../providers/city_flow_provider.dart';
-import '../models/traffic_node.dart';
 import '../core/constants/app_colors.dart';
 import '../widgets/cityflow_brand_header.dart';
 import '../widgets/city_selector.dart';
@@ -18,19 +17,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final TextEditingController _destinationController = TextEditingController();
-
-  Color _getCongestionColor(CongestionLevel level) {
-    switch (level) {
-      case CongestionLevel.fluid:
-        return AppColors.trafficFluid;
-      case CongestionLevel.moderate:
-        return AppColors.trafficModerate;
-      case CongestionLevel.heavy:
-        return AppColors.trafficHeavy;
-      case CongestionLevel.jammed:
-        return AppColors.trafficJam;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

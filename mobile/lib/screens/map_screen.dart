@@ -76,10 +76,9 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             children: [
-              // Dark OSM CartoDB Tile Layer
+              // Official OpenStreetMap Tile Layer (100% Gratuit & Sans Clé API)
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.cityflow.mobile',
               ),
 

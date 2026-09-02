@@ -45,7 +45,6 @@ class CityFlowBrandHeader extends StatelessWidget {
             RichText(
               text: const TextSpan(
                 style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,

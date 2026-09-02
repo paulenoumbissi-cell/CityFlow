@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
-    final baseTextTheme = GoogleFonts.plusJakartaSansTextTheme(ThemeData.light().textTheme);
-
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
@@ -47,41 +44,41 @@ class AppTheme {
         selectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
         unselectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
       ),
-      textTheme: baseTextTheme.copyWith(
-        displayLarge: GoogleFonts.plusJakartaSans(
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 28,
           fontWeight: FontWeight.w800,
           letterSpacing: -1,
           height: 1.15,
         ),
-        headlineMedium: GoogleFonts.plusJakartaSans(
+        headlineMedium: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.5,
         ),
-        titleLarge: GoogleFonts.plusJakartaSans(
+        titleLarge: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
-        titleMedium: const TextStyle(
+        titleMedium: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
-        bodyLarge: const TextStyle(
+        bodyLarge: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 14,
           fontWeight: FontWeight.normal,
         ),
-        bodyMedium: const TextStyle(
+        bodyMedium: TextStyle(
           color: AppColors.textSecondary,
           fontSize: 13,
           fontWeight: FontWeight.normal,
         ),
-        bodySmall: const TextStyle(
+        bodySmall: TextStyle(
           color: AppColors.textMuted,
           fontSize: 11,
           fontWeight: FontWeight.normal,

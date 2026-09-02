@@ -7,6 +7,7 @@ import '../core/constants/app_colors.dart';
 import '../widgets/city_selector.dart';
 import '../widgets/emergency_banner.dart';
 import '../widgets/node_detail_sheet.dart';
+import '../widgets/pulsing_traffic_marker.dart';
 
 class MapScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -109,18 +110,20 @@ class _MapScreenState extends State<MapScreen> {
               ),
 
               // Markers Layer
+              // Markers Layer avec Radar Pulsant Temps Réel
               MarkerLayer(
                 markers: [
-                  // Nodes markers
+                  // Nodes markers animés
                   ...nodes.map((node) {
-                    final color = _getCongestionColor(node.currentCongestion);
                     final isSelected = _highlightedNode?.id == node.id;
 
                     return Marker(
                       point: node.position,
-                      width: isSelected ? 64 : 48,
-                      height: isSelected ? 64 : 48,
-                      child: GestureDetector(
+                      width: 58,
+                      height: 58,
+                      child: PulsingTrafficMarker(
+                        node: node,
+                        isSelected: isSelected,
                         onTap: () {
                           setState(() {
                             _highlightedNode = node;
@@ -128,44 +131,6 @@ class _MapScreenState extends State<MapScreen> {
                           provider.selectNode(node);
                           _mapController.move(node.position, 14.5);
                         },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.surface,
-                            border: Border.all(
-                              color: color,
-                              width: isSelected ? 3.5 : 2.0,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: color.withValues(alpha: isSelected ? 0.6 : 0.35),
-                                blurRadius: isSelected ? 16 : 8,
-                                spreadRadius: isSelected ? 3 : 1,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.traffic_rounded,
-                                  color: color,
-                                  size: isSelected ? 22 : 16,
-                                ),
-                                Text(
-                                  '${node.averageSpeedKmh.toInt()}',
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: isSelected ? 11 : 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       ),
                     );
                   }),

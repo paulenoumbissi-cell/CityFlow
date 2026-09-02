@@ -184,28 +184,64 @@ class CityFlowProvider extends ChangeNotifier {
 
   void _startLiveSimulation() {
     _simulationTimer?.cancel();
-    _simulationTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (!_isLiveSimulating) return;
+    _simulationTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (!_isLiveSimulating || _isDisposed) return;
 
+      // 1. Tenter une synchronisation directe avec l'API Backend
+      try {
+        final apiNodes = await CityFlowMobileApiService.fetchTrafficNodes(_selectedCity);
+        if (!_isDisposed && apiNodes.isNotEmpty) {
+          if (_selectedCity == 'Yaoundé') {
+            _yaoundeNodes = apiNodes;
+          } else {
+            _doualaNodes = apiNodes;
+          }
+        }
+      } catch (_) {}
+
+      // 2. Moteur de dynamique et micro-variations temps réel
       final random = Random();
-      _yaoundeNodes = _yaoundeNodes.map((n) {
-        final delta = (random.nextDouble() * 2.0) - 1.0;
-        final newSpeed = (n.averageSpeedKmh + delta).clamp(4.0, 50.0);
-        return n.copyWith(
-          averageSpeedKmh: double.parse(newSpeed.toStringAsFixed(1)),
-          vehicleCountPerHour: (n.vehicleCountPerHour + random.nextInt(30) - 15).clamp(500, 5000),
-        );
-      }).toList();
+      
+      void updateNodeList(List<TrafficNode> list, Function(List<TrafficNode>) setter) {
+        final updated = list.map((n) {
+          final speedDelta = (random.nextDouble() * 3.0) - 1.5;
+          final newSpeed = (n.averageSpeedKmh + speedDelta).clamp(4.0, 55.0);
+          final roundedSpeed = double.parse(newSpeed.toStringAsFixed(1));
 
-      _doualaNodes = _doualaNodes.map((n) {
-        final delta = (random.nextDouble() * 2.4) - 1.2;
-        final newSpeed = (n.averageSpeedKmh + delta).clamp(3.0, 48.0);
-        return n.copyWith(
-          averageSpeedKmh: double.parse(newSpeed.toStringAsFixed(1)),
-          vehicleCountPerHour: (n.vehicleCountPerHour + random.nextInt(40) - 20).clamp(500, 6000),
-        );
-      }).toList();
+          // Détermination dynamique du niveau de congestion selon la vitesse réelle
+          CongestionLevel newLevel;
+          int delay;
+          if (roundedSpeed < 10.0) {
+            newLevel = CongestionLevel.jammed;
+            delay = (30 + random.nextInt(15));
+          } else if (roundedSpeed < 20.0) {
+            newLevel = CongestionLevel.heavy;
+            delay = (15 + random.nextInt(15));
+          } else if (roundedSpeed < 35.0) {
+            newLevel = CongestionLevel.moderate;
+            delay = (5 + random.nextInt(10));
+          } else {
+            newLevel = CongestionLevel.fluid;
+            delay = (1 + random.nextInt(4));
+          }
 
+          final vehicles = (n.vehicleCountPerHour + random.nextInt(50) - 25).clamp(400, 6500);
+
+          return n.copyWith(
+            averageSpeedKmh: roundedSpeed,
+            currentCongestion: newLevel,
+            estimatedDelayMinutes: delay,
+            vehicleCountPerHour: vehicles,
+          );
+        }).toList();
+
+        setter(updated);
+      }
+
+      updateNodeList(_yaoundeNodes, (l) => _yaoundeNodes = l);
+      updateNodeList(_doualaNodes, (l) => _doualaNodes = l);
+
+      // Rafraîchir le nœud sélectionné en direct
       if (_selectedNode != null) {
         final currentList = currentNodes;
         _selectedNode = currentList.firstWhere(
@@ -214,7 +250,9 @@ class CityFlowProvider extends ChangeNotifier {
         );
       }
 
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
     });
   }
 

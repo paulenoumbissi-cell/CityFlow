@@ -6,6 +6,7 @@ import '../models/traffic_node.dart';
 import '../core/constants/app_colors.dart';
 import '../widgets/cityflow_brand_header.dart';
 import '../widgets/city_selector.dart';
+import '../widgets/pulsing_traffic_marker.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigateTab;
@@ -309,23 +310,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         MarkerLayer(
                           markers: nodes.map((node) {
-                            final color = _getCongestionColor(node.currentCongestion);
                             return Marker(
                               point: node.position,
-                              width: 32,
-                              height: 32,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: color.withValues(alpha: 0.5),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
-                                ),
+                              width: 46,
+                              height: 46,
+                              child: PulsingTrafficMarker(
+                                node: node,
+                                isSelected: false,
+                                onTap: () {
+                                  provider.selectNode(node);
+                                  widget.onNavigateTab(1);
+                                },
                               ),
                             );
                           }).toList(),

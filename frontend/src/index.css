@@ -8,17 +8,29 @@
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 
-  color: #172033;
-  background: #f5f8f7;
+  color: #0a2540;
+  background: #f6faf8;
 
-  --cityflow-primary: #087f5b;
-  --cityflow-primary-dark: #056044;
-  --cityflow-secondary: #0d6efd;
-  --cityflow-background: #f5f8f7;
+  /* CityFlow Brand Palette (Synchronisé avec Flutter AppColors) */
+  --cityflow-primary: #00875a;
+  --cityflow-primary-dark: #064e3b;
+  --cityflow-primary-light: #e8f5e9;
+  --cityflow-navy: #0a2540;
+  --cityflow-secondary: #1e3a8a;
+  --cityflow-accent: #0d9488;
+  --cityflow-background: #f6faf8;
   --cityflow-white: #ffffff;
-  --cityflow-text: #172033;
-  --cityflow-muted: #718096;
-  --cityflow-border: #e6ebe9;
+  --cityflow-text: #0a2540;
+  --cityflow-text-secondary: #475569;
+  --cityflow-muted: #94a3b8;
+  --cityflow-border: #e2e8f0;
+
+  /* Statuts de trafic */
+  --traffic-fluid: #10b981;
+  --traffic-moderate: #f59e0b;
+  --traffic-heavy: #ef4444;
+  --traffic-jam: #dc2626;
+  --emergency: #e11d48;
 }
 
 body {

@@ -45,15 +45,23 @@
   border: none;
   background: #087f5b;
   color: white;
-  padding: 13px 18px;
-  border-radius: 10px;
-  font-weight: 600;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-weight: 700;
   cursor: pointer;
-  transition: 0.2s ease;
+  user-select: none;
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(8, 127, 91, 0.25);
 }
 
 .mark-all-button:hover {
-  transform: translateY(-2px);
+  background: var(--cityflow-primary-dark);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(8, 127, 91, 0.35);
+}
+
+.mark-all-button:active {
+  transform: translateY(1px) scale(0.96) !important;
 }
 
 /* SUMMARY */
@@ -153,7 +161,9 @@
   gap: 18px;
   padding: 23px 28px;
   border-bottom: 1px solid #edf0ef;
-  transition: background 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease, transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
 }
 
 .notification-item:last-child {
@@ -161,7 +171,12 @@
 }
 
 .notification-item:hover {
-  background: #fafcfb;
+  background: #f0fdf4;
+  transform: translateX(4px);
+}
+
+.notification-item:active {
+  transform: scale(0.99);
 }
 
 .notification-item.unread {

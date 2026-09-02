@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { useState } from "react";
+import { BrowserRouter, Routes, Route, Link, useNavigate } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import CityMap from "./components/CityMap";
@@ -12,23 +13,27 @@ import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import AboutPage from "./pages/AboutPage";
-import { CityProvider } from "./context/CityContext";
+import { CityProvider, useCity } from "./context/CityContext";
 import { AuthProvider } from "./context/AuthContext";
 import "./index.css";
 
-
 function Home() {
+  const navigate = useNavigate();
+  const { selectedCity } = useCity();
+  const [startPoint, setStartPoint] = useState("");
+  const [endPoint, setEndPoint] = useState("");
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    navigate("/routes");
+  };
+
   return (
     <>
-
       {/* HERO */}
-
       <main className="home">
-
         <section className="hero">
-
           <div className="hero-content">
-
             <span className="hero-badge">
               🚦 Mobilité intelligente
             </span>
@@ -44,137 +49,81 @@ function Home() {
               et Douala.
             </p>
 
-
             {/* RECHERCHE */}
-
-            <div className="search-card">
-
+            <form className="search-card" onSubmit={handleSearchSubmit}>
               <div className="location-input">
-
-                <span className="input-icon start">
-                  ●
-                </span>
-
+                <span className="input-icon start">●</span>
                 <div>
-
-                  <label>
-                    Départ
-                  </label>
-
+                  <label>Départ</label>
                   <input
                     type="text"
-                    placeholder="Votre position actuelle"
+                    value={startPoint}
+                    onChange={(e) => setStartPoint(e.target.value)}
+                    placeholder="Votre position actuelle (ex: Bastos)"
                   />
-
                 </div>
-
               </div>
-
 
               <div className="search-line"></div>
 
-
               <div className="location-input">
-
-                <span className="input-icon destination">
-                  ●
-                </span>
-
+                <span className="input-icon destination">●</span>
                 <div>
-
-                  <label>
-                    Destination
-                  </label>
-
+                  <label>Destination</label>
                   <input
                     type="text"
-                    placeholder="Où souhaitez-vous aller ?"
+                    value={endPoint}
+                    onChange={(e) => setEndPoint(e.target.value)}
+                    placeholder="Où souhaitez-vous aller ? (ex: Centre-ville)"
                   />
-
                 </div>
-
               </div>
 
-
-              <button className="search-button">
-                Rechercher
+              <button type="submit" className="search-button">
+                Rechercher →
               </button>
-
-            </div>
-
+            </form>
           </div>
-
 
           {/* MINI STATISTIQUES */}
-
           <div className="hero-stats">
-
-            <div className="stat-card">
-
-              <span className="stat-icon">
-                🟢
-              </span>
-
+            <div
+              className="stat-card clickable-card"
+              onClick={() => navigate("/carte")}
+              title="Cliquer pour voir la carte"
+            >
+              <span className="stat-icon">🟢</span>
               <div>
-
-                <strong>
-                  Trafic actuel
-                </strong>
-
-                <span>
-                  Modéré
-                </span>
-
+                <strong>Trafic actuel</strong>
+                <span>Modéré (Voir la carte →)</span>
               </div>
-
             </div>
 
-
-            <div className="stat-card">
-
-              <span className="stat-icon">
-                📍
-              </span>
-
+            <div
+              className="stat-card clickable-card"
+              onClick={() => navigate("/carte")}
+              title="Cliquer pour changer de ville"
+            >
+              <span className="stat-icon">📍</span>
               <div>
-
-                <strong>
-                  Ville active
-                </strong>
-
-                <span>
-                  Yaoundé
-                </span>
-
+                <strong>Ville active</strong>
+                <span>{selectedCity} (Changer →)</span>
               </div>
-
             </div>
 
-
-            <div className="stat-card">
-
-              <span className="stat-icon">
-                🔮
-              </span>
-
+            <div
+              className="stat-card clickable-card"
+              onClick={() => navigate("/prediction")}
+              title="Cliquer pour voir les prédictions"
+            >
+              <span className="stat-icon">🔮</span>
               <div>
-
-                <strong>
-                  Prévision
-                </strong>
-
-                <span>
-                  Dans 30 min
-                </span>
-
+                <strong>Prévision IA</strong>
+                <span>Dans 30 min (Analyser →)</span>
               </div>
-
             </div>
-
           </div>
-
         </section>
-
 
         {/* CARTE */}
 
@@ -362,186 +311,101 @@ function Home() {
 
 
           <div className="prediction-grid">
-
-            <div className="prediction-card">
-
-              <span>
-                Maintenant
-              </span>
-
-              <strong>
-                68%
-              </strong>
-
-              <div className="prediction-status moderate">
-                ● Modéré
-              </div>
-
+            <div
+              className="prediction-card clickable-card"
+              onClick={() => navigate("/prediction")}
+              title="Consulter la prédiction détaillée"
+            >
+              <span>Maintenant</span>
+              <strong>68%</strong>
+              <div className="prediction-status moderate">● Modéré</div>
             </div>
 
-
-            <div className="prediction-card">
-
-              <span>
-                Dans 15 min
-              </span>
-
-              <strong>
-                74%
-              </strong>
-
-              <div className="prediction-status moderate">
-                ● Modéré
-              </div>
-
+            <div
+              className="prediction-card clickable-card"
+              onClick={() => navigate("/prediction")}
+              title="Consulter la prédiction détaillée"
+            >
+              <span>Dans 15 min</span>
+              <strong>74%</strong>
+              <div className="prediction-status moderate">● Modéré</div>
             </div>
 
-
-            <div className="prediction-card">
-
-              <span>
-                Dans 30 min
-              </span>
-
-              <strong>
-                86%
-              </strong>
-
-              <div className="prediction-status dense">
-                ● Dense
-              </div>
-
+            <div
+              className="prediction-card clickable-card"
+              onClick={() => navigate("/prediction")}
+              title="Consulter la prédiction détaillée"
+            >
+              <span>Dans 30 min</span>
+              <strong>86%</strong>
+              <div className="prediction-status dense">● Dense</div>
             </div>
 
-
-            <div className="prediction-card">
-
-              <span>
-                Dans 60 min
-              </span>
-
-              <strong>
-                61%
-              </strong>
-
-              <div className="prediction-status moderate">
-                ● Modéré
-              </div>
-
+            <div
+              className="prediction-card clickable-card"
+              onClick={() => navigate("/prediction")}
+              title="Consulter la prédiction détaillée"
+            >
+              <span>Dans 60 min</span>
+              <strong>61%</strong>
+              <div className="prediction-status moderate">● Modéré</div>
             </div>
-
           </div>
-
         </section>
 
 
         {/* ITINERAIRE */}
-
         <section className="route-section">
-
           <div className="route-title">
-
-            <span className="section-label">
-              MOBILITÉ
-            </span>
-
-            <h2>
-              Votre itinéraire intelligent
-            </h2>
-
+            <span className="section-label">MOBILITÉ</span>
+            <h2>Votre itinéraire intelligent</h2>
             <p>
               CityFlow prend en compte l'état du trafic pour
               vous proposer une route adaptée.
             </p>
-
           </div>
-
 
           <div className="route-card">
-
             <div className="route-point">
-
               <span className="route-dot start-dot"></span>
-
               <div>
-
-                <small>
-                  Départ
-                </small>
-
-                <strong>
-                  Votre position
-                </strong>
-
+                <small>Départ</small>
+                <strong>{startPoint || "Bastos"}</strong>
               </div>
-
             </div>
-
 
             <div className="route-line">
-
-              <span>
-                6,8 km
-              </span>
-
+              <span>6,8 km</span>
             </div>
-
 
             <div className="route-point">
-
               <span className="route-dot end-dot"></span>
-
               <div>
-
-                <small>
-                  Destination
-                </small>
-
-                <strong>
-                  Centre-ville
-                </strong>
-
+                <small>Destination</small>
+                <strong>{endPoint || "Centre-ville"}</strong>
               </div>
-
             </div>
-
 
             <div className="route-result">
-
               <div>
-
-                <strong>
-                  22 min
-                </strong>
-
-                <span>
-                  Temps estimé
-                </span>
-
+                <strong>22 min</strong>
+                <span>Temps estimé</span>
               </div>
 
-
               <div>
-
-                <strong>
-                  6,8 km
-                </strong>
-
-                <span>
-                  Distance
-                </span>
-
+                <strong>6,8 km</strong>
+                <span>Distance</span>
               </div>
 
-
-              <button>
+              <button
+                type="button"
+                className="action-link-btn"
+                onClick={() => navigate("/routes")}
+              >
                 Voir l'itinéraire →
               </button>
-
             </div>
-
           </div>
-
         </section>
 
       </main>

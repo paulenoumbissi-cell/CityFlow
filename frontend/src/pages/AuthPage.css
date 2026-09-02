@@ -56,7 +56,16 @@
   font-weight: 600;
   color: #687386;
   cursor: pointer;
-  transition: all 0.2s ease;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auth-tab:hover {
+  color: #087f5b;
+}
+
+.auth-tab:active {
+  transform: scale(0.96);
 }
 
 .auth-tab.active {
@@ -107,26 +116,31 @@
   position: absolute;
   left: 14px;
   color: #8c97a8;
-  pointer-events: none;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.input-wrapper input:focus + .input-icon,
+.input-wrapper:focus-within .input-icon {
+  color: #087f5b;
+  transform: scale(1.15);
 }
 
 .input-wrapper input,
 .input-wrapper select {
   width: 100%;
   padding: 12px 14px 12px 42px;
-  border: 1px solid #dbe3e0;
+  border: 1px solid #e6ebe9;
   border-radius: 10px;
   font-size: 14px;
-  background: #fdfdfd;
   color: #172033;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-wrapper input:focus,
 .input-wrapper select:focus {
   border-color: #087f5b;
-  background: white;
+  box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.1);
 }
 
 .toggle-password {
@@ -139,6 +153,12 @@
   display: flex;
   align-items: center;
   padding: 4px;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.toggle-password:hover {
+  color: #087f5b;
+  transform: scale(1.15);
 }
 
 .auth-submit-btn {
@@ -150,17 +170,24 @@
   background: #087f5b;
   color: white;
   border: none;
-  padding: 13px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 12px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.15s ease, background-color 0.2s;
+  user-select: none;
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(8, 127, 91, 0.25);
 }
 
 .auth-submit-btn:hover {
   background: #066649;
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(8, 127, 91, 0.35);
+}
+
+.auth-submit-btn:active {
+  transform: translateY(1px) scale(0.96) !important;
 }
 
 /* FOOTER */

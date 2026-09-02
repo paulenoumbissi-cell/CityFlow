@@ -26,23 +26,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const CityFlowBrandHeader(logoSize: 32),
+        titleSpacing: 12,
+        title: const CityFlowBrandHeader(logoSize: 26, showSlogan: false),
         actions: [
           const CitySelector(),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             icon: Badge(
               isLabelVisible: provider.activeAlertsCount > 0,
               label: Text('${provider.activeAlertsCount}'),
               backgroundColor: AppColors.emergency,
-              child: const Icon(Icons.notifications_none_rounded, color: AppColors.navy),
+              child: const Icon(Icons.notifications_none_rounded, color: AppColors.navy, size: 22),
             ),
             onPressed: () => widget.onNavigateTab(4), // Vers alertes
           ),
+          const SizedBox(width: 8),
           Container(
-            margin: const EdgeInsets.only(right: 14, left: 4),
-            width: 34,
-            height: 34,
+            margin: const EdgeInsets.only(right: 12, left: 2),
+            width: 30,
+            height: 30,
             decoration: const BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
@@ -53,7 +57,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: 11,
                 ),
               ),
             ),

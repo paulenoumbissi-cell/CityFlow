@@ -6,6 +6,7 @@ import '../core/constants/app_colors.dart';
 import '../widgets/cityflow_brand_header.dart';
 import '../widgets/city_selector.dart';
 import '../widgets/pulsing_traffic_marker.dart';
+import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigateTab;
@@ -43,21 +44,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () => widget.onNavigateTab(4), // Vers alertes
           ),
           const SizedBox(width: 8),
-          Container(
-            margin: const EdgeInsets.only(right: 12, left: 2),
-            width: 30,
-            height: 30,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'PN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 12, left: 2),
+              width: 30,
+              height: 30,
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  'PN',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ),

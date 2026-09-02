@@ -9,14 +9,15 @@ import {
   Check, 
   ChevronRight 
 } from "lucide-react";
+import { useCity } from "../context/CityContext";
 import "./SettingsPage.css";
 
 function SettingsPage() {
+  const { selectedCity, setSelectedCity } = useCity();
   const [trafficAlerts, setTrafficAlerts] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [autoReroute, setAutoReroute] = useState(true);
-  const [defaultCity, setDefaultCity] = useState("Yaoundé");
 
   return (
     <main className="settings-page">
@@ -52,8 +53,8 @@ function SettingsPage() {
                   <span>Ville chargée automatiquement sur la carte</span>
                 </div>
                 <select 
-                  value={defaultCity} 
-                  onChange={(e) => setDefaultCity(e.target.value)}
+                  value={selectedCity} 
+                  onChange={(e) => setSelectedCity(e.target.value)}
                   className="settings-select"
                 >
                   <option value="Yaoundé">Yaoundé</option>

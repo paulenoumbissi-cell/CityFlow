@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { Mail, Lock, User, MapPin, ArrowRight, Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Mail, Lock, User, MapPin, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./AuthPage.css";
 
 function AuthPage() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -19,7 +23,11 @@ function AuthPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log(isLogin ? "Connexion:" : "Inscription:", formData);
+    login(formData);
+    setSuccessMessage(isLogin ? "Connexion réussie !" : "Compte créé avec succès !");
+    setTimeout(() => {
+      navigate("/profil");
+    }, 1000);
   };
 
   return (
@@ -35,6 +43,25 @@ function AuthPage() {
               : "Optimisez vos trajets à Yaoundé et Douala dès aujourd'hui."}
           </p>
         </div>
+
+        {/* MESSAGE DE SUCCÈS */}
+        {successMessage && (
+          <div className="auth-success-banner" style={{
+            background: "#dcfce7",
+            color: "#15803d",
+            padding: "12px",
+            borderRadius: "12px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "14px",
+            fontWeight: "600"
+          }}>
+            <CheckCircle2 size={18} />
+            {successMessage} Redirection en cours...
+          </div>
+        )}
 
         {/* SÉLECTEUR CONNEXION / INSCRIPTION */}
         <div className="auth-tabs">
@@ -68,7 +95,7 @@ function AuthPage() {
                   placeholder="Ex: Paule Noumbissi"
                   value={formData.name}
                   onChange={handleChange}
-                  required
+                  required={!isLogin}
                 />
               </div>
             </div>
@@ -109,14 +136,7 @@ function AuthPage() {
           )}
 
           <div className="form-group">
-            <div className="password-header">
-              <label htmlFor="password">Mot de passe</label>
-              {isLogin && (
-                <a href="#forgot" className="forgot-link">
-                  Mot de passe oublié ?
-                </a>
-              )}
-            </div>
+            <label htmlFor="password">Mot de passe</label>
             <div className="input-wrapper">
               <Lock size={18} className="input-icon" />
               <input

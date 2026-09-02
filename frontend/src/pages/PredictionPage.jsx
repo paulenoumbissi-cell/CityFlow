@@ -56,10 +56,12 @@ function getLevelClass(level) {
   return "moderate";
 }
 
-function PredictionPage() {
-  const [selectedCity, setSelectedCity] = useState("Yaoundé");
+import { useCity } from "../context/CityContext";
 
-  const data = predictionData[selectedCity];
+function PredictionPage() {
+  const { selectedCity, setSelectedCity } = useCity();
+
+  const data = predictionData[selectedCity] || predictionData["Yaoundé"];
 
   return (
     <main className="prediction-page">

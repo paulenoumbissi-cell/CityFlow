@@ -1832,3 +1832,91 @@ a {
   z-index: 10000;
 }
 }
+
+/* ========================================= */
+/* EXTENSIONS DE NAVIGATION ET URGENCES      */
+/* ========================================= */
+
+.nav-emergency-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fee2e2;
+  color: #dc2626 !important;
+  font-weight: 700 !important;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #fca5a5;
+  transition: all 0.25s ease;
+}
+
+.nav-emergency-btn:hover {
+  background: #dc2626;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.nav-emergency-btn.active {
+  background: #dc2626;
+  color: #ffffff !important;
+}
+
+.navbar-city-dropdown {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cityflow-primary);
+  outline: none;
+  cursor: pointer;
+}
+
+.login-navbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cityflow-primary);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.login-navbar-btn:hover {
+  background: var(--cityflow-primary-dark);
+  transform: translateY(-1px);
+}
+
+/* Menu Mobile Overlay */
+@media (max-width: 900px) {
+  .menu-button {
+    display: flex !important;
+  }
+
+  .desktop-nav {
+    display: none;
+    position: absolute;
+    top: 76px;
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    flex-direction: column;
+    padding: 24px;
+    gap: 18px;
+    border-bottom: 1px solid var(--cityflow-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  }
+
+  .desktop-nav.mobile-open {
+    display: flex !important;
+    animation: slideDownNav 0.25s ease forwards;
+  }
+}
+
+@keyframes slideDownNav {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

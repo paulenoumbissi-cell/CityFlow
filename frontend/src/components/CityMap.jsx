@@ -114,7 +114,7 @@ export default function CityMap({ customRoute, height = "480px" }) {
     };
 
     fetchLiveTraffic();
-    const interval = setInterval(fetchLiveTraffic, 4000);
+    const interval = setInterval(fetchLiveTraffic, 3000);
 
     return () => {
       isMounted = false;
@@ -244,34 +244,35 @@ export default function CityMap({ customRoute, height = "480px" }) {
               node.currentCongestion === "dense";
 
             return (
-              <CircleMarker
-                key={node.id}
-                center={node.position}
-                radius={style.radius || 9}
-                pathOptions={{
-                  color: style.color,
-                  fillColor: style.fillColor,
-                  fillOpacity: isCritical ? 0.9 : style.fillOpacity || 0.8,
-                  weight: isCritical ? 3 : 2,
-                }}
-              >
-                <Popup>
-                  <div style={{ padding: "4px", minWidth: "190px", color: "#0a2540" }}>
-                    <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>
-                      {node.name}
-                    </h3>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "4px",
-                        fontSize: "12px",
-                      }}
-                    >
-                      <span>Congestion :</span>
-                      <strong>{node.congestionValue || node.value || 50}%</strong>
-                    </div>
-                    {node.averageSpeedKmh && (
+              <div key={node.id}>
+                {isCritical && (
+                  <CircleMarker
+                    center={node.position}
+                    radius={(style.radius || 9) + 8}
+                    pathOptions={{
+                      color: style.color,
+                      fillColor: style.fillColor,
+                      fillOpacity: 0.25,
+                      weight: 1,
+                      className: "radar-marker-pulse",
+                    }}
+                  />
+                )}
+                <CircleMarker
+                  center={node.position}
+                  radius={style.radius || 9}
+                  pathOptions={{
+                    color: style.color,
+                    fillColor: style.fillColor,
+                    fillOpacity: isCritical ? 0.9 : style.fillOpacity || 0.8,
+                    weight: isCritical ? 3 : 2,
+                  }}
+                >
+                  <Popup>
+                    <div style={{ padding: "4px", minWidth: "190px", color: "#0a2540" }}>
+                      <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>
+                        {node.name}
+                      </h3>
                       <div
                         style={{
                           display: "flex",
@@ -280,41 +281,54 @@ export default function CityMap({ customRoute, height = "480px" }) {
                           fontSize: "12px",
                         }}
                       >
-                        <span>Vitesse moyenne :</span>
-                        <strong style={{ color: "#00875A" }}>{node.averageSpeedKmh} km/h</strong>
+                        <span>Congestion :</span>
+                        <strong>{node.congestionValue || node.value || 50}%</strong>
                       </div>
-                    )}
-                    {node.estimatedDelayMinutes && (
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: "6px",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <span>Retard estimé :</span>
-                        <strong style={{ color: style.color }}>
-                          +{node.estimatedDelayMinutes} min
-                        </strong>
-                      </div>
-                    )}
-                    {node.predictions && node.predictions.length > 0 && (
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          color: "#475569",
-                          borderTop: "1px solid #e2e8f0",
-                          paddingTop: "4px",
-                        }}
-                      >
-                        Prévision +1h : {node.predictions[0].congestionPercentage}% (
-                        {node.predictions[0].weatherInfluence})
-                      </div>
-                    )}
-                  </div>
-                </Popup>
-              </CircleMarker>
+                      {node.averageSpeedKmh && (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            marginBottom: "4px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          <span>Vitesse moyenne :</span>
+                          <strong style={{ color: "#00875A" }}>{node.averageSpeedKmh} km/h</strong>
+                        </div>
+                      )}
+                      {node.estimatedDelayMinutes && (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            marginBottom: "6px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          <span>Retard estimé :</span>
+                          <strong style={{ color: style.color }}>
+                            +{node.estimatedDelayMinutes} min
+                          </strong>
+                        </div>
+                      )}
+                      {node.predictions && node.predictions.length > 0 && (
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            color: "#475569",
+                            borderTop: "1px solid #e2e8f0",
+                            paddingTop: "4px",
+                          }}
+                        >
+                          Prévision +1h : {node.predictions[0].congestionPercentage}% (
+                          {node.predictions[0].weatherInfluence})
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              </div>
             );
           })}
         </MapContainer>

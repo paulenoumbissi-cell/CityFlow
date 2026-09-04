@@ -126,189 +126,84 @@ function Home() {
         </section>
 
         {/* CARTE */}
-
         <section className="dashboard-grid">
-
           <div className="map-card">
-
-             <CityMap />
-
+            <CityMap />
           </div>
 
           {/* TRAFIC */}
-
           <div className="traffic-card">
-
             <div className="section-header">
-
               <div>
-
-                <span className="section-label">
-                  ANALYSE
-                </span>
-
-                <h2>
-                  État du trafic
-                </h2>
-
+                <span className="section-label">ANALYSE</span>
+                <h2>État du trafic</h2>
               </div>
-
-              <span className="live-badge">
-                ● LIVE
-              </span>
-
+              <span className="live-badge">● LIVE</span>
             </div>
 
-
             <div className="traffic-status">
-
               <div className="traffic-circle">
-
-                <span>
-                  68%
-                </span>
-
-                <small>
-                  fluidité
-                </small>
-
+                <span>68%</span>
+                <small>fluidité</small>
               </div>
 
-
               <div className="traffic-info">
-
-                <h3>
-                  Trafic modéré
-                </h3>
-
+                <h3>Trafic modéré</h3>
                 <p>
                   La circulation est globalement normale,
                   avec quelques ralentissements.
                 </p>
-
               </div>
-
             </div>
-
 
             <div className="traffic-bars">
-
               <div className="traffic-bar-item">
-
                 <div>
-
-                  <span>
-                    Centre-ville
-                  </span>
-
-                  <strong>
-                    Dense
-                  </strong>
-
+                  <span>Centre-ville</span>
+                  <strong>Dense</strong>
                 </div>
-
                 <div className="progress">
-
-                  <span
-                    style={{
-                      width: "82%"
-                    }}
-                  ></span>
-
+                  <span style={{ width: "82%" }}></span>
                 </div>
-
               </div>
 
-
               <div className="traffic-bar-item">
-
                 <div>
-
-                  <span>
-                    Bastos
-                  </span>
-
-                  <strong>
-                    Modéré
-                  </strong>
-
+                  <span>Bastos</span>
+                  <strong>Modéré</strong>
                 </div>
-
                 <div className="progress">
-
-                  <span
-                    style={{
-                      width: "55%"
-                    }}
-                  ></span>
-
+                  <span style={{ width: "55%" }}></span>
                 </div>
-
               </div>
 
-
               <div className="traffic-bar-item">
-
                 <div>
-
-                  <span>
-                    Mvan
-                  </span>
-
-                  <strong>
-                    Fluide
-                  </strong>
-
+                  <span>Mvan</span>
+                  <strong>Fluide</strong>
                 </div>
-
                 <div className="progress">
-
-                  <span
-                    style={{
-                      width: "32%"
-                    }}
-                  ></span>
-
+                  <span style={{ width: "32%" }}></span>
                 </div>
-
               </div>
-
             </div>
-
           </div>
-
         </section>
 
-
         {/* PREDICTION */}
-
         <section className="prediction-section">
-
           <div className="prediction-header">
-
             <div>
-
-              <span className="section-label">
-                INTELLIGENCE CITYFLOW
-              </span>
-
-              <h2>
-                Anticipez le trafic
-              </h2>
-
+              <span className="section-label">INTELLIGENCE CITYFLOW</span>
+              <h2>Anticipez le trafic</h2>
               <p>
                 Consultez l'évolution estimée de la circulation
                 pour mieux planifier votre déplacement.
               </p>
-
             </div>
 
-            <div className="prediction-icon">
-              🔮
-            </div>
-
+            <div className="prediction-icon">🔮</div>
           </div>
-
 
           <div className="prediction-grid">
             <div
@@ -352,7 +247,6 @@ function Home() {
             </div>
           </div>
         </section>
-
 
         {/* ITINERAIRE */}
         <section className="route-section">
@@ -407,9 +301,7 @@ function Home() {
             </div>
           </div>
         </section>
-
       </main>
-
 
       {/* FOOTER */}
       <footer className="footer">

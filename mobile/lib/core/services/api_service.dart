@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../../models/traffic_node.dart';
@@ -7,6 +8,7 @@ import '../../models/incident_alert.dart';
 import '../../models/citizen_report.dart';
 import '../../models/citizen_reward.dart';
 import '../../models/emergency_mission.dart';
+import '../../models/smart_route.dart';
 import '../constants/city_data.dart';
 
 class CityFlowMobileApiService {
@@ -399,4 +401,94 @@ class CityFlowMobileApiService {
       ]
     };
   }
+
+  /// Calcul d'itinéraires multi-critères et comparateur multimodal
+  static Future<Map<String, dynamic>> calculateSmartRoutes({
+    required String city,
+    required String origin,
+    required String destination,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/routes/calculate');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'city': city,
+          'origin': origin,
+          'destination': destination,
+        }),
+      ).timeout(const Duration(seconds: 3));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List rawRoutes = data['routes'] ?? [];
+        final List rawMulti = data['multimodal'] ?? [];
+
+        final routes = rawRoutes.map((r) => SmartRoute.fromJson(r as Map<String, dynamic>)).toList();
+        final multimodal = rawMulti.map((m) => MultimodalOption.fromJson(m as Map<String, dynamic>)).toList();
+
+        return {
+          'routes': routes,
+          'multimodal': multimodal,
+        };
+      }
+    } catch (_) {}
+
+    // Fallback de secours local
+    final fallbackCoords = city == 'Yaoundé'
+        ? [const LatLng(3.822, 11.523), const LatLng(3.8667, 11.5167), const LatLng(3.889, 11.512)]
+        : [const LatLng(4.0667, 9.7006), const LatLng(4.0511, 9.7043), const LatLng(4.043, 9.691)];
+
+    return {
+      'routes': [
+        SmartRoute(
+          id: 'route_fastest',
+          type: 'fastest',
+          title: 'Itinéraire le plus rapide (Recommandé IA)',
+          badge: '⚡ Recommandé CityFlow',
+          tag: 'Optimal',
+          durationMinutes: 22,
+          distanceKm: 6.8,
+          delaySavedMinutes: 12,
+          co2SavedKg: 0.4,
+          ecoScore: 'B+',
+          congestionIndex: 30,
+          color: const Color(0xFF00875A),
+          fluidityLevel: 'fluid',
+          highlights: const ['Évite les axes bloqués', 'Feux synchronisés'],
+          coordinates: fallbackCoords,
+          steps: [
+            RouteStepInstruction(instruction: 'Départ depuis $origin', distance: '400 m', action: 'straight', icon: 'navigation'),
+            const RouteStepInstruction(instruction: 'Rejoindre l\'axe principal', distance: '3.2 km', action: 'right', icon: 'arrow-up-right'),
+            RouteStepInstruction(instruction: 'Arrivée à $destination', distance: '200 m', action: 'arrival', icon: 'map-pin'),
+          ],
+        ),
+      ],
+      'multimodal': [
+        const MultimodalOption(
+          mode: 'car',
+          label: 'Voiture',
+          icon: 'car',
+          durationMinutes: 22,
+          estimatedCostFcfa: 950,
+          costLabel: '~950 FCFA',
+          co2Kg: '0.90',
+          comfort: 'Climatisé',
+        ),
+        const MultimodalOption(
+          mode: 'mototaxi',
+          label: 'Moto-taxi',
+          icon: 'bike',
+          durationMinutes: 16,
+          estimatedCostFcfa: 400,
+          costLabel: '400 FCFA',
+          co2Kg: '0.25',
+          comfort: 'Agilité maximale',
+          isFastest: true,
+        ),
+      ],
+    };
+  }
 }
+

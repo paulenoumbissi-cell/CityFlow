@@ -8,6 +8,7 @@ import '../models/priority_route.dart';
 import '../models/citizen_report.dart';
 import '../models/citizen_reward.dart';
 import '../models/emergency_mission.dart';
+import '../models/smart_route.dart';
 import '../core/constants/city_data.dart';
 import '../core/services/location_service.dart';
 import '../core/services/api_service.dart';
@@ -27,6 +28,16 @@ class CityFlowProvider extends ChangeNotifier {
 
   // Mode Secours & Onde Verte
   EmergencyMission? _activeEmergencyMission;
+
+  // Itinéraires Multi-Critères & Éco-Mobilité
+  List<SmartRoute> _smartRoutes = [];
+  SmartRoute? _selectedSmartRoute;
+  List<MultimodalOption> _multimodalOptions = [];
+  String _activeTravelMode = 'car';
+  bool _isSmartRouteLoading = false;
+  bool _isGpsNavigating = false;
+  int _navStepIndex = 0;
+  bool _navCompleted = false;
 
   TrafficNode? _selectedNode;
   PriorityRoute? _activePriorityRoute;
@@ -52,6 +63,7 @@ class CityFlowProvider extends ChangeNotifier {
     _initWebSocket();
     refreshCitizenData();
     checkEmergencyStatus();
+    fetchSmartRoutes();
     autoDetectUserCity();
   }
 
@@ -83,6 +95,16 @@ class CityFlowProvider extends ChangeNotifier {
   PriorityRoute? get activePriorityRoute => _activePriorityRoute;
   bool get isEmergencyModeActive => _isEmergencyModeActive;
   bool get isLiveSimulating => _isLiveSimulating;
+
+  // Smart Routes & Navigation getters
+  List<SmartRoute> get smartRoutes => _smartRoutes;
+  SmartRoute? get selectedSmartRoute => _selectedSmartRoute;
+  List<MultimodalOption> get multimodalOptions => _multimodalOptions;
+  String get activeTravelMode => _activeTravelMode;
+  bool get isSmartRouteLoading => _isSmartRouteLoading;
+  bool get isGpsNavigating => _isGpsNavigating;
+  int get navStepIndex => _navStepIndex;
+  bool get navCompleted => _navCompleted;
 
   // WebSocket Status Getters
   WsConnectionStatus get wsStatus => _wsService.status;
@@ -199,6 +221,7 @@ class CityFlowProvider extends ChangeNotifier {
       _locationStatusMessage = 'Position GPS : ${result.detectedCity} (à ${result.distanceKm.toStringAsFixed(1)} km du centre)';
       final nodes = currentNodes;
       _selectedNode = nodes.isNotEmpty ? nodes.first : null;
+      fetchSmartRoutes();
     } else {
       _locationStatusMessage = result.errorMessage ?? 'Position par défaut : $_selectedCity';
     }
@@ -212,8 +235,74 @@ class CityFlowProvider extends ChangeNotifier {
       _wsService.subscribeCity(city);
       final nodes = currentNodes;
       _selectedNode = nodes.isNotEmpty ? nodes.first : null;
+      fetchSmartRoutes();
       notifyListeners();
     }
+  }
+
+  // --- ACTIONS ITINÉRAIRES MULTI-CRITÈRES & GUIDAGE ---
+  Future<void> fetchSmartRoutes({String? origin, String? destination}) async {
+    _isSmartRouteLoading = true;
+    _isGpsNavigating = false;
+    _navStepIndex = 0;
+    _navCompleted = false;
+    if (!_isDisposed) notifyListeners();
+
+    final start = origin ?? (_selectedCity == 'Yaoundé' ? 'Mvan (Gare)' : 'Deido (Rond-point)');
+    final end = destination ?? (_selectedCity == 'Yaoundé' ? 'Bastos' : 'Bonanjo');
+
+    final res = await CityFlowMobileApiService.calculateSmartRoutes(
+      city: _selectedCity,
+      origin: start,
+      destination: end,
+    );
+
+    if (!_isDisposed) {
+      _smartRoutes = (res['routes'] as List<SmartRoute>?) ?? [];
+      _multimodalOptions = (res['multimodal'] as List<MultimodalOption>?) ?? [];
+      if (_smartRoutes.isNotEmpty) {
+        _selectedSmartRoute = _smartRoutes.first;
+      }
+      _isSmartRouteLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void selectSmartRoute(SmartRoute route) {
+    _selectedSmartRoute = route;
+    _navStepIndex = 0;
+    _navCompleted = false;
+    notifyListeners();
+  }
+
+  void setActiveTravelMode(String mode) {
+    _activeTravelMode = mode;
+    notifyListeners();
+  }
+
+  void startGpsNavigation() {
+    _isGpsNavigating = true;
+    _navStepIndex = 0;
+    _navCompleted = false;
+    notifyListeners();
+  }
+
+  void nextGpsStep() {
+    if (_selectedSmartRoute != null) {
+      if (_navStepIndex < _selectedSmartRoute!.steps.length - 1) {
+        _navStepIndex++;
+      } else {
+        _navCompleted = true;
+      }
+      notifyListeners();
+    }
+  }
+
+  void stopGpsNavigation() {
+    _isGpsNavigating = false;
+    _navStepIndex = 0;
+    _navCompleted = false;
+    notifyListeners();
   }
 
   void selectNode(TrafficNode node) {

@@ -3,10 +3,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
 import '../providers/city_flow_provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/services/websocket_service.dart';
 import '../widgets/cityflow_brand_header.dart';
 import '../widgets/city_selector.dart';
 import '../widgets/pulsing_traffic_marker.dart';
 import 'profile_screen.dart';
+import 'citizen_reports_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigateTab;
@@ -31,6 +33,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const CityFlowBrandHeader(logoSize: 26, showSlogan: false),
         actions: [
           const CitySelector(),
+          const SizedBox(width: 4),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.people_alt_outlined, color: AppColors.primary, size: 22),
+            tooltip: 'Communauté & Récompenses',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CitizenReportsScreen()),
+              );
+            },
+          ),
           const SizedBox(width: 4),
           IconButton(
             padding: EdgeInsets.zero,
@@ -75,8 +89,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          // 1. Tag Mobilité intelligente
+          // 1. Tag Mobilité intelligente & Live WS Status
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -96,6 +111,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Live WS Stream Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: provider.isWsConnected
+                      ? const Color(0xFFDCFCE7)
+                      : provider.wsStatus == WsConnectionStatus.connecting
+                          ? const Color(0xFFFEF3C7)
+                          : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: provider.isWsConnected
+                        ? const Color(0xFF86EFAC)
+                        : provider.wsStatus == WsConnectionStatus.connecting
+                            ? const Color(0xFFFCD34D)
+                            : const Color(0xFFCBD5E1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: provider.isWsConnected
+                            ? const Color(0xFF16A34A)
+                            : provider.wsStatus == WsConnectionStatus.connecting
+                                ? const Color(0xFFD97706)
+                                : const Color(0xFF64748B),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      provider.isWsConnected
+                          ? 'Live WS'
+                          : provider.wsStatus == WsConnectionStatus.connecting
+                              ? 'Connexion...'
+                              : 'Sync Locale',
+                      style: TextStyle(
+                        color: provider.isWsConnected
+                            ? const Color(0xFF15803D)
+                            : provider.wsStatus == WsConnectionStatus.connecting
+                                ? const Color(0xFFB45309)
+                                : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10.5,
                       ),
                     ),
                   ],
@@ -257,7 +325,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
+
+          // 4b. Carte Interactive : Signalement Citoyen & Récompenses
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CitizenReportsScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Signalement Citoyen',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${provider.citizenPoints} pts',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFB45309),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${provider.currentCityCitizenReports.length} signalements actifs • Gagnez des badges',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primary),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
 
           // 5. Section "Situation du trafic" (Mini Map)
           Container(

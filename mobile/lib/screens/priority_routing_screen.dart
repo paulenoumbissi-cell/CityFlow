@@ -20,12 +20,13 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<CityFlowProvider>();
     final routes = provider.currentCityPriorityRoutes;
-    final isEmergencyActive = provider.isEmergencyModeActive;
-    final activeRoute = provider.activePriorityRoute;
+    final activeMission = provider.activeEmergencyMission;
+    final isMissionActive = activeMission != null;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Itinéraires Prioritaires'),
+        title: const Text('Mode Secours & Onde Verte'),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 12),
@@ -36,62 +37,21 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Emergency type selector chips
-          const Text(
-            'Type de Véhicule Prioritaire',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: EmergencyType.values.map((type) {
-                final isSelected = _selectedType == type;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    avatar: Icon(
-                      type.icon,
-                      size: 16,
-                      color: isSelected ? Colors.white : type.color,
-                    ),
-                    label: Text(type.label),
-                    selected: isSelected,
-                    selectedColor: type.color,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                    backgroundColor: AppColors.surfaceLight,
-                    onSelected: (val) {
-                      setState(() {
-                        _selectedType = type;
-                      });
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Active Emergency Status if engaged
-          if (isEmergencyActive && activeRoute != null) ...[
+          // 1. ACTIVE EMERGENCY BANNER & GREEN WAVE CONTROLLER (SI MISSION EN COURS)
+          if (isMissionActive) ...[
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: AppColors.emergencyGradient,
-                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFDC2626), Color(0xFF991B1B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.emergency.withValues(alpha: 0.35),
-                    blurRadius: 15,
+                    color: const Color(0xFFDC2626).withValues(alpha: 0.4),
+                    blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
                 ],
@@ -104,224 +64,429 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.emergency_rounded, color: Colors.white, size: 24),
-                          const SizedBox(width: 8),
-                          Text(
-                            'COULOIR ACTIF EN DIRECT',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 13,
-                              letterSpacing: 0.5,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
                             ),
+                            child: const Icon(Icons.emergency_rounded, color: Colors.white, size: 24),
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'ONDE VERTE ACTIVE 🟢',
+                                  style: TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                activeMission.vehicleName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                       ElevatedButton(
-                        onPressed: () => provider.toggleEmergencyMode(false),
+                        onPressed: () => provider.cancelEmergency(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: AppColors.emergency,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          foregroundColor: const Color(0xFFDC2626),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Stopper', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('Stopper', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Text(
-                    'Gain de temps estimé : ${activeRoute.timeSavedMinutes} minutes',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    'Corridor : ${activeMission.corridorName}',
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Onde verte et délestage appliqués le long du corridor.',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12),
+                    'Vitesse : ${activeMission.speedKmh} km/h • Gain estimé : -${activeMission.timeSavedMinutes} min',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-          ],
 
-          // Available Priority Corridors List
-          const Text(
-            'Corridors Stratégiques Disponibles',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-          ...routes.map((route) {
-            final isCurrentActive = isEmergencyActive && activeRoute?.id == route.id;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
+            // TIMELINE DES FEUX ASSERVIS
+            Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isCurrentActive ? AppColors.emergency : AppColors.cardBorder,
-                  width: isCurrentActive ? 2 : 1,
-                ),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.cardBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Origin -> Destination
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
+                      Text(
+                        'Feux Tricolores Synchronisés',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      Text(
+                        'Cascade Verte',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...activeMission.intersections.map((intLight) {
+                    final isCleared = intLight.state == 'cleared';
+                    final isGreenWave = intLight.state == 'green_wave';
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
                         children: [
-                          const Icon(Icons.circle, color: AppColors.primary, size: 12),
-                          Container(width: 2, height: 24, color: AppColors.cardBorder),
-                          const Icon(Icons.location_on_rounded, color: AppColors.emergency, size: 16),
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: isCleared
+                                  ? const Color(0xFFE2E8F0)
+                                  : isGreenWave
+                                      ? const Color(0xFFD1FAE5)
+                                      : const Color(0xFFFEF3C7),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              isCleared ? '✓' : isGreenWave ? '🟢' : '⏳',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  intLight.name,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isGreenWave ? FontWeight.bold : FontWeight.w500,
+                                    color: isCleared ? AppColors.textMuted : AppColors.textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  isCleared
+                                      ? 'Carrefour franchi'
+                                      : isGreenWave
+                                          ? 'Feu vert forcé • Transversale bloquée 🔴'
+                                          : 'En attente d\'approche',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isGreenWave ? const Color(0xFF059669) : AppColors.textMuted,
+                                    fontWeight: isGreenWave ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              route.originName,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              route.destinationName,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Time Saved Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.trafficFluid.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.trafficFluid.withValues(alpha: 0.4)),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              '-${route.timeSavedMinutes} min',
-                              style: const TextStyle(
-                                color: AppColors.trafficFluid,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const Text(
-                              'Gain IA',
-                              style: TextStyle(color: AppColors.trafficFluid, fontSize: 9),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Metrics Summary
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildDurationItem(
-                          label: 'Trafic Classique',
-                          value: '${route.standardDurationMinutes} min',
-                          color: AppColors.trafficHeavy,
-                        ),
-                        Container(width: 1, height: 28, color: AppColors.cardBorder),
-                        _buildDurationItem(
-                          label: 'Prioritaire CityFlow',
-                          value: '${route.priorityDurationMinutes} min',
-                          color: AppColors.primary,
-                        ),
-                        Container(width: 1, height: 28, color: AppColors.cardBorder),
-                        _buildDurationItem(
-                          label: 'Distance',
-                          value: '${route.distanceKm} km',
-                          color: AppColors.textPrimary,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Corridor notes
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline_rounded, color: AppColors.textMuted, size: 15),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          route.corridorDescription,
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Action Button
+                    );
+                  }),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        provider.selectPriorityRoute(route);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Couloir prioritaire activé vers ${route.destinationName} !'),
-                            backgroundColor: AppColors.emergency,
-                          ),
-                        );
-                        widget.onNavigateTab?.call(0); // Basculer vers la carte
-                      },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isCurrentActive ? AppColors.emergency : AppColors.primary,
+                        backgroundColor: const Color(0xFF2563EB),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      icon: Icon(
-                        isCurrentActive ? Icons.check_circle_rounded : Icons.flash_on_rounded,
-                        size: 18,
+                      icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                      label: const Text(
+                        'Avancer au carrefour suivant ▶',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
-                      label: Text(
-                        isCurrentActive ? 'Couloir Actif (Voir sur Carte)' : 'Activer Couloir Prioritaire',
-                      ),
+                      onPressed: () => provider.stepEmergency(),
                     ),
                   ),
                 ],
               ),
-            );
-          }),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ALERTE BROADCAST AUTOMOBILISTES
+            if (activeMission.broadcastAlert != null)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFECDD3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.volume_up_rounded, color: Color(0xFFBE123C), size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Alerte Broadcast Conducteurs (Rayon 2.5 km)',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFBE123C)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            activeMission.broadcastAlert!.message,
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+          ] else ...[
+            // 2. SÉLECTION D'UNITÉ D'URGENCE (SI PAS DE MISSION ACTIVE)
+            const Text(
+              'Type de Véhicule Prioritaire',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: EmergencyType.values.map((type) {
+                  final isSelected = _selectedType == type;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      avatar: Icon(
+                        type.icon,
+                        size: 16,
+                        color: isSelected ? Colors.white : type.color,
+                      ),
+                      label: Text(type.label),
+                      selected: isSelected,
+                      selectedColor: type.color,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : AppColors.textPrimary,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontSize: 12,
+                      ),
+                      backgroundColor: AppColors.surfaceLight,
+                      onSelected: (val) {
+                        setState(() {
+                          _selectedType = type;
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 3. LISTE DES CORRIDORS STRATÉGIQUES DISPONIBLES
+            const Text(
+              'Corridors Stratégiques Disponibles',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            ...routes.map((route) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Origin -> Destination
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          children: [
+                            const Icon(Icons.circle, color: AppColors.primary, size: 12),
+                            Container(width: 2, height: 24, color: AppColors.cardBorder),
+                            const Icon(Icons.location_on_rounded, color: AppColors.emergency, size: 16),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                route.originName,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                route.destinationName,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Time Saved Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.trafficFluid.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.trafficFluid.withValues(alpha: 0.4)),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '-${route.timeSavedMinutes} min',
+                                style: const TextStyle(
+                                  color: AppColors.trafficFluid,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const Text(
+                                'Gain Onde Verte',
+                                style: TextStyle(color: AppColors.trafficFluid, fontSize: 9),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Metrics Summary
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildDurationItem(
+                            label: 'Trafic Classique',
+                            value: '${route.standardDurationMinutes} min',
+                            color: AppColors.trafficHeavy,
+                          ),
+                          Container(width: 1, height: 28, color: AppColors.cardBorder),
+                          _buildDurationItem(
+                            label: 'Prioritaire Onde Verte',
+                            value: '${route.priorityDurationMinutes} min',
+                            color: AppColors.primary,
+                          ),
+                          Container(width: 1, height: 28, color: AppColors.cardBorder),
+                          _buildDurationItem(
+                            label: 'Distance',
+                            value: '${route.distanceKm} km',
+                            color: AppColors.textPrimary,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Action Button : Enclencher l'onde verte
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final vehicleTypeStr = _selectedType == EmergencyType.firefighters
+                              ? 'firefighters'
+                              : _selectedType == EmergencyType.police
+                                  ? 'police'
+                                  : _selectedType == EmergencyType.vipConvoy
+                                      ? 'convoy'
+                                      : 'ambulance';
+
+                          final ok = await provider.dispatchEmergency(
+                            vehicleType: vehicleTypeStr,
+                            corridorId: route.id,
+                            origin: route.originName,
+                            destination: route.destinationName,
+                          );
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(ok
+                                    ? '🚨 Onde verte enclenchée vers ${route.destinationName} !'
+                                    : 'Mode secours local activé.'),
+                                backgroundColor: AppColors.emergency,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.emergency,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.flash_on_rounded, size: 18, color: Colors.white),
+                        label: const Text(
+                          'ENCLENCHER L\'ONDE VERTE PRIORITAIRE',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );

@@ -336,11 +336,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'Transport en commun / Bus',
               'Véhicule d’urgence / Officiel',
             ].map((type) {
+              // ignore: deprecated_member_use
               return RadioListTile<String>(
                 title: Text(type, style: const TextStyle(fontSize: 13)),
                 value: type,
+                // ignore: deprecated_member_use
                 groupValue: _vehicleType,
                 activeColor: AppColors.primary,
+                // ignore: deprecated_member_use
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => _vehicleType = val);

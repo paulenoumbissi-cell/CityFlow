@@ -5,9 +5,13 @@ import 'package:latlong2/latlong.dart';
 import '../models/traffic_node.dart';
 import '../models/incident_alert.dart';
 import '../models/priority_route.dart';
+import '../models/citizen_report.dart';
+import '../models/citizen_reward.dart';
+import '../models/emergency_mission.dart';
 import '../core/constants/city_data.dart';
 import '../core/services/location_service.dart';
 import '../core/services/api_service.dart';
+import '../core/services/websocket_service.dart';
 
 class CityFlowProvider extends ChangeNotifier {
   String _selectedCity = 'Yaoundé';
@@ -15,6 +19,14 @@ class CityFlowProvider extends ChangeNotifier {
   List<TrafficNode> _doualaNodes = [];
   List<IncidentAlert> _alerts = [];
   List<PriorityRoute> _priorityRoutes = [];
+
+  // Crowdsourcing & Gamification
+  List<CitizenReport> _citizenReports = [];
+  CitizenProfileData? _citizenProfile;
+  List<CatalogRewardItem> _rewardsCatalog = [];
+
+  // Mode Secours & Onde Verte
+  EmergencyMission? _activeEmergencyMission;
 
   TrafficNode? _selectedNode;
   PriorityRoute? _activePriorityRoute;
@@ -29,9 +41,17 @@ class CityFlowProvider extends ChangeNotifier {
   String? _locationStatusMessage;
   bool _isDisposed = false;
 
+  // WebSocket Live Push
+  final CityFlowWebSocketService _wsService = CityFlowWebSocketService();
+  StreamSubscription<WsConnectionStatus>? _wsStatusSub;
+  StreamSubscription<Map<String, dynamic>>? _wsMessageSub;
+
   CityFlowProvider() {
     _loadInitialData();
     _startLiveSimulation();
+    _initWebSocket();
+    refreshCitizenData();
+    checkEmergencyStatus();
     autoDetectUserCity();
   }
 
@@ -50,11 +70,23 @@ class CityFlowProvider extends ChangeNotifier {
   
   List<IncidentAlert> get currentCityAlerts => _alerts.where((a) => a.city == _selectedCity).toList();
   List<IncidentAlert> get allAlerts => _alerts;
+
+  // Crowdsourcing getters
+  List<CitizenReport> get currentCityCitizenReports =>
+      _citizenReports.where((r) => r.city == _selectedCity && r.status == 'active').toList();
+  List<CitizenReport> get allCitizenReports => _citizenReports;
+  CitizenProfileData? get citizenProfile => _citizenProfile;
+  List<CatalogRewardItem> get rewardsCatalog => _rewardsCatalog;
+  int get citizenPoints => _citizenProfile?.reputationScore ?? 320;
   
   List<PriorityRoute> get currentCityPriorityRoutes => _priorityRoutes;
   PriorityRoute? get activePriorityRoute => _activePriorityRoute;
   bool get isEmergencyModeActive => _isEmergencyModeActive;
   bool get isLiveSimulating => _isLiveSimulating;
+
+  // WebSocket Status Getters
+  WsConnectionStatus get wsStatus => _wsService.status;
+  bool get isWsConnected => _wsService.isConnected;
 
   // City KPI Stats
   double get averageSpeed {
@@ -69,6 +101,73 @@ class CityFlowProvider extends ChangeNotifier {
   }
 
   int get activeAlertsCount => currentCityAlerts.length;
+
+  void _initWebSocket() {
+    _wsService.connect();
+    _wsStatusSub = _wsService.statusStream.listen((status) {
+      if (!_isDisposed) notifyListeners();
+    });
+
+    _wsMessageSub = _wsService.messageStream.listen((data) {
+      if (_isDisposed) return;
+      _handleWebSocketMessage(data);
+    });
+  }
+
+  void _handleWebSocketMessage(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+    if (type == null) return;
+
+    switch (type) {
+      case 'CITIZEN_REPORT_CREATED':
+        final repJson = data['report'];
+        if (repJson is Map<String, dynamic>) {
+          final rep = CitizenReport.fromJson(repJson);
+          if (rep.city == _selectedCity) {
+            final exists = _citizenReports.any((r) => r.id == rep.id);
+            if (!exists) {
+              _citizenReports.insert(0, rep);
+              notifyListeners();
+            }
+          }
+        }
+        break;
+
+      case 'REPORT_VOTE_UPDATED':
+        final repJson = data['report'];
+        if (repJson is Map<String, dynamic>) {
+          final rep = CitizenReport.fromJson(repJson);
+          final idx = _citizenReports.indexWhere((r) => r.id == rep.id);
+          if (idx != -1) {
+            _citizenReports[idx] = rep;
+            notifyListeners();
+          }
+        }
+        break;
+
+      case 'EMERGENCY_MISSION_UPDATE':
+        final missionJson = data['mission'];
+        if (missionJson is Map<String, dynamic>) {
+          final mission = EmergencyMission.fromJson(missionJson);
+          if (mission.city == _selectedCity) {
+            _activeEmergencyMission = mission;
+            _isEmergencyModeActive = true;
+            notifyListeners();
+          }
+        }
+        break;
+
+      case 'EMERGENCY_MISSION_CANCELLED':
+        _activeEmergencyMission = null;
+        _isEmergencyModeActive = false;
+        notifyListeners();
+        break;
+
+      case 'TRAFFIC_PULSE':
+        // Pulsation temps réel reçue avec succès
+        break;
+    }
+  }
 
   void _loadInitialData() {
     _yaoundeNodes = CityData.getYaoundeNodes();
@@ -96,6 +195,7 @@ class CityFlowProvider extends ChangeNotifier {
 
     if (result.isGpsLive) {
       _selectedCity = result.detectedCity;
+      _wsService.subscribeCity(_selectedCity);
       _locationStatusMessage = 'Position GPS : ${result.detectedCity} (à ${result.distanceKm.toStringAsFixed(1)} km du centre)';
       final nodes = currentNodes;
       _selectedNode = nodes.isNotEmpty ? nodes.first : null;
@@ -109,6 +209,7 @@ class CityFlowProvider extends ChangeNotifier {
   void selectCity(String city) {
     if (_selectedCity != city) {
       _selectedCity = city;
+      _wsService.subscribeCity(city);
       final nodes = currentNodes;
       _selectedNode = nodes.isNotEmpty ? nodes.first : null;
       notifyListeners();
@@ -171,6 +272,135 @@ class CityFlowProvider extends ChangeNotifier {
       _alerts[idx] = updated;
       notifyListeners();
     }
+  }
+
+  // --- CROWDSOURCING & GAMIFICATION ACTIONS ---
+  Future<void> refreshCitizenData() async {
+    try {
+      final reports = await CityFlowMobileApiService.fetchCitizenReports(_selectedCity);
+      final profile = await CityFlowMobileApiService.fetchCitizenProfile();
+      final catalog = await CityFlowMobileApiService.fetchRewardsCatalog();
+      if (!_isDisposed) {
+        _citizenReports = reports;
+        _citizenProfile = profile;
+        _rewardsCatalog = catalog;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<bool> addCitizenReport({
+    required String title,
+    required String locationDescription,
+    required CitizenReportCategory category,
+    required CitizenReportSeverity severity,
+    LatLng? position,
+  }) async {
+    final report = await CityFlowMobileApiService.submitCitizenReport(
+      title: title,
+      city: _selectedCity,
+      locationDescription: locationDescription,
+      category: category,
+      severity: severity,
+      position: position,
+    );
+
+    if (report != null) {
+      _citizenReports.insert(0, report);
+      // Récupérer le profil mis à jour (+25 points)
+      final profile = await CityFlowMobileApiService.fetchCitizenProfile();
+      _citizenProfile = profile;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> voteCitizenReport(String reportId, String type) async {
+    final success = await CityFlowMobileApiService.voteReport(reportId, type);
+    if (success) {
+      final idx = _citizenReports.indexWhere((r) => r.id == reportId);
+      if (idx != -1) {
+        final current = _citizenReports[idx];
+        if (type == 'confirm') {
+          _citizenReports[idx] = current.copyWith(
+            confirmationsCount: current.confirmationsCount + 1,
+            isVerified: current.confirmationsCount + 1 >= 3 ? true : current.isVerified,
+          );
+        } else if (type == 'resolved') {
+          _citizenReports[idx] = current.copyWith(
+            resolutionsCount: current.resolutionsCount + 1,
+            status: current.resolutionsCount + 1 >= 2 ? 'resolved' : current.status,
+          );
+        }
+      }
+      final profile = await CityFlowMobileApiService.fetchCitizenProfile();
+      _citizenProfile = profile;
+      notifyListeners();
+    }
+  }
+
+  Future<RewardCoupon?> redeemCatalogReward(String rewardId) async {
+    final coupon = await CityFlowMobileApiService.redeemReward(rewardId);
+    if (coupon != null) {
+      final profile = await CityFlowMobileApiService.fetchCitizenProfile();
+      _citizenProfile = profile;
+      notifyListeners();
+      return coupon;
+    }
+    return null;
+  }
+
+  // --- MODE SECOURS & ONDE VERTE ---
+  bool get hasActiveEmergencyMission => _activeEmergencyMission != null;
+  EmergencyMission? get activeEmergencyMission => _activeEmergencyMission;
+
+  Future<void> checkEmergencyStatus() async {
+    try {
+      final mission = await CityFlowMobileApiService.fetchActiveEmergencyMission(_selectedCity);
+      if (!_isDisposed) {
+        _activeEmergencyMission = mission;
+        _isEmergencyModeActive = mission != null;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<bool> dispatchEmergency({
+    required String vehicleType,
+    String? corridorId,
+    String? origin,
+    String? destination,
+  }) async {
+    final mission = await CityFlowMobileApiService.dispatchEmergencyMission(
+      vehicleType: vehicleType,
+      city: _selectedCity,
+      corridorId: corridorId,
+      origin: origin,
+      destination: destination,
+    );
+
+    if (mission != null) {
+      _activeEmergencyMission = mission;
+      _isEmergencyModeActive = true;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> stepEmergency() async {
+    final updated = await CityFlowMobileApiService.stepEmergencyMission();
+    _activeEmergencyMission = updated;
+    _isEmergencyModeActive = updated != null;
+    notifyListeners();
+  }
+
+  Future<void> cancelEmergency() async {
+    await CityFlowMobileApiService.cancelEmergencyMission();
+    _activeEmergencyMission = null;
+    _isEmergencyModeActive = false;
+    notifyListeners();
   }
 
   void toggleLiveSimulation() {
@@ -261,6 +491,9 @@ class CityFlowProvider extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _simulationTimer?.cancel();
+    _wsStatusSub?.cancel();
+    _wsMessageSub?.cancel();
+    _wsService.disconnect();
     super.dispose();
   }
 }

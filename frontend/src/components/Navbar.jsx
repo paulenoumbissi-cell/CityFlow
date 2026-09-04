@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Menu, X, Bell, MapPin, Siren, User, LogIn } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, Bell, MapPin, Siren, User, LogIn, Users, Radio } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
+import wsService from "../services/websocketService";
 import "../index.css";
 
 function Navbar() {
@@ -10,6 +11,19 @@ function Navbar() {
   const { selectedCity, setSelectedCity } = useCity();
   const { user, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [wsStatus, setWsStatus] = useState("disconnected");
+
+  useEffect(() => {
+    wsService.connect();
+    const unsub = wsService.onStatusChange((s) => setWsStatus(s));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCity) {
+      wsService.subscribeCity(selectedCity);
+    }
+  }, [selectedCity]);
 
   const closeMenu = () => setMobileMenuOpen(false);
 
@@ -73,6 +87,14 @@ function Navbar() {
         </Link>
 
         <Link
+          to="/communaute"
+          className={location.pathname === "/communaute" ? "active" : ""}
+          onClick={closeMenu}
+        >
+          Communauté
+        </Link>
+
+        <Link
           to="/urgences"
           className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
           onClick={closeMenu}
@@ -100,6 +122,27 @@ function Navbar() {
 
       {/* DROITE */}
       <div className="navbar-right">
+        {/* INDICATEUR LIVE WEBSOCKET */}
+        <div
+          className="live-ws-pill"
+          title={
+            wsStatus === "connected"
+              ? "Connecté au flux push temps réel WebSockets (<20ms)"
+              : wsStatus === "connecting"
+              ? "Connexion au flux temps réel..."
+              : "Mode déconnecté"
+          }
+        >
+          <span
+            className={`ws-dot ${
+              wsStatus === "connected" ? "online" : wsStatus === "connecting" ? "connecting" : "offline"
+            }`}
+          ></span>
+          <span className="ws-text">
+            {wsStatus === "connected" ? "Live WS" : wsStatus === "connecting" ? "Connexion..." : "Offline"}
+          </span>
+        </div>
+
         {/* SÉLECTEUR DE VILLE */}
         <div className="city-indicator">
           <MapPin size={18} />

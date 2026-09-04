@@ -1,548 +1,559 @@
+/* ==========================================================================
+   PAGE COULOIRS D'URGENCE & ONDE VERTE PRIORITAIRE
+   ========================================================================== */
+
 .emergency-page {
-  min-height: calc(100vh - 76px);
-  padding: 40px 32px 80px;
-  background: #f5f8f7;
-  animation: fadeIn 0.3s ease;
-}
-
-.emergency-container {
-  max-width: 1280px;
+  padding: 1.5rem 1.5rem 4rem;
+  max-width: 1350px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
+  min-height: calc(100vh - 80px);
 }
 
-/* HEADER */
-.emergency-header {
+/* BANNIÈRE D'URGENCE ACTIVE */
+.emergency-active-banner {
+  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+  border-radius: 18px;
+  padding: 1.2rem 1.8rem;
+  color: #ffffff;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.emergency-eyebrow {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: #fee2e2;
-  color: #dc2626;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  margin-bottom: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 30px rgba(185, 28, 28, 0.4);
+  border: 2px solid #f87171;
 }
 
-.emergency-header h1 {
-  font-size: 32px;
-  font-weight: 800;
-  color: #172033;
-  margin-bottom: 8px;
-}
-
-.emergency-header p {
-  color: #64748b;
-  font-size: 15px;
-  max-width: 650px;
-}
-
-.emergency-city-switch {
+.banner-left {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #ffffff;
-  padding: 10px 18px;
+  gap: 1.2rem;
+}
+
+.siren-spinning-box {
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulseSiren 1s infinite alternate;
 }
 
-.emergency-city-switch label {
-  font-size: 13px;
+@keyframes pulseSiren {
+  from { transform: scale(1); background: rgba(255, 255, 255, 0.2); }
+  to { transform: scale(1.1); background: rgba(255, 255, 255, 0.35); }
+}
+
+.badge-live-mission {
+  display: inline-block;
+  background: #ffffff;
+  color: #b91c1c;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.banner-mission-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.banner-mission-title span {
+  color: #fecaca;
   font-weight: 600;
-  color: #64748b;
 }
 
-.emergency-city-switch select {
+.banner-sub {
+  font-size: 0.85rem;
+  color: #fca5a5;
+  margin: 2px 0 0;
+}
+
+.banner-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.timer-badge {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 1rem;
   font-weight: 700;
-  font-size: 14px;
-  color: #087f5b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-cancel-mission {
+  background: #ffffff;
+  color: #b91c1c;
   border: none;
-  outline: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-/* VEHICLE SELECTION */
-.vehicle-selection h2 {
-  font-size: 18px;
+  padding: 10px 16px;
+  border-radius: 10px;
   font-weight: 700;
-  color: #172033;
-  margin-bottom: 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
 }
 
-.vehicle-grid {
+.btn-cancel-mission:hover {
+  background: #fee2e2;
+  transform: translateY(-1px);
+}
+
+/* HERO */
+.emergency-hero {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 18px;
+  padding: 1.8rem 2rem;
+  color: #ffffff;
+  margin-bottom: 1.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hero-tag-emergency {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.emergency-hero h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.emergency-hero h1 span {
+  color: #ef4444;
+}
+
+.emergency-hero p {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  max-width: 750px;
+  margin: 0;
+}
+
+/* MAIN GRID LAYOUT */
+.emergency-main-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: 480px 1fr;
+  gap: 1.8rem;
+}
+
+.emergency-console-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.emergency-card {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.card-heading {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1.2rem;
+}
+
+.heading-icon {
+  flex-shrink: 0;
+}
+
+/* VEHICLE SELECTOR */
+.vehicle-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .vehicle-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
+  transition: all 0.15s ease;
   background: #ffffff;
-  border: 2px solid transparent;
-  border-radius: 16px;
-  padding: 16px 20px;
-  text-align: left;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-  position: relative;
 }
 
 .vehicle-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .vehicle-card.selected {
-  background: #ffffff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: #fafafa;
 }
 
 .vehicle-icon-box {
-  width: 50px;
-  height: 50px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.vehicle-card strong {
-  display: block;
-  font-size: 15px;
-  color: #172033;
-  margin-bottom: 2px;
+.vehicle-info h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
 }
 
 .vehicle-badge {
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.selection-dot {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-/* CORRIDOR LAYOUT */
-.corridor-layout {
-  display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 28px;
-}
-
-@media (max-width: 1024px) {
-  .corridor-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* SIDEBAR */
-.corridor-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.sidebar-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.sidebar-title h2 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #172033;
-}
-
-.sidebar-title span {
-  font-size: 12px;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: #087f5b;
-  background: #eef8f4;
-  padding: 4px 10px;
-  border-radius: 12px;
+  display: block;
 }
 
-.corridor-list {
+/* CORRIDORS LIST */
+.corridors-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  margin-bottom: 1.2rem;
 }
 
 .corridor-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 18px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .corridor-card:hover {
-  border-color: #cbd5e1;
-  transform: translateY(-1px);
+  background: #f8fafc;
 }
 
-.corridor-card.active {
-  border: 2px solid #087f5b;
-  background: #ffffff;
-  box-shadow: 0 6px 20px rgba(8, 127, 91, 0.12);
+.corridor-card.selected {
+  border-color: #ef4444;
+  background: #fef2f2;
 }
 
 .corridor-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 6px;
 }
 
-.corridor-card-header h3 {
-  font-size: 15px;
+.corridor-card-header h4 {
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #172033;
+  color: #0f172a;
+  margin: 0;
 }
 
-.corridor-gain {
+.time-gain-tag {
   background: #dcfce7;
   color: #15803d;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
-.corridor-endpoints {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px dashed #e2e8f0;
-}
-
-.endpoint {
+.corridor-route-text {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.endpoint .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.endpoint .dot.origin {
-  background: #ef4444;
-}
-
-.endpoint .dot.dest {
-  background: #10b981;
-}
-
-.endpoint small {
-  display: block;
-  font-size: 11px;
-  color: #94a3b8;
-}
-
-.endpoint strong {
-  font-size: 13px;
-  color: #334155;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #475569;
+  margin-bottom: 8px;
 }
 
 .corridor-metrics {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  font-size: 0.75rem;
+  color: #64748b;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 6px;
 }
 
-.corridor-metrics div {
-  display: flex;
-  flex-direction: column;
-}
-
-.corridor-metrics span {
-  font-size: 11px;
-  color: #94a3b8;
-}
-
-.corridor-metrics strong {
-  font-size: 14px;
-  color: #334155;
-}
-
-.corridor-metrics .priority-text {
-  color: #dc2626;
-  font-weight: 800;
-}
-
-.metric-arrow {
-  color: #cbd5e1;
-}
-
-/* ENGAGEMENT BUTTONS */
-.engagement-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.engage-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+/* DISPATCH BUTTON */
+.btn-dispatch-emergency {
+  width: 100%;
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: #ffffff;
-  font-size: 15px;
-  font-weight: 700;
-  padding: 16px 20px;
-  border-radius: 14px;
-  transition: all 0.25s ease;
-  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
-}
-
-.engage-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(220, 38, 38, 0.4);
-}
-
-.disengage-button {
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: #15803d;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 700;
-  padding: 16px 20px;
-  border-radius: 14px;
-  transition: all 0.25s ease;
-  box-shadow: 0 8px 24px rgba(21, 128, 61, 0.3);
+  transition: all 0.2s ease;
 }
 
-.engagement-note {
-  font-size: 12px;
-  color: #64748b;
-  text-align: center;
+.btn-dispatch-emergency:hover {
+  background: linear-gradient(135deg, #b91c1c, #991b1b);
 }
 
-/* PREVIEW PANEL */
-.corridor-preview-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.pulse-red {
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
 }
 
-/* STATUS BANNER */
-.status-banner {
+/* TIMELINE DES FEUX ASSERVIS */
+.card-header-flex {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 22px;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.3s ease;
+  margin-bottom: 1rem;
 }
 
-.status-banner.ready {
-  background: #ffffff;
+.live-pill {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
 }
 
-.status-banner.engaged {
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.pulse-circle {
-  width: 14px;
-  height: 14px;
-  background: #22c55e;
-  border-radius: 50%;
-  position: relative;
-}
-
-.status-banner.engaged .pulse-circle {
-  background: #ef4444;
-  animation: pulseAlarm 1s infinite alternate;
-}
-
-@keyframes pulseAlarm {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.4); opacity: 0.6; }
-}
-
-.status-indicator strong {
-  display: block;
-  font-size: 15px;
-  color: #172033;
-}
-
-.status-indicator span {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.live-speed-box {
+.intersections-timeline {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 1.2rem;
 }
 
-.live-speed-box span {
-  font-size: 11px;
-  color: #991b1b;
-}
-
-.live-speed-box strong {
-  font-size: 20px;
-  font-weight: 800;
-  color: #b91c1c;
-}
-
-/* BROADCAST TOAST */
-.broadcast-toast {
+.timeline-step {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  background: #172033;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.timeline-step.green_wave {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.timeline-step.cleared {
+  background: #f8fafc;
+  opacity: 0.8;
+}
+
+.step-indicator {
+  font-size: 1.1rem;
+}
+
+.step-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.step-status {
+  font-size: 0.78rem;
+}
+
+.mission-controls-grid {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.2rem;
+}
+
+.btn-step-action {
+  flex: 1;
+  background: #2563eb;
   color: #ffffff;
-  padding: 14px 20px;
-  border-radius: 14px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  animation: slideInDown 0.3s ease;
-}
-
-.broadcast-icon {
-  color: #ef4444;
-  flex-shrink: 0;
-  animation: pulseAlarm 0.8s infinite alternate;
-}
-
-.broadcast-toast strong {
-  font-size: 13px;
-  color: #f87171;
-}
-
-.broadcast-toast p {
-  font-size: 13px;
-  color: #e2e8f0;
-  margin: 0;
-}
-
-/* MAP */
-.emergency-map-card {
-  height: 440px;
-  background: #ffffff;
-  border-radius: 20px;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
-  position: relative;
-}
-
-.emergency-leaflet-map {
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
-
-.emergency-map-legend {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  padding: 10px 16px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  gap: 16px;
-  z-index: 1000;
-  font-size: 12px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.emergency-map-legend span {
+  border: none;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
-.emergency-map-legend i {
+.btn-auto-sim {
+  flex: 1;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-auto-sim.active {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+/* BROADCAST BOX */
+.broadcast-box {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.broadcast-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #be123c;
+  margin-bottom: 4px;
+}
+
+.broadcast-msg {
+  font-size: 0.82rem;
+  color: #475569;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.broadcast-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #be123c;
+}
+
+/* MAP COLUMN */
+.emergency-map-col {
+  height: 100%;
+}
+
+.emergency-map-card {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  padding: 1.2rem;
+  height: calc(100vh - 250px);
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.map-title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.map-legend-items {
+  display: flex;
+  gap: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.legend-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  display: inline-block;
 }
 
-/* KPIS */
-.emergency-kpis {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
+.legend-dot.green { background: #22c55e; }
+.legend-dot.red { background: #ef4444; }
+.legend-dot.vehicle { background: #2563eb; }
 
-.kpi-box {
-  background: #ffffff;
-  padding: 16px 20px;
+.leaflet-emergency-wrapper {
+  flex: 1;
   border-radius: 14px;
+  overflow: hidden;
   border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 14px;
 }
 
-.kpi-icon {
-  color: #087f5b;
+.emergency-leaflet-container {
+  width: 100%;
+  height: 100%;
 }
 
-.kpi-box span {
-  display: block;
-  font-size: 12px;
-  color: #64748b;
+.popup-emergency strong {
+  font-size: 0.9rem;
+  color: #0f172a;
 }
 
-.kpi-box strong {
-  font-size: 16px;
-  font-weight: 800;
-  color: #172033;
+.popup-emergency p {
+  font-size: 0.8rem;
+  color: #475569;
+  margin: 2px 0 0;
 }
 
-@keyframes slideInDown {
-  from { transform: translateY(-10px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+/* Responsive */
+@media (max-width: 1024px) {
+  .emergency-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .emergency-map-card {
+    height: 450px;
+  }
 }

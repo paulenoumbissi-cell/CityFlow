@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Menu, 
   X, 
@@ -7,12 +7,12 @@ import {
   Siren, 
   LogIn, 
   Settings, 
+  ChevronDown, 
   Map, 
   Route, 
   Sparkles, 
   Users, 
-  Info,
-  Home
+  Info
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useCity } from "../context/CityContext";
@@ -25,7 +25,10 @@ function Navbar() {
   const { selectedCity, setSelectedCity } = useCity();
   const { user, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected");
+  const dropdownRef = useRef(null);
+  let closeTimeoutRef = useRef(null);
 
   useEffect(() => {
     wsService.connect();
@@ -39,9 +42,47 @@ function Navbar() {
     }
   }, [selectedCity]);
 
-  const closeMenu = () => {
-    setMobileMenuOpen(false);
+  // Fermer lors d'un clic extérieur ou appui sur Escape
+  useEffect(() => {
+    function handleOutsideInteraction(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        setDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideInteraction);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideInteraction);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  // Gestion du survol avec délai de sécurité (pour ne jamais fermer brusquement)
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    setDropdownOpen(true);
   };
+
+  const handleMouseLeave = () => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setDropdownOpen(false);
+    }, 220); // 220ms de tolérance pour un confort maximal
+  };
+
+  const closeAllMenus = () => {
+    setMobileMenuOpen(false);
+    setDropdownOpen(false);
+  };
+
+  const isMobilityActive = ["/carte", "/routes", "/prediction"].includes(location.pathname);
 
   return (
     <header className="navbar">
@@ -55,7 +96,7 @@ function Navbar() {
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        <Link to="/" className="brand" onClick={closeMenu}>
+        <Link to="/" className="brand" onClick={closeAllMenus}>
           <img
             src="/logo.png"
             alt="Logo CityFlow"
@@ -68,60 +109,115 @@ function Navbar() {
         </Link>
       </div>
 
-      {/* NAVIGATION CENTRALE : ACCÈS DIRECT ET FLUIDE À TOUTES LES INTERFACES */}
+      {/* NAVIGATION CENTRALE : ERGONOMIQUE AVEC MENU DÉROULANT FLUIDE */}
       <nav className={`desktop-nav ${mobileMenuOpen ? "mobile-open" : ""}`}>
+        {/* ACCUEIL */}
         <Link
           to="/"
           className={`nav-link ${location.pathname === "/" ? "active" : ""}`}
-          onClick={closeMenu}
+          onClick={closeAllMenus}
         >
           Accueil
         </Link>
 
-        <Link
-          to="/carte"
-          className={`nav-link ${location.pathname === "/carte" ? "active" : ""}`}
-          onClick={closeMenu}
+        {/* MENU DÉROULANT : MOBILITÉ & TRAFIC (Accès direct par clic ou survol doux) */}
+        <div 
+          className="nav-dropdown-wrapper"
+          ref={dropdownRef}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
-          Carte
-        </Link>
+          <button 
+            type="button"
+            className={`nav-dropdown-trigger ${isMobilityActive ? "active-route" : ""} ${dropdownOpen ? "open" : ""}`}
+            onClick={() => setDropdownOpen((prev) => !prev)}
+            aria-expanded={dropdownOpen}
+            aria-haspopup="true"
+          >
+            <span>Mobilité & Trafic</span>
+            <ChevronDown size={15} className={`dropdown-chevron ${dropdownOpen ? "rotated" : ""}`} />
+          </button>
 
-        <Link
-          to="/routes"
-          className={`nav-link ${location.pathname === "/routes" ? "active" : ""}`}
-          onClick={closeMenu}
-        >
-          Itinéraires
-        </Link>
+          {dropdownOpen && (
+            <div 
+              className="nav-dropdown-menu"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <Link
+                to="/carte"
+                className={`dropdown-item ${location.pathname === "/carte" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon map-icon">
+                  <Map size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Carte Interactive</strong>
+                  <span>Flux temps réel, carrefours & caméras</span>
+                </div>
+              </Link>
 
-        <Link
-          to="/prediction"
-          className={`nav-link ${location.pathname === "/prediction" ? "active" : ""}`}
-          onClick={closeMenu}
-        >
-          Prédiction
-        </Link>
+              <Link
+                to="/routes"
+                className={`dropdown-item ${location.pathname === "/routes" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon route-icon">
+                  <Route size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Itinéraires & GPS</strong>
+                  <span>Navigation multimodale & guidage vocal</span>
+                </div>
+              </Link>
 
+              <Link
+                to="/prediction"
+                className={`dropdown-item ${location.pathname === "/prediction" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon ai-icon">
+                  <Sparkles size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Prédictions IA</strong>
+                  <span>Anticipation des bouchons & météo</span>
+                </div>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* COMMUNAUTÉ */}
         <Link
           to="/communaute"
           className={`nav-link ${location.pathname === "/communaute" ? "active" : ""}`}
-          onClick={closeMenu}
+          onClick={closeAllMenus}
         >
-          Communauté
+          <span className="nav-link-with-icon">
+            <Users size={16} />
+            Communauté
+          </span>
         </Link>
 
+        {/* À PROPOS */}
         <Link
           to="/a-propos"
           className={`nav-link ${location.pathname === "/a-propos" ? "active" : ""}`}
-          onClick={closeMenu}
+          onClick={closeAllMenus}
         >
-          À propos
+          <span className="nav-link-with-icon">
+            <Info size={16} />
+            À propos
+          </span>
         </Link>
 
+        {/* URGENCES */}
         <Link
           to="/urgences"
           className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
-          onClick={closeMenu}
+          onClick={closeAllMenus}
         >
           <Siren size={16} />
           Urgences
@@ -170,7 +266,7 @@ function Navbar() {
           className={`icon-nav-btn ${location.pathname === "/notifications" ? "active" : ""}`}
           aria-label="Notifications"
           title="Notifications & Alertes"
-          onClick={closeMenu}
+          onClick={closeAllMenus}
         >
           <Bell size={20} />
           <span className="notification-dot"></span>
@@ -182,7 +278,7 @@ function Navbar() {
           className={`icon-nav-btn ${location.pathname === "/parametres" ? "active" : ""}`}
           aria-label="Paramètres"
           title="Paramètres de configuration"
-          onClick={closeMenu}
+          onClick={closeAllMenus}
         >
           <Settings size={20} className="settings-gear-icon" />
         </Link>
@@ -194,7 +290,7 @@ function Navbar() {
             className={`profile-button ${location.pathname === "/profil" ? "active" : ""}`}
             aria-label="Profil utilisateur"
             title={`Connecté : ${user.name || user.email || "Utilisateur"}`}
-            onClick={closeMenu}
+            onClick={closeAllMenus}
           >
             <span>{user.initials || "PN"}</span>
           </Link>
@@ -202,7 +298,7 @@ function Navbar() {
           <Link
             to="/connexion"
             className="login-navbar-btn"
-            onClick={closeMenu}
+            onClick={closeAllMenus}
           >
             <LogIn size={16} />
             <span>Connexion</span>

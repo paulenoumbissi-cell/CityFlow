@@ -60,6 +60,40 @@ export async function calculateRoute(origin, destination, options = {}) {
   }
 }
 
+// Authentification API
+export async function loginUser(email, password) {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Échec de connexion.");
+  return data;
+}
+
+export async function registerUser({ name, email, password, city, role, vehicleType }) {
+  const res = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password, city, role, vehicleType }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Échec d'inscription.");
+  return data;
+}
+
+export async function updateUserProfile(profileData) {
+  const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profileData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Échec de mise à jour du profil.");
+  return data;
+}
+
 class CityFlowApiService {
   constructor(baseUrl = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -220,6 +254,18 @@ class CityFlowApiService {
       console.info("[CityFlow API Fallback] using local calculation:", error.message);
       return fallback;
     }
+  }
+
+  login(email, password) {
+    return loginUser(email, password);
+  }
+
+  register(data) {
+    return registerUser(data);
+  }
+
+  updateProfile(data) {
+    return updateUserProfile(data);
   }
 }
 

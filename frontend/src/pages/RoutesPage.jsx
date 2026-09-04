@@ -23,8 +23,19 @@ import {
   ChevronRight,
   Flame,
   AlertCircle,
+  Crosshair,
+  MousePointerClick,
 } from "lucide-react";
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap, Marker } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Polyline,
+  CircleMarker,
+  Popup,
+  useMap,
+  useMapEvents,
+  Marker,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
@@ -44,6 +55,7 @@ const PRESET_LOCATIONS = {
     "Ahala",
     "Hôpital Général",
     "Hôpital Central (CHU)",
+    "Omnisports (Stade)",
   ],
   Douala: [
     "Akwa",
@@ -71,17 +83,34 @@ function FitRouteBounds({ coords }) {
   return null;
 }
 
+// Helper: Gestionnaire de clic sur la carte pour définir départ ou arrivée
+function RouteMapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      if (onMapClick) {
+        onMapClick([parseFloat(e.latlng.lat.toFixed(5)), parseFloat(e.latlng.lng.toFixed(5))]);
+      }
+    },
+  });
+  return null;
+}
+
 export default function RoutesPage() {
   const { selectedCity, setSelectedCity } = useCity();
   const presets = PRESET_LOCATIONS[selectedCity] || PRESET_LOCATIONS["Yaoundé"];
 
   const [departure, setDeparture] = useState(presets[2] || "Mvan (Gare)");
   const [destination, setDestination] = useState(presets[1] || "Bastos");
+  const [departureCoords, setDepartureCoords] = useState(null);
+  const [destinationCoords, setDestinationCoords] = useState(null);
+
   const [routes, setRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [multimodal, setMultimodal] = useState([]);
-  const [activeMode, setActiveMode] = useState("car"); // 'car' | 'mototaxi' | 'taxi' | 'walking'
+  const [activeMode, setActiveMode] = useState("car");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [clickTargetMode, setClickTargetMode] = useState("destination"); // 'departure' | 'destination'
 
   // Mode Navigation Pas-à-Pas (GPS HUD)
   const [isNavigating, setIsNavigating] = useState(false);
@@ -89,21 +118,31 @@ export default function RoutesPage() {
   const [navCompleted, setNavCompleted] = useState(false);
 
   // Charger les itinéraires depuis le Backend
-  const fetchRoutes = async (start = departure, end = destination) => {
+  const fetchRoutes = async (
+    start = departure,
+    end = destination,
+    startPos = departureCoords,
+    endPos = destinationCoords
+  ) => {
     setIsLoading(true);
     setIsNavigating(false);
     setNavStepIndex(0);
     setNavCompleted(false);
 
     try {
+      const payload = {
+        city: selectedCity === "all" ? "Yaoundé" : selectedCity,
+        origin: start,
+        destination: end,
+      };
+
+      if (startPos) payload.originCoords = startPos;
+      if (endPos) payload.destinationCoords = endPos;
+
       const res = await fetch(`${API_BASE}/routes/calculate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          city: selectedCity === "all" ? "Yaoundé" : selectedCity,
-          origin: start,
-          destination: end,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -125,15 +164,62 @@ export default function RoutesPage() {
     const list = PRESET_LOCATIONS[selectedCity] || PRESET_LOCATIONS["Yaoundé"];
     setDeparture(list[2] || list[0]);
     setDestination(list[1] || list[1]);
-    fetchRoutes(list[2] || list[0], list[1] || list[1]);
+    setDepartureCoords(null);
+    setDestinationCoords(null);
+    fetchRoutes(list[2] || list[0], list[1] || list[1], null, null);
   }, [selectedCity]);
+
+  // Géolocalisation GPS réelle de l'utilisateur pour le point de départ
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("La géolocalisation n'est pas supportée par votre navigateur.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = [pos.coords.latitude, pos.coords.longitude];
+        setDepartureCoords(coords);
+        setDeparture("📍 Ma position GPS");
+        setIsLocating(false);
+        fetchRoutes("📍 Ma position GPS", destination, coords, destinationCoords);
+      },
+      (err) => {
+        setIsLocating(false);
+        alert("Impossible d'obtenir votre position GPS. Veuillez autoriser l'accès à la position.");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  // Clic sur la carte pour définir un point
+  const handleMapClick = (coords) => {
+    if (clickTargetMode === "departure") {
+      setDepartureCoords(coords);
+      setDeparture(`Point GPS [${coords[0].toFixed(3)}, ${coords[1].toFixed(3)}]`);
+      fetchRoutes(`Point GPS [${coords[0].toFixed(3)}, ${coords[1].toFixed(3)}]`, destination, coords, destinationCoords);
+      setClickTargetMode("destination");
+    } else {
+      setDestinationCoords(coords);
+      setDestination(`Point GPS [${coords[0].toFixed(3)}, ${coords[1].toFixed(3)}]`);
+      fetchRoutes(departure, `Point GPS [${coords[0].toFixed(3)}, ${coords[1].toFixed(3)}]`, departureCoords, coords);
+      setClickTargetMode("departure");
+    }
+  };
 
   // Inverser Départ et Destination
   const handleSwap = () => {
-    const temp = departure;
+    const tempName = departure;
+    const tempCoords = departureCoords;
+
     setDeparture(destination);
-    setDestination(temp);
-    fetchRoutes(destination, temp);
+    setDepartureCoords(destinationCoords);
+
+    setDestination(tempName);
+    setDestinationCoords(tempCoords);
+
+    fetchRoutes(destination, tempName, destinationCoords, tempCoords);
   };
 
   // Progression de la simulation de navigation
@@ -155,12 +241,12 @@ export default function RoutesPage() {
         <div>
           <div className="routes-eyebrow">
             <Sparkles size={16} />
-            <span>INTELLIGENCE DE NAVIGATION MULTI-CRITÈRES</span>
+            <span>ROUTAGE DYNAMIQUE OPENSTREETMAP & ÉCO-MOBILITÉ</span>
           </div>
           <h1>Calculateur d'Itinéraires & Éco-Mobilité</h1>
           <p>
-            Optimisez vos trajets à {selectedCity} avec les prévisions d'embouteillages en direct, l'estimation
-            d'empreinte carbone et la comparaison multimodale (Voiture, Moto-taxi, Taxi collectif).
+            Optimisez vos trajets à {selectedCity} avec calcul d'itinéraires routiers réels (OSRM),
+            prévisions de trafic en direct, géolocalisation GPS et comparaison multimodale (Voiture, Moto-taxi, Taxi collectif).
           </p>
         </div>
         <div className="routes-header-icon">
@@ -168,54 +254,116 @@ export default function RoutesPage() {
         </div>
       </div>
 
-      {/* RECHERCHE ET PRESETS */}
+      {/* RECHERCHE ET CONTROLES */}
       <div className="route-search-card">
         <div className="route-search-inputs-grid">
+          {/* POINT DE DEPART */}
           <div className="route-input-group">
-            <label>Point de départ</label>
-            <div className="input-with-icon">
-              <span className="dot-icon start"></span>
-              <select
-                value={departure}
-                onChange={(e) => {
-                  setDeparture(e.target.value);
-                  fetchRoutes(e.target.value, destination);
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label>Point de départ</label>
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={isLocating}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "11px",
+                  background: "none",
+                  border: "none",
+                  color: "#00875A",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  padding: "0 4px",
                 }}
               >
-                {presets.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+                <Crosshair size={13} className={isLocating ? "spin-icon" : ""} />
+                <span>{isLocating ? "Localisation..." : "Ma position GPS"}</span>
+              </button>
+            </div>
+            <div className="input-with-icon">
+              <span className="dot-icon start"></span>
+              {departureCoords ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                  <span style={{ fontWeight: "700", color: "#00875A", fontSize: "14px" }}>{departure}</span>
+                  <button
+                    onClick={() => {
+                      setDepartureCoords(null);
+                      setDeparture(presets[0]);
+                      fetchRoutes(presets[0], destination, null, destinationCoords);
+                    }}
+                    style={{ fontSize: "11px", background: "#f1f5f9", border: "none", borderRadius: "6px", padding: "2px 6px", cursor: "pointer" }}
+                  >
+                    Changer
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={departure}
+                  onChange={(e) => {
+                    setDeparture(e.target.value);
+                    setDepartureCoords(null);
+                    fetchRoutes(e.target.value, destination, null, destinationCoords);
+                  }}
+                >
+                  {presets.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
-          <button className="swap-btn" onClick={handleSwap} title="Inverser les points">
+          <button className="swap-btn" onClick={handleSwap} title="Inverser départ et arrivée">
             <ArrowUpDown size={18} />
           </button>
 
+          {/* DESTINATION */}
           <div className="route-input-group">
             <label>Destination</label>
             <div className="input-with-icon">
               <span className="dot-icon end"></span>
-              <select
-                value={destination}
-                onChange={(e) => {
-                  setDestination(e.target.value);
-                  fetchRoutes(departure, e.target.value);
-                }}
-              >
-                {presets.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+              {destinationCoords ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                  <span style={{ fontWeight: "700", color: "#EF4444", fontSize: "14px" }}>{destination}</span>
+                  <button
+                    onClick={() => {
+                      setDestinationCoords(null);
+                      setDestination(presets[1]);
+                      fetchRoutes(departure, presets[1], departureCoords, null);
+                    }}
+                    style={{ fontSize: "11px", background: "#f1f5f9", border: "none", borderRadius: "6px", padding: "2px 6px", cursor: "pointer" }}
+                  >
+                    Changer
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={destination}
+                  onChange={(e) => {
+                    setDestination(e.target.value);
+                    setDestinationCoords(null);
+                    fetchRoutes(departure, e.target.value, departureCoords, null);
+                  }}
+                >
+                  {presets.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
-          <button className="calc-route-btn" onClick={() => fetchRoutes()} disabled={isLoading}>
+          <button
+            className="calc-route-btn"
+            onClick={() => fetchRoutes(departure, destination, departureCoords, destinationCoords)}
+            disabled={isLoading}
+          >
             {isLoading ? <Zap className="spin-icon" size={18} /> : <Navigation size={18} />}
             <span>Calculer l'itinéraire</span>
           </button>
@@ -223,7 +371,7 @@ export default function RoutesPage() {
 
         {/* COMPARATEUR MULTI-MODAL */}
         {multimodal.length > 0 && (
-          <div className="multimodal-bar">
+          <div className="multimodal-bar" style={{ marginTop: "20px" }}>
             <span className="multimodal-label">Modes de transport :</span>
             <div className="multimodal-pills">
               {multimodal.map((m) => {
@@ -257,8 +405,14 @@ export default function RoutesPage() {
         {/* COLONNE GAUCHE : OPTIONS D'ITINÉRAIRES */}
         <div className="routes-list-col">
           <div className="routes-list-header">
-            <h3>{routes.length} Itinéraires suggérés par l'IA</h3>
-            <span className="traffic-live-tag">● Trafic direct pris en compte</span>
+            <h3>{routes.length} Itinéraires calculés</h3>
+            {selectedRoute?.isOsrmRealRoad ? (
+              <span className="traffic-live-tag" style={{ background: "#e8f5e9", color: "#00875A", border: "1px solid #a7f3d0" }}>
+                ● Tracé routier OSRM réel
+              </span>
+            ) : (
+              <span className="traffic-live-tag">● Trafic direct pris en compte</span>
+            )}
           </div>
 
           {routes.map((route) => {
@@ -325,8 +479,8 @@ export default function RoutesPage() {
             <div className="start-navigation-card">
               <div className="start-nav-info">
                 <div>
-                  <strong>Guidage pas-à-pas</strong>
-                  <p>Suivez les étapes de bifurcation et gagnez des points éco-citoyens.</p>
+                  <strong>Guidage pas-à-pas interactif</strong>
+                  <p>Suivez les étapes de bifurcation en direct sur la carte.</p>
                 </div>
                 <button className="start-nav-btn" onClick={() => setIsNavigating(true)}>
                   <Play size={16} fill="white" />
@@ -364,10 +518,10 @@ export default function RoutesPage() {
                   <div className="gps-step-text">
                     <span className="gps-step-dist">
                       Étape {navStepIndex + 1}/{selectedRoute.steps.length} •{" "}
-                      {selectedRoute.steps[navStepIndex].distance}
+                      {selectedRoute.steps[navStepIndex]?.distance || "Prochaine étape"}
                     </span>
                     <strong className="gps-step-instr">
-                      {selectedRoute.steps[navStepIndex].instruction}
+                      {selectedRoute.steps[navStepIndex]?.instruction}
                     </strong>
                   </div>
 
@@ -399,20 +553,21 @@ export default function RoutesPage() {
           )}
         </div>
 
-        {/* COLONNE DROITE : CARTE LEAFLET TACTIQUE */}
+        {/* COLONNE DROITE : CARTE LEAFLET */}
         <div className="routes-map-col">
-          <div className="routes-map-wrapper">
+          <div className="routes-map-wrapper" style={{ position: "relative" }}>
             <MapContainer
               center={selectedRoute?.coordinates?.[0] || [3.848, 11.502]}
               zoom={13}
               style={{ width: "100%", height: "100%", borderRadius: "18px" }}
-              scrollWheelZoom={false}
+              scrollWheelZoom={true}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
 
+              <RouteMapClickHandler onMapClick={handleMapClick} />
               {selectedRoute?.coordinates && <FitRouteBounds coords={selectedRoute.coordinates} />}
 
               {/* Tracés non sélectionnés en filigrane */}
@@ -461,20 +616,43 @@ export default function RoutesPage() {
                   </CircleMarker>
 
                   {/* Marqueur de position active lors de la navigation */}
-                  {isNavigating && selectedRoute.coordinates[navStepIndex + 1] && (
+                  {isNavigating && selectedRoute.coordinates[navStepIndex] && (
                     <CircleMarker
-                      center={selectedRoute.coordinates[navStepIndex + 1]}
+                      center={selectedRoute.coordinates[navStepIndex]}
                       radius={12}
                       pathOptions={{ fillColor: "#3B82F6", color: "#ffffff", weight: 4, fillOpacity: 1 }}
                     >
                       <Popup>
-                        <strong>Votre position estimée (Étape {navStepIndex + 1})</strong>
+                        <strong>Votre position actuelle (Étape {navStepIndex + 1})</strong>
                       </Popup>
                     </CircleMarker>
                   )}
                 </>
               )}
             </MapContainer>
+
+            {/* Astuce de clic sur la carte */}
+            <div
+              style={{
+                position: "absolute",
+                top: "14px",
+                left: "14px",
+                zIndex: 999,
+                background: "rgba(255, 255, 255, 0.94)",
+                padding: "6px 12px",
+                borderRadius: "10px",
+                fontSize: "11px",
+                fontWeight: "600",
+                color: "#334155",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <MousePointerClick size={14} color="#00875A" />
+              <span>Cliquez n'importe où sur la carte pour définir un point</span>
+            </div>
 
             {/* Overlays d'informations sur la carte */}
             {selectedRoute && (

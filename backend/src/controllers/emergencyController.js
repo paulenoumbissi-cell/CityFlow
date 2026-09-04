@@ -1,6 +1,7 @@
 import { broadcastEmergencyUpdate, broadcastEmergencyCancel } from "../services/websocketServer.js";
+import dbService from "../services/dbService.js";
 
-// Contrôleur de gestion des missions de secours & régulation d'onde verte (Green Wave)
+// Contrôleur de gestion des missions de secours & régulation d'onde verte (Green Wave) avec persistance
 
 const EMERGENCY_CORRIDORS_DB = {
   "Yaoundé": [
@@ -97,7 +98,6 @@ const EMERGENCY_CORRIDORS_DB = {
   ],
 };
 
-// État de la mission d'urgence active
 let activeEmergencyMission = null;
 
 // Helper : Créer une mission active
@@ -121,7 +121,7 @@ function buildMission({ vehicleType, city, corridorId, origin, destination }) {
 
   return {
     id: `mission_${Date.now()}`,
-    status: "in_progress", // in_progress, completed, cancelled
+    status: "in_progress",
     vehicleType: vehicleType || "ambulance",
     vehicleName: vInfo.name,
     badge: vInfo.badge,
@@ -141,7 +141,7 @@ function buildMission({ vehicleType, city, corridorId, origin, destination }) {
     coordinates: corridor.coordinates,
     intersections: corridor.intersections.map((int, idx) => ({
       ...int,
-      state: idx === 0 ? "green_wave" : "pending", // green_wave, cleared, pending
+      state: idx === 0 ? "green_wave" : "pending",
     })),
     broadcastAlert: {
       active: true,
@@ -154,25 +154,34 @@ function buildMission({ vehicleType, city, corridorId, origin, destination }) {
 }
 
 // 1. Déclencher une mission de secours
-export const dispatchEmergencyMission = (req, res) => {
-  const { vehicleType = "ambulance", city = "Yaoundé", corridorId, origin, destination } = req.body;
+export const dispatchEmergencyMission = async (req, res) => {
+  try {
+    const { vehicleType = "ambulance", city = "Yaoundé", corridorId, origin, destination } = req.body;
 
-  activeEmergencyMission = buildMission({
-    vehicleType,
-    city,
-    corridorId,
-    origin,
-    destination,
-  });
+    activeEmergencyMission = buildMission({
+      vehicleType,
+      city,
+      corridorId,
+      origin,
+      destination,
+    });
 
-  // Broadcast WebSocket en direct
-  broadcastEmergencyUpdate(activeEmergencyMission);
+    const missions = await dbService.getEmergencyMissions();
+    missions.unshift(activeEmergencyMission);
+    await dbService.saveEmergencyMissions(missions);
 
-  res.status(201).json({
-    success: true,
-    message: `Mission d'urgence ${activeEmergencyMission.vehicleName} enclenchée avec Onde Verte automatique !`,
-    mission: activeEmergencyMission,
-  });
+    // Broadcast WebSocket en direct
+    broadcastEmergencyUpdate(activeEmergencyMission);
+
+    res.status(201).json({
+      success: true,
+      message: `Mission d'urgence ${activeEmergencyMission.vehicleName} enclenchée avec Onde Verte automatique !`,
+      mission: activeEmergencyMission,
+    });
+  } catch (err) {
+    console.error("[dispatchEmergencyMission Error]", err);
+    res.status(500).json({ error: "Erreur enclenchement mission d'urgence" });
+  }
 };
 
 // 2. Obtenir la mission en cours
@@ -189,7 +198,6 @@ export const getActiveEmergencyMission = (req, res) => {
     });
   }
 
-  // Calcul du temps écoulé
   const elapsedSeconds = Math.floor((Date.now() - new Date(activeEmergencyMission.startedAt).getTime()) / 1000);
 
   res.json({
@@ -200,56 +208,65 @@ export const getActiveEmergencyMission = (req, res) => {
 };
 
 // 3. Faire avancer la progression de la mission (Step Onde Verte)
-export const stepEmergencyMission = (req, res) => {
-  if (!activeEmergencyMission) {
-    return res.status(404).json({ error: "Aucune mission d'urgence active" });
-  }
-
-  const nextIndex = activeEmergencyMission.currentStepIndex + 1;
-  const totalIntersections = activeEmergencyMission.intersections.length;
-
-  if (nextIndex >= totalIntersections) {
-    // Mission terminée avec succès
-    activeEmergencyMission.intersections.forEach((i) => (i.state = "cleared"));
-    activeEmergencyMission.status = "completed";
-    activeEmergencyMission.currentStepIndex = totalIntersections - 1;
-    activeEmergencyMission.broadcastAlert.active = false;
-
-    const completedMission = { ...activeEmergencyMission };
-    // Réinitialiser après clôture
-    activeEmergencyMission = null;
-
-    // Broadcast fin de mission
-    broadcastEmergencyCancel();
-
-    return res.json({
-      success: true,
-      message: "🎉 Véhicule de secours arrivé à destination ! Feux remis en cycle régulier.",
-      missionCompleted: true,
-      mission: completedMission,
-    });
-  }
-
-  // Mettre à jour les feux en onde verte
-  activeEmergencyMission.currentStepIndex = nextIndex;
-  activeEmergencyMission.intersections = activeEmergencyMission.intersections.map((int, idx) => {
-    if (idx < nextIndex) {
-      return { ...int, state: "cleared" };
-    } else if (idx === nextIndex) {
-      return { ...int, state: "green_wave" };
-    } else {
-      return { ...int, state: "pending" };
+export const stepEmergencyMission = async (req, res) => {
+  try {
+    if (!activeEmergencyMission) {
+      return res.status(404).json({ error: "Aucune mission d'urgence active" });
     }
-  });
 
-  // Broadcast avancement onde verte
-  broadcastEmergencyUpdate(activeEmergencyMission);
+    const nextIndex = activeEmergencyMission.currentStepIndex + 1;
+    const totalIntersections = activeEmergencyMission.intersections.length;
 
-  res.json({
-    success: true,
-    message: `Onde verte synchronisée sur : ${activeEmergencyMission.intersections[nextIndex].name}`,
-    mission: activeEmergencyMission,
-  });
+    if (nextIndex >= totalIntersections) {
+      activeEmergencyMission.intersections.forEach((i) => (i.state = "cleared"));
+      activeEmergencyMission.status = "completed";
+      activeEmergencyMission.currentStepIndex = totalIntersections - 1;
+      activeEmergencyMission.broadcastAlert.active = false;
+
+      const completedMission = { ...activeEmergencyMission };
+      activeEmergencyMission = null;
+
+      const missions = await dbService.getEmergencyMissions();
+      const idx = missions.findIndex((m) => m.id === completedMission.id);
+      if (idx !== -1) {
+        missions[idx] = completedMission;
+      } else {
+        missions.unshift(completedMission);
+      }
+      await dbService.saveEmergencyMissions(missions);
+
+      broadcastEmergencyCancel();
+
+      return res.json({
+        success: true,
+        message: "🎉 Véhicule de secours arrivé à destination ! Feux remis en cycle régulier.",
+        missionCompleted: true,
+        mission: completedMission,
+      });
+    }
+
+    activeEmergencyMission.currentStepIndex = nextIndex;
+    activeEmergencyMission.intersections = activeEmergencyMission.intersections.map((int, idx) => {
+      if (idx < nextIndex) {
+        return { ...int, state: "cleared" };
+      } else if (idx === nextIndex) {
+        return { ...int, state: "green_wave" };
+      } else {
+        return { ...int, state: "pending" };
+      }
+    });
+
+    broadcastEmergencyUpdate(activeEmergencyMission);
+
+    res.json({
+      success: true,
+      message: `Onde verte synchronisée sur : ${activeEmergencyMission.intersections[nextIndex].name}`,
+      mission: activeEmergencyMission,
+    });
+  } catch (err) {
+    console.error("[stepEmergencyMission Error]", err);
+    res.status(500).json({ error: "Erreur avancement mission" });
+  }
 };
 
 // 4. Clôturer / Annuler la mission d'urgence

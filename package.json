@@ -1,0 +1,23 @@
+{
+  "name": "cityflow-app",
+  "version": "1.0.0",
+  "description": "CityFlow - Système Intelligent de Gestion du Trafic Urbain (Yaoundé & Douala)",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "start:backend": "npm --prefix backend start",
+    "start:frontend": "npm --prefix frontend dev"
+  },
+  "keywords": [
+    "cityflow",
+    "traffic",
+    "ai",
+    "yaounde",
+    "douala",
+    "smart-city",
+    "osrm"
+  ],
+  "author": "CityFlow Team",
+  "license": "ISC"
+}

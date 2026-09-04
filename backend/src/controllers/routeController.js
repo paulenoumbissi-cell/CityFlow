@@ -1,4 +1,4 @@
-// Contrôleur de Calcul d'Itinéraires Multi-Critères & Éco-Mobilité CityFlow
+// Contrôleur de Calcul d'Itinéraires Multi-Critères, Éco-Mobilité & Routage OSRM Réel
 
 const CITY_LANDMARKS = {
   "Yaoundé": {
@@ -40,19 +40,48 @@ function calculateDistanceKm(pos1, pos2) {
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.max(1.2, parseFloat((R * c).toFixed(1)));
+  return Math.max(0.5, parseFloat((R * c).toFixed(1)));
 }
 
-// Générateur de coordonnées intermédiaires réalistes
+// Résolution de coordonnées (Nom de lieu, Array [lat, lng], ou Objet {lat, lng})
+function resolveCoordinates(point, city = "Yaoundé") {
+  if (!point) return null;
+  if (Array.isArray(point) && point.length === 2 && typeof point[0] === "number") {
+    return [point[0], point[1]];
+  }
+  if (typeof point === "object" && point.lat !== undefined && point.lng !== undefined) {
+    return [parseFloat(point.lat), parseFloat(point.lng)];
+  }
+  if (typeof point === "string") {
+    // Si c'est formaté "lat,lng"
+    if (point.includes(",") && !isNaN(parseFloat(point.split(",")[0]))) {
+      const parts = point.split(",").map((p) => parseFloat(p.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return [parts[0], parts[1]];
+      }
+    }
+    const currentLandmarks = CITY_LANDMARKS[city] || CITY_LANDMARKS["Yaoundé"];
+    if (currentLandmarks[point]) {
+      return currentLandmarks[point];
+    }
+    // Chercher dans l'autre ville au cas où
+    const otherCity = city === "Douala" ? "Yaoundé" : "Douala";
+    if (CITY_LANDMARKS[otherCity][point]) {
+      return CITY_LANDMARKS[otherCity][point];
+    }
+  }
+  return null;
+}
+
+// Générateur de coordonnées de secours (si OSRM hors-ligne)
 function generatePolyline(start, end, variant = 0) {
   const points = [start];
-  const steps = 6;
+  const steps = 8;
   for (let i = 1; i < steps; i++) {
     const ratio = i / steps;
     const lat = start[0] + (end[0] - start[0]) * ratio;
     const lng = start[1] + (end[1] - start[1]) * ratio;
     
-    // Déviation selon la variante d'itinéraire
     let latOffset = 0;
     let lngOffset = 0;
     if (variant === 0) {
@@ -71,233 +100,295 @@ function generatePolyline(start, end, variant = 0) {
   return points;
 }
 
-export const calculateRoute = (req, res) => {
-  const {
-    city = "Yaoundé",
-    origin = "Mvan (Gare)",
-    destination = "Bastos",
-    strategy = "fastest",
-  } = req.body;
+// Appel au serveur OSRM mondial (OpenStreetMap)
+async function fetchOsrmRoute(startCoords, endCoords) {
+  try {
+    const [startLat, startLng] = startCoords;
+    const [endLat, endLng] = endCoords;
+    // OSRM prend lng,lat;lng,lat
+    const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson&steps=true`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
 
-  const currentLandmarks = CITY_LANDMARKS[city] || CITY_LANDMARKS["Yaoundé"];
-  const startCoords = currentLandmarks[origin] || Object.values(currentLandmarks)[0];
-  const endCoords = currentLandmarks[destination] || Object.values(currentLandmarks)[1];
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
 
-  const baseDistance = calculateDistanceKm(startCoords, endCoords);
+    if (!response.ok) throw new Error(`OSRM HTTP error ${response.status}`);
+    const data = await response.json();
 
-  // 1. Itinéraire Le Plus Rapide (Recommandé IA)
-  const fastestDist = parseFloat((baseDistance * 1.05).toFixed(1));
-  const fastestDuration = Math.round(fastestDist * 2.8 + 4);
-  const fastestSaved = Math.round(fastestDuration * 0.4);
-  const fastestCoords = generatePolyline(startCoords, endCoords, 0);
+    if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+      const primaryRoute = data.routes[0];
+      const distanceKm = parseFloat((primaryRoute.distance / 1000).toFixed(1));
+      const durationMinutes = Math.max(3, Math.round(primaryRoute.duration / 60));
+      // Convertir geojson [lng, lat] -> leaflet [lat, lng]
+      const coordinates = primaryRoute.geometry.coordinates.map((c) => [c[1], c[0]]);
 
-  // 2. Itinéraire Éco-Responsable
-  const ecoDist = parseFloat((baseDistance * 1.12).toFixed(1));
-  const ecoDuration = Math.round(ecoDist * 3.1 + 2);
-  const ecoCo2Saved = parseFloat((fastestDist * 0.09 + 0.35).toFixed(2));
-  const ecoCoords = generatePolyline(startCoords, endCoords, 1);
+      const steps = primaryRoute.legs?.[0]?.steps?.slice(0, 6).map((step, idx) => ({
+        instruction: step.maneuver?.instruction || (step.name ? `Suivre ${step.name}` : `Étape ${idx + 1}`),
+        distance: `${Math.round(step.distance)} m`,
+        action: step.maneuver?.type || "straight",
+        icon: step.maneuver?.type === "turn" ? "arrow-up-right" : "navigation",
+      })) || [];
 
-  // 3. Itinéraire Sécurisé & Voie Large
-  const secureDist = parseFloat((baseDistance * 1.18).toFixed(1));
-  const secureDuration = Math.round(secureDist * 3.4 + 3);
-  const secureCoords = generatePolyline(startCoords, endCoords, 2);
+      return {
+        distanceKm,
+        durationMinutes,
+        coordinates,
+        steps: steps.length > 0 ? steps : null,
+      };
+    }
+  } catch (err) {
+    console.info("[OSRM Route Service] Bascule sur le générateur local d'itinéraires :", err.message);
+  }
+  return null;
+}
 
-  const routes = [
-    {
-      id: "route_fastest",
-      type: "fastest",
-      title: "Itinéraire le plus rapide (Recommandé IA)",
-      badge: "⚡ Recommandé CityFlow",
-      tag: "Temps optimal",
-      durationMinutes: fastestDuration,
-      distanceKm: fastestDist,
-      delaySavedMinutes: fastestSaved,
-      co2SavedKg: 0.4,
-      ecoScore: "B+",
-      congestionIndex: 32,
-      color: "#00875A",
-      fluidityLevel: "fluid",
-      highlights: ["Contourne les carrefours bloqués", "Régulation des feux favorable"],
-      coordinates: fastestCoords,
-      steps: [
-        {
-          instruction: `Prendre le départ depuis ${origin}`,
-          distance: "400 m",
-          action: "straight",
-          icon: "navigation",
-        },
-        {
-          instruction: `Rejoindre l'axe principal en direction de ${destination}`,
-          distance: `${(fastestDist * 0.4).toFixed(1)} km`,
-          action: "right",
-          icon: "arrow-up-right",
-        },
-        {
-          instruction: "Passage au carrefour régulé par feux synchronisés (Feu Vert)",
-          distance: `${(fastestDist * 0.4).toFixed(1)} km`,
-          action: "straight",
-          icon: "traffic-light",
-        },
-        {
-          instruction: `Arrivée à destination à ${destination}`,
-          distance: "200 m",
-          action: "arrival",
-          icon: "map-pin",
-        },
-      ],
-    },
-    {
-      id: "route_eco",
-      type: "eco",
-      title: "Itinéraire Éco-Responsable & Vitesse Constante",
-      badge: "🌿 Eco-Score A+ (-35% CO2)",
-      tag: "Faible émission",
-      durationMinutes: ecoDuration,
-      distanceKm: ecoDist,
-      delaySavedMinutes: Math.round(fastestSaved * 0.6),
-      co2SavedKg: ecoCo2Saved,
-      ecoScore: "A+",
-      congestionIndex: 22,
-      color: "#10B981",
-      fluidityLevel: "fluid",
-      highlights: ["Vitesse stabilisée sans arrêts fréquents", "Réduit l'usure des freins et carburant"],
-      coordinates: ecoCoords,
-      steps: [
-        {
-          instruction: `Départ éco-conduite depuis ${origin}`,
-          distance: "500 m",
-          action: "straight",
-          icon: "navigation",
-        },
-        {
-          instruction: "Emprunter la rocade de contournement fluide à allure modérée (45 km/h)",
-          distance: `${(ecoDist * 0.6).toFixed(1)} km`,
-          action: "left",
-          icon: "arrow-up-left",
-        },
-        {
-          instruction: `Rejoindre ${destination} en descente douce`,
-          distance: `${(ecoDist * 0.3).toFixed(1)} km`,
-          action: "straight",
-          icon: "leaf",
-        },
-        {
-          instruction: `Destination atteinte : ${destination}`,
-          distance: "150 m",
-          action: "arrival",
-          icon: "map-pin",
-        },
-      ],
-    },
-    {
-      id: "route_secure",
-      type: "secure",
-      title: "Itinéraire Sécurisé & Chaussée Optimale",
-      badge: "🛡️ Chaussée optimale & Éclairée",
-      tag: "Grandes voies",
-      durationMinutes: secureDuration,
-      distanceKm: secureDist,
-      delaySavedMinutes: 0,
-      co2SavedKg: 0.2,
-      ecoScore: "A",
-      congestionIndex: 48,
-      color: "#2563EB",
-      fluidityLevel: "moderate",
-      highlights: ["Évite les zones de nids-de-poule et travaux", "Voies larges à double sens"],
-      coordinates: secureCoords,
-      steps: [
-        {
-          instruction: `Départ par les grands boulevards depuis ${origin}`,
-          distance: "600 m",
-          action: "straight",
-          icon: "navigation",
-        },
-        {
-          instruction: "Suivre le boulevard éclairé à chaussée rénovée",
-          distance: `${(secureDist * 0.7).toFixed(1)} km`,
-          action: "right",
-          icon: "shield-check",
-        },
-        {
-          instruction: `Accès direct sécurisé à ${destination}`,
-          distance: "300 m",
-          action: "arrival",
-          icon: "map-pin",
-        },
-      ],
-    },
-  ];
+export const calculateRoute = async (req, res) => {
+  try {
+    const {
+      city = "Yaoundé",
+      origin = "Mvan (Gare)",
+      destination = "Bastos",
+      originCoords: rawOriginCoords,
+      destinationCoords: rawDestCoords,
+      strategy = "fastest",
+    } = req.body;
 
-  // Comparateur Multi-Modal (Réalité urbaine Cameroun)
-  const multimodal = [
-    {
-      mode: "car",
-      label: "Voiture personnelle",
-      icon: "car",
-      durationMinutes: fastestDuration,
-      estimatedCostFcfa: Math.round(fastestDist * 140), // Carburant estimé
-      costLabel: `~${Math.round(fastestDist * 140)} FCFA`,
-      co2Kg: (fastestDist * 0.17).toFixed(2),
-      comfort: "Confort climatisé",
-      isFastest: false,
-    },
-    {
-      mode: "mototaxi",
-      label: "Moto-taxi (Bend-skin)",
-      icon: "bike",
-      durationMinutes: Math.max(8, Math.round(fastestDuration * 0.75)), // Plus rapide en heure de pointe
-      estimatedCostFcfa: Math.min(600, Math.max(200, Math.round(fastestDist * 50) + 150)),
-      costLabel: `${Math.min(600, Math.max(200, Math.round(fastestDist * 50) + 150))} FCFA`,
-      co2Kg: (fastestDist * 0.05).toFixed(2),
-      comfort: "Agilité maximale dans les embouteillages",
-      isFastest: true,
-    },
-    {
-      mode: "taxi",
-      label: "Taxi collectif / Bus de ville",
-      icon: "bus",
-      durationMinutes: Math.round(fastestDuration * 1.3),
-      estimatedCostFcfa: 350,
-      costLabel: "350 FCFA",
-      co2Kg: (fastestDist * 0.04).toFixed(2),
-      comfort: "Tarif standard de ville",
-      isFastest: false,
-    },
-    {
-      mode: "walking",
-      label: "Marche à pied",
-      icon: "footprints",
-      durationMinutes: Math.round((baseDistance / 4.8) * 60),
-      estimatedCostFcfa: 0,
-      costLabel: "Gratuit (0 FCFA)",
-      co2Kg: "0.00",
-      caloriesKcal: Math.round(baseDistance * 62),
-      comfort: "Santé & zéro émission carbone",
-      isFastest: false,
-    },
-  ];
+    const startCoords =
+      resolveCoordinates(rawOriginCoords, city) ||
+      resolveCoordinates(origin, city) ||
+      CITY_LANDMARKS[city]?.["Poste Centrale"] ||
+      [3.8667, 11.5167];
 
-  res.json({
-    city,
-    origin,
-    destination,
-    startCoords,
-    endCoords,
-    strategy,
-    calculatedAt: new Date().toISOString(),
-    routes,
-    multimodal,
-  });
+    const endCoords =
+      resolveCoordinates(rawDestCoords, city) ||
+      resolveCoordinates(destination, city) ||
+      CITY_LANDMARKS[city]?.["Bastos"] ||
+      [3.8890, 11.5120];
+
+    const baseDistance = calculateDistanceKm(startCoords, endCoords);
+
+    // Essayer de récupérer le tracé réel via OpenStreetMap OSRM
+    const osrmResult = await fetchOsrmRoute(startCoords, endCoords);
+
+    const fastestDist = osrmResult?.distanceKm || parseFloat((baseDistance * 1.08).toFixed(1));
+    const fastestDuration = osrmResult?.durationMinutes || Math.round(fastestDist * 2.8 + 4);
+    const fastestSaved = Math.round(fastestDuration * 0.35);
+    const fastestCoords = osrmResult?.coordinates || generatePolyline(startCoords, endCoords, 0);
+
+    const ecoDist = parseFloat((fastestDist * 1.12).toFixed(1));
+    const ecoDuration = Math.round(fastestDuration * 1.15 + 2);
+    const ecoCo2Saved = parseFloat((fastestDist * 0.09 + 0.35).toFixed(2));
+    const ecoCoords = generatePolyline(startCoords, endCoords, 1);
+
+    const secureDist = parseFloat((fastestDist * 1.18).toFixed(1));
+    const secureDuration = Math.round(fastestDuration * 1.25 + 3);
+    const secureCoords = generatePolyline(startCoords, endCoords, 2);
+
+    const defaultSteps = [
+      {
+        instruction: `Prendre le départ depuis ${typeof origin === "string" ? origin : "votre position GPS"}`,
+        distance: "400 m",
+        action: "straight",
+        icon: "navigation",
+      },
+      {
+        instruction: `Rejoindre l'axe principal vers ${typeof destination === "string" ? destination : "destination"}`,
+        distance: `${(fastestDist * 0.4).toFixed(1)} km`,
+        action: "right",
+        icon: "arrow-up-right",
+      },
+      {
+        instruction: "Passage au carrefour régulé par feux synchronisés (Feu Vert IA)",
+        distance: `${(fastestDist * 0.4).toFixed(1)} km`,
+        action: "straight",
+        icon: "traffic-light",
+      },
+      {
+        instruction: `Arrivée à destination : ${typeof destination === "string" ? destination : "Position choisie"}`,
+        distance: "200 m",
+        action: "arrival",
+        icon: "map-pin",
+      },
+    ];
+
+    const routes = [
+      {
+        id: "route_fastest",
+        type: "fastest",
+        title: "Itinéraire le plus rapide (Recommandé IA)",
+        badge: "⚡ Recommandé CityFlow",
+        tag: "Temps optimal",
+        durationMinutes: fastestDuration,
+        distanceKm: fastestDist,
+        delaySavedMinutes: fastestSaved,
+        co2SavedKg: 0.4,
+        ecoScore: "B+",
+        congestionIndex: 32,
+        color: "#00875A",
+        fluidityLevel: "fluid",
+        isOsrmRealRoad: !!osrmResult,
+        highlights: ["Contourne les axes saturés", "Régulation des feux favorable"],
+        coordinates: fastestCoords,
+        steps: osrmResult?.steps || defaultSteps,
+      },
+      {
+        id: "route_eco",
+        type: "eco",
+        title: "Itinéraire Éco-Responsable & Vitesse Constante",
+        badge: "🌿 Eco-Score A+ (-35% CO2)",
+        tag: "Faible émission",
+        durationMinutes: ecoDuration,
+        distanceKm: ecoDist,
+        delaySavedMinutes: Math.round(fastestSaved * 0.6),
+        co2SavedKg: ecoCo2Saved,
+        ecoScore: "A+",
+        congestionIndex: 22,
+        color: "#10B981",
+        fluidityLevel: "fluid",
+        isOsrmRealRoad: false,
+        highlights: ["Vitesse stabilisée sans arrêts fréquents", "Réduit l'usure des freins et carburant"],
+        coordinates: ecoCoords,
+        steps: [
+          {
+            instruction: `Départ éco-conduite`,
+            distance: "500 m",
+            action: "straight",
+            icon: "navigation",
+          },
+          {
+            instruction: "Emprunter la rocade de contournement fluide à allure modérée (45 km/h)",
+            distance: `${(ecoDist * 0.6).toFixed(1)} km`,
+            action: "left",
+            icon: "arrow-up-left",
+          },
+          {
+            instruction: "Rejoindre la destination en descente douce",
+            distance: `${(ecoDist * 0.3).toFixed(1)} km`,
+            action: "straight",
+            icon: "leaf",
+          },
+          {
+            instruction: `Destination atteinte avec succès`,
+            distance: "150 m",
+            action: "arrival",
+            icon: "map-pin",
+          },
+        ],
+      },
+      {
+        id: "route_secure",
+        type: "secure",
+        title: "Itinéraire Sécurisé & Chaussée Optimale",
+        badge: "🛡️ Chaussée optimale & Éclairée",
+        tag: "Grandes voies",
+        durationMinutes: secureDuration,
+        distanceKm: secureDist,
+        delaySavedMinutes: 0,
+        co2SavedKg: 0.15,
+        ecoScore: "B",
+        congestionIndex: 48,
+        color: "#3B82F6",
+        fluidityLevel: "moderate",
+        isOsrmRealRoad: false,
+        highlights: ["Avenue large et éclairée", "Évite les nids-de-poule récents"],
+        coordinates: secureCoords,
+        steps: [
+          {
+            instruction: "Départ sur voie prioritaire",
+            distance: "300 m",
+            action: "straight",
+            icon: "navigation",
+          },
+          {
+            instruction: "Emprunter l'axe principal à 4 voies éclairées",
+            distance: `${(secureDist * 0.7).toFixed(1)} km`,
+            action: "straight",
+            icon: "shield-check",
+          },
+          {
+            instruction: "Arrivée sécurisée à destination",
+            distance: "250 m",
+            action: "arrival",
+            icon: "map-pin",
+          },
+        ],
+      },
+    ];
+
+    // Comparateur multimodal adapté
+    const multimodal = [
+      {
+        mode: "car",
+        label: "Voiture Personnelle",
+        durationMinutes: fastestDuration,
+        costLabel: `${Math.round(fastestDist * 95 + 400)} FCFA (Essence)`,
+        co2Kg: parseFloat((fastestDist * 0.18).toFixed(2)),
+        calorieKcal: 0,
+        icon: "Car",
+      },
+      {
+        mode: "mototaxi",
+        label: "Moto-Taxi (Benskin)",
+        durationMinutes: Math.max(5, Math.round(fastestDuration * 0.65)),
+        costLabel: `${Math.round(fastestDist * 70 + 200)} FCFA`,
+        co2Kg: parseFloat((fastestDist * 0.08).toFixed(2)),
+        calorieKcal: 0,
+        icon: "Bike",
+      },
+      {
+        mode: "taxi",
+        label: "Taxi Collectif (Jaune)",
+        durationMinutes: Math.round(fastestDuration * 1.3 + 5),
+        costLabel: "300 - 500 FCFA (Course)",
+        co2Kg: parseFloat((fastestDist * 0.06).toFixed(2)),
+        calorieKcal: 0,
+        icon: "Bus",
+      },
+      {
+        mode: "walking",
+        label: "Marche à Pied",
+        durationMinutes: Math.round(fastestDist * 12.5),
+        costLabel: "0 FCFA (Gratuit)",
+        co2Kg: 0,
+        calorieKcal: Math.round(fastestDist * 65),
+        icon: "Footprints",
+      },
+    ];
+
+    res.json({
+      city,
+      origin: typeof origin === "string" ? origin : "Position personnalisée",
+      destination: typeof destination === "string" ? destination : "Position personnalisée",
+      startCoords,
+      endCoords,
+      calculatedAt: new Date().toISOString(),
+      isOsrmLive: !!osrmResult,
+      routes,
+      multimodal,
+    });
+  } catch (err) {
+    console.error("[calculateRoute Error]", err);
+    res.status(500).json({ error: "Erreur lors du calcul d'itinéraire" });
+  }
 };
 
+// Obtenir les repères / carrefours prédéfinis
 export const getAvailableLandmarks = (req, res) => {
-  const { city = "Yaoundé" } = req.query;
-  const landmarks = CITY_LANDMARKS[city] || CITY_LANDMARKS["Yaoundé"];
+  const { city } = req.query;
+  if (city && CITY_LANDMARKS[city]) {
+    return res.json({
+      city,
+      landmarks: Object.keys(CITY_LANDMARKS[city]).map((name) => ({
+        name,
+        position: CITY_LANDMARKS[city][name],
+      })),
+    });
+  }
+
   res.json({
-    city,
-    landmarks: Object.keys(landmarks).map((name) => ({
-      name,
-      position: landmarks[name],
-    })),
+    landmarks: CITY_LANDMARKS,
   });
 };
+

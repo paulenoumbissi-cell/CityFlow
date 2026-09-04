@@ -624,9 +624,49 @@ export default function CommunityPage() {
                 />
               </div>
 
-              {/* Localisation précise */}
+              {/* Localisation précise avec bouton GPS */}
               <div className="form-group">
-                <label>Emplacement précis / Repères *</label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                  <label style={{ margin: 0 }}>Emplacement précis / Repères *</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!navigator.geolocation) {
+                        alert("Géolocalisation non supportée");
+                        return;
+                      }
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          const lat = parseFloat(pos.coords.latitude.toFixed(5));
+                          const lng = parseFloat(pos.coords.longitude.toFixed(5));
+                          setFormData((prev) => ({
+                            ...prev,
+                            position: [lat, lng],
+                            locationDescription: prev.locationDescription || `Position GPS en direct [${lat}, ${lng}]`,
+                          }));
+                          showToast("📍 Position GPS capturée avec succès !");
+                        },
+                        () => showToast("Impossible d'obtenir la position GPS.")
+                      );
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      background: "#e8f5e9",
+                      border: "1px solid #a7f3d0",
+                      borderRadius: "6px",
+                      padding: "3px 8px",
+                      fontSize: "11px",
+                      fontWeight: "700",
+                      color: "#00875A",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <MapPin size={12} />
+                    <span>Capturer ma position GPS</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   placeholder="Ex: Rond-point Deido face station Total, voie gauche"

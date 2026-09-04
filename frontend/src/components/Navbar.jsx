@@ -224,29 +224,8 @@ function Navbar() {
         </Link>
       </nav>
 
-      {/* DROITE : OUTILS, LIVE WS, VILLE, NOTIFICATIONS, PARAMÈTRES (PETITE ICÔNE) & PROFIL */}
+      {/* DROITE : VILLE, NOTIFICATIONS, PARAMÈTRES (PETITE ICÔNE) & PROFIL */}
       <div className="navbar-right">
-        {/* INDICATEUR LIVE WEBSOCKET */}
-        <div
-          className="live-ws-pill"
-          title={
-            wsStatus === "connected"
-              ? "Connecté au flux push temps réel WebSockets (<20ms)"
-              : wsStatus === "connecting"
-              ? "Connexion au flux temps réel..."
-              : "Mode déconnecté"
-          }
-        >
-          <span
-            className={`ws-dot ${
-              wsStatus === "connected" ? "online" : wsStatus === "connecting" ? "connecting" : "offline"
-            }`}
-          ></span>
-          <span className="ws-text">
-            {wsStatus === "connected" ? "Live WS" : wsStatus === "connecting" ? "Connexion..." : "Offline"}
-          </span>
-        </div>
-
         {/* SÉLECTEUR DE VILLE */}
         <div className="city-indicator">
           <MapPin size={18} />

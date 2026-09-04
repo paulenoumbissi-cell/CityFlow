@@ -1,4 +1,5 @@
 import { YAOUNDE_NODES, DOUALA_NODES } from "../data/cityData.js";
+import { broadcastTrafficPulse } from "../services/websocketServer.js";
 
 // État dynamique en mémoire
 let liveYaoundeNodes = JSON.parse(JSON.stringify(YAOUNDE_NODES));
@@ -55,6 +56,10 @@ const updateLiveTrafficState = () => {
 
   liveYaoundeNodes = updateNodes(liveYaoundeNodes);
   liveDoualaNodes = updateNodes(liveDoualaNodes);
+
+  // Broadcast push via WebSockets
+  broadcastTrafficPulse("Yaoundé", liveYaoundeNodes);
+  broadcastTrafficPulse("Douala", liveDoualaNodes);
 };
 
 // Démarrer la boucle de simulation toutes les 3 secondes

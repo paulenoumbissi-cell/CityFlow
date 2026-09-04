@@ -1,0 +1,115 @@
+[
+  {
+    "id": "rep_1788521902733",
+    "author": "Test User",
+    "city": "Douala",
+    "category": "hazard",
+    "title": "Nid de poule géant test",
+    "locationDescription": "Boulevard de la Liberté face Akwa Palace",
+    "position": [
+      4.053,
+      9.708
+    ],
+    "severity": "high",
+    "reportedAt": "2026-09-04T11:38:22.733Z",
+    "confirmationsCount": 1,
+    "resolutionsCount": 0,
+    "isVerified": false,
+    "status": "active",
+    "upvotedBy": [
+      "user_current"
+    ],
+    "downvotedBy": []
+  },
+  {
+    "id": "rep_yde_01",
+    "author": "Marc T.",
+    "city": "Yaoundé",
+    "category": "accident",
+    "title": "Collision légère entre 2 taxis",
+    "locationDescription": "Carrefour Nlongkak, voie droite vers Bastos",
+    "position": [
+      3.8825,
+      11.5175
+    ],
+    "severity": "high",
+    "reportedAt": "2026-09-04T11:22:02.838Z",
+    "confirmationsCount": 4,
+    "resolutionsCount": 0,
+    "isVerified": true,
+    "status": "active",
+    "upvotedBy": [
+      "user_demo_1",
+      "user_demo_2"
+    ],
+    "downvotedBy": []
+  },
+  {
+    "id": "rep_yde_02",
+    "author": "Sophie M.",
+    "city": "Yaoundé",
+    "category": "roadworks",
+    "title": "Nid de poule béant en cours de comblement",
+    "locationDescription": "Avenue Kennedy face pharmacie",
+    "position": [
+      3.868,
+      11.521
+    ],
+    "severity": "moderate",
+    "reportedAt": "2026-09-04T10:55:02.839Z",
+    "confirmationsCount": 2,
+    "resolutionsCount": 0,
+    "isVerified": false,
+    "status": "active",
+    "upvotedBy": [
+      "user_demo_3"
+    ],
+    "downvotedBy": []
+  },
+  {
+    "id": "rep_dla_01",
+    "author": "Christian B.",
+    "city": "Douala",
+    "category": "breakdown",
+    "title": "Camion conteneur arrêté sur la voie",
+    "locationDescription": "Rond-point Deido, sortie vers Pont Wouri",
+    "position": [
+      4.062,
+      9.712
+    ],
+    "severity": "critical",
+    "reportedAt": "2026-09-04T11:12:02.839Z",
+    "confirmationsCount": 6,
+    "resolutionsCount": 0,
+    "isVerified": true,
+    "status": "active",
+    "upvotedBy": [
+      "user_demo_4",
+      "user_demo_5",
+      "user_demo_6"
+    ],
+    "downvotedBy": []
+  },
+  {
+    "id": "rep_dla_02",
+    "author": "Pauline E.",
+    "city": "Douala",
+    "category": "trafficBlock",
+    "title": "Embouteillage monstre - feux tricolores éteints",
+    "locationDescription": "Carrefour Ndokoti vers Zone Industrielle",
+    "position": [
+      4.045,
+      9.742
+    ],
+    "severity": "high",
+    "reportedAt": "2026-09-04T10:47:02.839Z",
+    "confirmationsCount": 5,
+    "resolutionsCount": 0,
+    "isVerified": true,
+    "status": "active",
+    "upvotedBy": [
+      "user_demo_7"
+    ],
+    "downvotedBy": []
+  }
+]

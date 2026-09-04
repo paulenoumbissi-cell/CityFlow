@@ -1,0 +1,51 @@
+{
+  "userId": "user_current",
+  "userName": "Paul Enoumbissi",
+  "userEmail": "paul.enoumbissi@cityflow.cm",
+  "points": 510,
+  "level": {
+    "number": 3,
+    "title": "Guide de la Cité",
+    "badgeIcon": "🗺️",
+    "minPoints": 301,
+    "maxPoints": 700,
+    "progressPercentage": 52
+  },
+  "levelBadge": "🛡️ Sentinelle",
+  "reportsCount": 15,
+  "votesCount": 38,
+  "resolvedCount": 9,
+  "streakDays": 5,
+  "badges": [
+    {
+      "id": "first_report",
+      "title": "Premier Signalement",
+      "icon": "📍",
+      "unlocked": true,
+      "unlockedAt": "2026-08-10"
+    },
+    {
+      "id": "verifier_10",
+      "title": "Vérificateur Actif",
+      "icon": "🔍",
+      "unlocked": true,
+      "unlockedAt": "2026-08-22"
+    },
+    {
+      "id": "eco_driver",
+      "title": "Éco-Conducteur",
+      "icon": "🌱",
+      "unlocked": true,
+      "unlockedAt": "2026-08-28"
+    },
+    {
+      "id": "hero_50",
+      "title": "Héros des Carrefours",
+      "icon": "🦸‍♂️",
+      "unlocked": false,
+      "progress": 14,
+      "maxProgress": 50
+    }
+  ],
+  "reputationScore": 510
+}

@@ -14,6 +14,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import AboutPage from "./pages/AboutPage";
+import CommunityPage from "./pages/CommunityPage";
 import { CityProvider, useCity } from "./context/CityContext";
 import { AuthProvider } from "./context/AuthContext";
 import { apiService, fetchTrafficNodes, calculateRoute } from "./services/api";
@@ -443,6 +444,7 @@ function App() {
               <Route path="/carte" element={<MapPage />} />
               <Route path="/routes" element={<RoutesPage />} />
               <Route path="/prediction" element={<PredictionPage />} />
+              <Route path="/communaute" element={<CommunityPage />} />
               <Route path="/urgences" element={<EmergencyPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profil" element={<ProfilePage />} />

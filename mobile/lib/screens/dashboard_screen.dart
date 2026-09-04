@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
 import '../providers/city_flow_provider.dart';
-import '../models/traffic_node.dart';
 import '../core/constants/app_colors.dart';
+import '../core/services/websocket_service.dart';
 import '../widgets/cityflow_brand_header.dart';
 import '../widgets/city_selector.dart';
+import '../widgets/pulsing_traffic_marker.dart';
+import 'profile_screen.dart';
+import 'citizen_reports_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigateTab;
@@ -18,19 +21,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final TextEditingController _destinationController = TextEditingController();
 
-  Color _getCongestionColor(CongestionLevel level) {
-    switch (level) {
-      case CongestionLevel.fluid:
-        return AppColors.trafficFluid;
-      case CongestionLevel.moderate:
-        return AppColors.trafficModerate;
-      case CongestionLevel.heavy:
-        return AppColors.trafficHeavy;
-      case CongestionLevel.jammed:
-        return AppColors.trafficJam;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CityFlowProvider>();
@@ -39,34 +29,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const CityFlowBrandHeader(logoSize: 32),
+        titleSpacing: 12,
+        title: const CityFlowBrandHeader(logoSize: 26, showSlogan: false),
         actions: [
           const CitySelector(),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.people_alt_outlined, color: AppColors.primary, size: 22),
+            tooltip: 'Communauté & Récompenses',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CitizenReportsScreen()),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             icon: Badge(
               isLabelVisible: provider.activeAlertsCount > 0,
               label: Text('${provider.activeAlertsCount}'),
               backgroundColor: AppColors.emergency,
-              child: const Icon(Icons.notifications_none_rounded, color: AppColors.navy),
+              child: const Icon(Icons.notifications_none_rounded, color: AppColors.navy, size: 22),
             ),
             onPressed: () => widget.onNavigateTab(4), // Vers alertes
           ),
-          Container(
-            margin: const EdgeInsets.only(right: 14, left: 4),
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'PN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 12, left: 2),
+              width: 30,
+              height: 30,
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  'PN',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ),
@@ -76,8 +89,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          // 1. Tag Mobilité intelligente
+          // 1. Tag Mobilité intelligente & Live WS Status
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -97,6 +111,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Live WS Stream Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: provider.isWsConnected
+                      ? const Color(0xFFDCFCE7)
+                      : provider.wsStatus == WsConnectionStatus.connecting
+                          ? const Color(0xFFFEF3C7)
+                          : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: provider.isWsConnected
+                        ? const Color(0xFF86EFAC)
+                        : provider.wsStatus == WsConnectionStatus.connecting
+                            ? const Color(0xFFFCD34D)
+                            : const Color(0xFFCBD5E1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: provider.isWsConnected
+                            ? const Color(0xFF16A34A)
+                            : provider.wsStatus == WsConnectionStatus.connecting
+                                ? const Color(0xFFD97706)
+                                : const Color(0xFF64748B),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      provider.isWsConnected
+                          ? 'Live WS'
+                          : provider.wsStatus == WsConnectionStatus.connecting
+                              ? 'Connexion...'
+                              : 'Sync Locale',
+                      style: TextStyle(
+                        color: provider.isWsConnected
+                            ? const Color(0xFF15803D)
+                            : provider.wsStatus == WsConnectionStatus.connecting
+                                ? const Color(0xFFB45309)
+                                : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10.5,
                       ),
                     ),
                   ],
@@ -258,7 +325,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
+
+          // 4b. Carte Interactive : Signalement Citoyen & Récompenses
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CitizenReportsScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Signalement Citoyen',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${provider.citizenPoints} pts',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFB45309),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${provider.currentCityCitizenReports.length} signalements actifs • Gagnez des badges',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primary),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
 
           // 5. Section "Situation du trafic" (Mini Map)
           Container(
@@ -304,29 +456,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       children: [
                         TileLayer(
-                          urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                          subdomains: const ['a', 'b', 'c', 'd'],
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.cityflow.mobile',
                         ),
                         MarkerLayer(
                           markers: nodes.map((node) {
-                            final color = _getCongestionColor(node.currentCongestion);
                             return Marker(
                               point: node.position,
-                              width: 32,
-                              height: 32,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: color.withValues(alpha: 0.5),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
-                                ),
+                              width: 46,
+                              height: 46,
+                              child: PulsingTrafficMarker(
+                                node: node,
+                                isSelected: false,
+                                onTap: () {
+                                  provider.selectNode(node);
+                                  widget.onNavigateTab(1);
+                                },
                               ),
                             );
                           }).toList(),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Siren,
   Flame,
@@ -14,27 +14,34 @@ import {
   ArrowRight,
   Route,
   Volume2,
-  VolumeX,
-  Hospital,
+  StopCircle,
+  Play,
+  RotateCcw,
+  Navigation,
   Activity,
+  Car,
 } from "lucide-react";
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap, Marker } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
+import wsService from "../services/websocketService";
 import "./EmergencyPage.css";
 
-const emergencyVehicles = [
+const API_BASE = "http://localhost:3000/api";
+
+const VEHICLE_TYPES = [
   {
     id: "ambulance",
     name: "Ambulance / SAMU 119",
-    badge: "Urgence médicale critique",
+    badge: "Urgence médicale vitale",
     icon: Siren,
     color: "#ef4444",
     bg: "#fee2e2",
   },
   {
     id: "firefighters",
-    name: "Sapeurs-Pompiers (118)",
+    name: "Sapeurs-Pompiers 118",
     badge: "Secours & Incendie",
     icon: Flame,
     color: "#ea580c",
@@ -42,671 +49,501 @@ const emergencyVehicles = [
   },
   {
     id: "police",
-    name: "Police / Secours (117)",
-    badge: "Intervention rapide",
+    name: "Police Secours 117",
+    badge: "Intervention d'Urgence",
     icon: Shield,
     color: "#2563eb",
     bg: "#dbeafe",
   },
   {
     id: "convoy",
-    name: "Convoi Officiel / Sécurité",
-    badge: "Itinéraire protégé",
+    name: "Convoi Sécurisé",
+    badge: "Priorité absolue",
     icon: Sparkles,
     color: "#7c3aed",
     bg: "#ede9fe",
   },
 ];
 
-const emergencyCorridors = {
-  Yaoundé: [
-    {
-      id: "yde-1",
-      name: "Corridor Est - Centre Hospitalier Universitaire (CHU)",
-      origin: "Caserne Mimboman",
-      destination: "CHU de Yaoundé (Centre)",
-      distance: "7.8 km",
-      normalTime: "29 min",
-      priorityTime: "9 min",
-      gain: "-68%",
-      signalsCount: 7,
-      status: "Disponibilité optimale",
-      intersections: [
-        { name: "Carrefour Emombo", status: "forced_green" },
-        { name: "Carrefour Mvog-Mbi", status: "forced_green" },
-        { name: "Poste Centrale", status: "forced_green" },
-        { name: "Avenue Monseigneur Vogt", status: "forced_green" },
-      ],
-      coords: [
-        [3.875, 11.558],
-        [3.872, 11.539],
-        [3.867, 11.523],
-        [3.865, 11.508],
-      ],
-    },
-    {
-      id: "yde-2",
-      name: "Corridor Sud - Hôpital Général de Yaoundé",
-      origin: "Mvan (Axe Sud)",
-      destination: "Hôpital Général de Yaoundé (Ngousso)",
-      distance: "11.2 km",
-      normalTime: "42 min",
-      priorityTime: "14 min",
-      gain: "-66%",
-      signalsCount: 11,
-      status: "Onde verte synchronisée",
-      intersections: [
-        { name: "Carrefour Nsam", status: "forced_green" },
-        { name: "Carrefour Trois Statues", status: "forced_green" },
-        { name: "Carrefour Nlongkak", status: "forced_green" },
-        { name: "Rond-point Ngousso", status: "forced_green" },
-      ],
-      coords: [
-        [3.822, 11.523],
-        [3.845, 11.518],
-        [3.87, 11.528],
-        [3.898, 11.543],
-      ],
-    },
-    {
-      id: "yde-3",
-      name: "Corridor Nord - Hôpital Central",
-      origin: "Bastos (Ambassades)",
-      destination: "Hôpital Central de Yaoundé",
-      distance: "5.4 km",
-      normalTime: "24 min",
-      priorityTime: "7 min",
-      gain: "-71%",
-      signalsCount: 5,
-      status: "Voie dégagée",
-      intersections: [
-        { name: "Rond-point Bastos", status: "forced_green" },
-        { name: "Carrefour Ministère de la Santé", status: "forced_green" },
-        { name: "Hôpital Central", status: "forced_green" },
-      ],
-      coords: [
-        [3.889, 11.512],
-        [3.878, 11.515],
-        [3.865, 11.508],
-      ],
-    },
-  ],
-  Douala: [
-    {
-      id: "dla-1",
-      name: "Corridor Ouest - Hôpital Laquintinie",
-      origin: "Base Bonanjo",
-      destination: "Hôpital Laquintinie (Akwa)",
-      distance: "4.8 km",
-      normalTime: "26 min",
-      priorityTime: "8 min",
-      gain: "-69%",
-      signalsCount: 6,
-      status: "Onde verte synchronisée",
-      intersections: [
-        { name: "Place du Gouvernement", status: "forced_green" },
-        { name: "Boulevard de la Liberté", status: "forced_green" },
-        { name: "Carrefour Salle des Fêtes Akwa", status: "forced_green" },
-      ],
-      coords: [
-        [4.043, 9.691],
-        [4.049, 9.7],
-        [4.055, 9.702],
-      ],
-    },
-    {
-      id: "dla-2",
-      name: "Corridor Nord - Hôpital Général Douala",
-      origin: "Rond-point Deido",
-      destination: "Hôpital Général de Douala",
-      distance: "8.6 km",
-      normalTime: "38 min",
-      priorityTime: "12 min",
-      gain: "-68%",
-      signalsCount: 9,
-      status: "Disponibilité optimale",
-      intersections: [
-        { name: "Rond-point 4 Étages Deido", status: "forced_green" },
-        { name: "Carrefour Bépanda Omnisports", status: "forced_green" },
-        { name: "Carrefour Ndokoti", status: "forced_green" },
-      ],
-      coords: [
-        [4.0667, 9.7006],
-        [4.061, 9.725],
-        [4.062, 9.748],
-      ],
-    },
-  ],
-};
-
-function ChangeMapCenter({ coords }) {
+// Helper to auto-center map on active route
+function ChangeMapView({ coords }) {
   const map = useMap();
   useEffect(() => {
     if (coords && coords.length > 0) {
-      map.flyTo(coords[0], 13, { duration: 1 });
+      const bounds = L.latLngBounds(coords);
+      map.fitBounds(bounds, { padding: [40, 40] });
     }
   }, [coords, map]);
   return null;
 }
 
-function EmergencyPage() {
-  const { selectedCity, setSelectedCity } = useCity();
-  const [selectedVehicle, setSelectedVehicle] = useState(emergencyVehicles[0]);
-  const corridors = emergencyCorridors[selectedCity] || emergencyCorridors["Yaoundé"];
-  const [activeCorridor, setActiveCorridor] = useState(corridors[0]);
-  const [isEngaged, setIsEngaged] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+export default function EmergencyPage() {
+  const { selectedCity } = useCity();
+  const [selectedVehicle, setSelectedVehicle] = useState(VEHICLE_TYPES[0]);
+  const [corridors, setCorridors] = useState([]);
+  const [selectedCorridor, setSelectedCorridor] = useState(null);
+  const [activeMission, setActiveMission] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [autoSimulate, setAutoSimulate] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
-  // Simulation de progression du véhicule en direct
-  const [progressIndex, setProgressIndex] = useState(0);
-  const [currentPosition, setCurrentPosition] = useState(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const [missionComplete, setMissionComplete] = useState(false);
+  const timerRef = useRef(null);
 
-  const audioCtxRef = useRef(null);
-  const sirenIntervalRef = useRef(null);
-
-  // Gestion du synthétiseur de sirène audio (Web Audio API)
-  const startSirenAudio = () => {
+  // Charger la mission active ou les corridors disponibles
+  const fetchEmergencyStatus = async () => {
     try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") {
-        ctx.resume();
-      }
-
-      let high = true;
-      sirenIntervalRef.current = setInterval(() => {
-        if (!soundEnabled) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(high ? 580 : 440, ctx.currentTime);
-        gain.gain.setValueAtTime(0.04, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.38);
-        high = !high;
-      }, 400);
-    } catch (e) {
-      console.warn("Web Audio non disponible:", e);
-    }
-  };
-
-  const stopSirenAudio = () => {
-    if (sirenIntervalRef.current) {
-      clearInterval(sirenIntervalRef.current);
-      sirenIntervalRef.current = null;
-    }
-  };
-
-  // Activation du corridor d'urgence
-  const handleActivate = () => {
-    setIsEngaged(true);
-    setBroadcastMessage(true);
-    setMissionComplete(false);
-    setProgressIndex(0);
-
-    // Initialiser le décompte en secondes d'après le temps prioritaire (ex: 9 min -> 540 sec / démo accélérée)
-    const priorityMinutes = parseInt(activeCorridor.priorityTime) || 8;
-    setRemainingSeconds(priorityMinutes * 60);
-
-    if (soundEnabled) {
-      startSirenAudio();
-    }
-
-    setTimeout(() => {
-      setBroadcastMessage(false);
-    }, 6000);
-  };
-
-  const handleDeactivate = () => {
-    setIsEngaged(false);
-    stopSirenAudio();
-    setProgressIndex(0);
-    setCurrentPosition(null);
-    setMissionComplete(false);
-  };
-
-  // Animation de déplacement pas-à-pas du véhicule
-  useEffect(() => {
-    if (!isEngaged) return;
-
-    const coords = activeCorridor.coords;
-    setCurrentPosition(coords[0]);
-
-    const stepInterval = setInterval(() => {
-      setProgressIndex((prev) => {
-        if (prev < coords.length - 1) {
-          const next = prev + 1;
-          setCurrentPosition(coords[next]);
-          return next;
+      const cityQuery = selectedCity && selectedCity !== "all" ? `?city=${encodeURIComponent(selectedCity)}` : "";
+      const res = await fetch(`${API_BASE}/emergency/active${cityQuery}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.active && data.mission) {
+          setActiveMission(data.mission);
+          setElapsedTime(data.elapsedSeconds || 0);
+          const v = VEHICLE_TYPES.find((v) => v.id === data.mission.vehicleType) || VEHICLE_TYPES[0];
+          setSelectedVehicle(v);
         } else {
-          // Arrivée à destination
-          setMissionComplete(true);
-          setIsEngaged(false);
-          stopSirenAudio();
-          clearInterval(stepInterval);
-          return prev;
+          setActiveMission(null);
+          if (data.corridorsAvailable && data.corridorsAvailable.length > 0) {
+            setCorridors(data.corridorsAvailable);
+            setSelectedCorridor(data.corridorsAvailable[0]);
+          }
         }
-      });
+      }
+    } catch (err) {
+      console.error("Erreur chargement mode urgence", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      setRemainingSeconds((s) => Math.max(0, s - 30));
-    }, 3500);
+  useEffect(() => {
+    fetchEmergencyStatus();
+
+    // Écoute temps réel des missions d'urgence
+    const unsubUpdate = wsService.on("EMERGENCY_MISSION_UPDATE", (data) => {
+      if (data?.mission) {
+        if (!selectedCity || selectedCity === "all" || data.mission.city === selectedCity) {
+          setActiveMission(data.mission);
+          setElapsedTime(data.elapsedSeconds || 0);
+          const v = VEHICLE_TYPES.find((v) => v.id === data.mission.vehicleType) || VEHICLE_TYPES[0];
+          setSelectedVehicle(v);
+        }
+      }
+    });
+
+    const unsubCancel = wsService.on("EMERGENCY_MISSION_CANCELLED", (data) => {
+      if (!selectedCity || selectedCity === "all" || data?.city === selectedCity) {
+        setActiveMission(null);
+        setAutoSimulate(false);
+        fetchEmergencyStatus();
+      }
+    });
 
     return () => {
-      clearInterval(stepInterval);
+      unsubUpdate();
+      unsubCancel();
     };
-  }, [isEngaged, activeCorridor]);
+  }, [selectedCity]);
 
-  // Formatage du décompte mm:ss
-  const formatTimeRemaining = (secs) => {
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${mins} min ${s < 10 ? "0" : ""}${s} s`;
+  // Timer pour la durée écoulée lors d'une mission active
+  useEffect(() => {
+    let interval = null;
+    if (activeMission) {
+      interval = setInterval(() => {
+        setElapsedTime((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [activeMission]);
+
+  // Déclencher une mission de secours
+  const handleDispatchMission = async () => {
+    if (!selectedCorridor) return;
+    try {
+      setIsLoading(true);
+      const res = await fetch(`${API_BASE}/emergency/dispatch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vehicleType: selectedVehicle.id,
+          city: selectedCity === "all" ? "Yaoundé" : selectedCity,
+          corridorId: selectedCorridor.id,
+          origin: selectedCorridor.origin,
+          destination: selectedCorridor.destination,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setActiveMission(data.mission);
+        setAutoSimulate(true);
+      }
+    } catch (err) {
+      console.error("Erreur dispatch mission", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Avancer le véhicule d'un carrefour (Onde verte)
+  const handleStepMission = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/emergency/step`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.missionCompleted) {
+          setActiveMission(null);
+          setAutoSimulate(false);
+          fetchEmergencyStatus();
+        } else {
+          setActiveMission(data.mission);
+        }
+      }
+    } catch (err) {
+      console.error("Erreur step mission", err);
+    }
+  };
+
+  // Annuler / Clôturer la mission
+  const handleCancelMission = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/emergency/cancel`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        setActiveMission(null);
+        setAutoSimulate(false);
+        fetchEmergencyStatus();
+      }
+    } catch (err) {
+      console.error("Erreur annulation mission", err);
+    }
+  };
+
+  // Auto-simulation progressive de l'onde verte
+  useEffect(() => {
+    if (autoSimulate && activeMission) {
+      timerRef.current = setInterval(() => {
+        handleStepMission();
+      }, 5000);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [autoSimulate, activeMission]);
+
+  // Coordonnées courantes à afficher sur la carte
+  const currentCoords = activeMission ? activeMission.coordinates : selectedCorridor ? selectedCorridor.coordinates : [[3.8480, 11.5021], [3.8820, 11.5170]];
+  const currentIntersections = activeMission ? activeMission.intersections : selectedCorridor ? selectedCorridor.intersections : [];
+  const currentVehiclePos = activeMission && activeMission.coordinates[activeMission.currentStepIndex]
+    ? activeMission.coordinates[activeMission.currentStepIndex]
+    : currentCoords[0];
+
+  const mapCenter = currentCoords[0] || [3.8480, 11.5021];
+
+  const formatSeconds = (sec) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   return (
     <main className="emergency-page">
-      <div className="emergency-container">
-        {/* HEADER */}
-        <section className="emergency-header">
-          <div>
-            <span className="emergency-eyebrow">
-              <Siren size={16} /> GESTION DES ITINÉRAIRES PRIORITAIRES
-            </span>
-            <h1>Couloirs d'Urgence & Véhicules Prioritaires</h1>
-            <p>
-              Régulation intelligente des feux, onde verte synchronisée et libération dynamique des axes de secours à Yaoundé et Douala.
-            </p>
-          </div>
-
-          <div className="emergency-city-switch">
-            <label>Ville active :</label>
-            <select
-              value={selectedCity}
-              onChange={(e) => {
-                const newCity = e.target.value;
-                setSelectedCity(newCity);
-                setActiveCorridor(emergencyCorridors[newCity][0]);
-                handleDeactivate();
-              }}
-            >
-              <option value="Yaoundé">📍 Yaoundé</option>
-              <option value="Douala">📍 Douala</option>
-            </select>
-          </div>
-        </section>
-
-        {/* CHOIX DU TYPE DE VÉHICULE */}
-        <section className="vehicle-selection">
-          <h2>1. Sélectionnez l'unité prioritaire</h2>
-          <div className="vehicle-grid">
-            {emergencyVehicles.map((veh) => {
-              const Icon = veh.icon;
-              const isSelected = selectedVehicle.id === veh.id;
-              return (
-                <button
-                  key={veh.id}
-                  type="button"
-                  className={`vehicle-card ${isSelected ? "selected" : ""}`}
-                  onClick={() => setSelectedVehicle(veh)}
-                  style={{
-                    borderColor: isSelected ? veh.color : "transparent",
-                  }}
-                >
-                  <div
-                    className="vehicle-icon-box"
-                    style={{ backgroundColor: veh.bg, color: veh.color }}
-                  >
-                    <Icon size={24} />
-                  </div>
-                  <div>
-                    <strong>{veh.name}</strong>
-                    <span className="vehicle-badge">{veh.badge}</span>
-                  </div>
-                  {isSelected && <span className="selection-dot" style={{ backgroundColor: veh.color }}></span>}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* CORRIDORS & GESTION ACTIVE */}
-        <div className="corridor-layout">
-          {/* GAUCHE : CHOIX DU COULOIR */}
-          <section className="corridor-sidebar">
-            <div className="sidebar-title">
-              <h2>2. Couloirs d'urgence prédéfinis</h2>
-              <span>{corridors.length} corridors disponibles</span>
+      {/* BANNIÈRE D'URGENCE ACTIVE (SI MISSION EN COURS) */}
+      {activeMission && (
+        <div className="emergency-active-banner animate-pulse-emergency">
+          <div className="banner-left">
+            <div className="siren-spinning-box">
+              <Siren size={28} className="text-white" />
             </div>
+            <div>
+              <div className="badge-live-mission">🚨 MISSION PRIORITAIRE EN COURS</div>
+              <h2 className="banner-mission-title">
+                {activeMission.vehicleName} • <span>{activeMission.corridorName}</span>
+              </h2>
+              <p className="banner-sub">
+                Onde verte active sur {activeMission.intersections.filter((i) => i.state === "cleared").length + 1} / {activeMission.intersections.length} carrefours
+              </p>
+            </div>
+          </div>
 
-            <div className="corridor-list">
-              {corridors.map((corr) => {
-                const isSelected = activeCorridor.id === corr.id;
+          <div className="banner-right">
+            <div className="timer-badge">
+              <Clock size={16} />
+              <span>Chrono : {formatSeconds(elapsedTime)}</span>
+            </div>
+            <button className="btn-cancel-mission" onClick={handleCancelMission}>
+              <StopCircle size={18} />
+              <span>Terminer la mission</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER HERO */}
+      <section className="emergency-hero">
+        <div className="emergency-hero-content">
+          <div className="hero-tag-emergency">
+            <Siren size={16} />
+            <span>Régulation de Priorité & Onde Verte</span>
+          </div>
+          <h1>
+            Couloirs d'Urgence <span>& Secours</span>
+          </h1>
+          <p>
+            Système d'ouverture automatique en cascade des feux tricolores pour le SAMU, les Sapeurs-Pompiers et la Police, avec alertes de dégagement aux automobilistes.
+          </p>
+        </div>
+      </section>
+
+      {/* GRILLE PRINCIPALE */}
+      <div className="emergency-main-grid">
+        {/* COLONNE GAUCHE : CONSOLE DE CONTRÔLE */}
+        <div className="emergency-console-col">
+          {/* SÉLECTEUR DE VÉHICULE D'URGENCE */}
+          <div className="emergency-card">
+            <h3 className="card-heading">
+              <Zap size={18} className="heading-icon text-red-500" />
+              <span>Unité d'Intervention</span>
+            </h3>
+            <div className="vehicle-selector-grid">
+              {VEHICLE_TYPES.map((v) => {
+                const isSel = selectedVehicle.id === v.id;
+                const IconComponent = v.icon;
                 return (
-                  <article
-                    key={corr.id}
-                    className={`corridor-card ${isSelected ? "active" : ""}`}
-                    onClick={() => {
-                      setActiveCorridor(corr);
-                      handleDeactivate();
-                    }}
+                  <div
+                    key={v.id}
+                    className={`vehicle-card ${isSel ? "selected" : ""}`}
+                    onClick={() => !activeMission && setSelectedVehicle(v)}
+                    style={{ borderColor: isSel ? v.color : undefined }}
                   >
-                    <div className="corridor-card-header">
-                      <h3>{corr.name}</h3>
-                      <span className="corridor-gain">{corr.gain} de temps</span>
+                    <div className="vehicle-icon-box" style={{ backgroundColor: v.bg, color: v.color }}>
+                      <IconComponent size={22} />
                     </div>
-
-                    <div className="corridor-endpoints">
-                      <div className="endpoint">
-                        <span className="dot origin"></span>
-                        <div>
-                          <small>Origine</small>
-                          <strong>{corr.origin}</strong>
-                        </div>
-                      </div>
-                      <div className="endpoint">
-                        <span className="dot dest"></span>
-                        <div>
-                          <small>Destination Hospitalière</small>
-                          <strong>{corr.destination}</strong>
-                        </div>
-                      </div>
+                    <div className="vehicle-info">
+                      <h4>{v.name}</h4>
+                      <span className="vehicle-badge" style={{ color: v.color }}>{v.badge}</span>
                     </div>
-
-                    <div className="corridor-metrics">
-                      <div>
-                        <span>Temps standard</span>
-                        <strong>{corr.normalTime}</strong>
-                      </div>
-                      <ArrowRight size={16} className="metric-arrow" />
-                      <div>
-                        <span>Temps prioritaire</span>
-                        <strong className="priority-text">{corr.priorityTime}</strong>
-                      </div>
-                    </div>
-                  </article>
+                  </div>
                 );
               })}
             </div>
+          </div>
 
-            {/* ACTION D'ENGAGEMENT ET CONTRÔLE SIRÈNE */}
-            <div className="engagement-panel">
-              <div style={{ display: "flex", gap: "10px", marginBottom: "12px", alignItems: "center" }}>
+          {/* SÉLECTEUR DE CORRIDOR D'URGENCE (SI PAS DE MISSION ACTIVE) */}
+          {!activeMission && corridors.length > 0 && (
+            <div className="emergency-card">
+              <h3 className="card-heading">
+                <Route size={18} className="heading-icon text-blue-500" />
+                <span>Corridors Prioritaires ({selectedCity})</span>
+              </h3>
+              <div className="corridors-list">
+                {corridors.map((c) => {
+                  const isSel = selectedCorridor?.id === c.id;
+                  return (
+                    <div
+                      key={c.id}
+                      className={`corridor-card ${isSel ? "selected" : ""}`}
+                      onClick={() => setSelectedCorridor(c)}
+                    >
+                      <div className="corridor-card-header">
+                        <h4>{c.name}</h4>
+                        <span className="time-gain-tag">-{c.timeSavedMinutes} min</span>
+                      </div>
+                      <div className="corridor-route-text">
+                        <MapPin size={14} className="text-red-500" />
+                        <span>{c.origin} ➔ <strong>{c.destination}</strong></span>
+                      </div>
+                      <div className="corridor-metrics">
+                        <span>Distance : <strong>{c.distanceKm} km</strong></span>
+                        <span>Temps nominal : <strong>{c.nominalDurationMinutes} min</strong></span>
+                        <span>Prioritaire : <strong className="text-green-600">{c.priorityDurationMinutes} min</strong></span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* BOUTON ENCLENCHER L'ONDE VERTE */}
+              <button
+                className="btn-dispatch-emergency pulse-red"
+                onClick={handleDispatchMission}
+                disabled={isLoading || !selectedCorridor}
+              >
+                <Siren size={20} />
+                <span>ENCLENCHER L'ONDE VERTE PRIORITAIRE</span>
+              </button>
+            </div>
+          )}
+
+          {/* TIMELINE DES FEUX ASSERVIS & TÉLÉMÉTRIE (SI MISSION ACTIVE) */}
+          {activeMission && (
+            <div className="emergency-card">
+              <div className="card-header-flex">
+                <h3 className="card-heading">
+                  <Activity size={18} className="heading-icon text-green-500" />
+                  <span>Feux Tricolores Synchronisés</span>
+                </h3>
+                <span className="live-pill">ONDE VERTE ACTIVE</span>
+              </div>
+
+              {/* Timeline des intersections */}
+              <div className="intersections-timeline">
+                {activeMission.intersections.map((int, idx) => {
+                  const isCleared = int.state === "cleared";
+                  const isGreenWave = int.state === "green_wave";
+                  return (
+                    <div key={int.id} className={`timeline-step ${int.state}`}>
+                      <div className="step-indicator">
+                        {isCleared ? (
+                          <div className="light-icon cleared">✓</div>
+                        ) : isGreenWave ? (
+                          <div className="light-icon green-wave-pulse">🟢</div>
+                        ) : (
+                          <div className="light-icon pending">⏳</div>
+                        )}
+                      </div>
+                      <div className="step-content">
+                        <div className="step-name">{int.name}</div>
+                        <div className="step-status">
+                          {isCleared && <span className="text-gray-500">Carrefour franchi (Feu remis au cycle)</span>}
+                          {isGreenWave && <span className="text-green-600 font-bold">FEU VERT FORCÉ • Transversale au ROUGE 🔴</span>}
+                          {!isCleared && !isGreenWave && <span className="text-yellow-600">En attente d'onde verte</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* CONTRÔLES MANUELS DE LA MISSION */}
+              <div className="mission-controls-grid">
+                <button className="btn-step-action" onClick={handleStepMission}>
+                  <Play size={16} />
+                  <span>Avancer au prochain feu</span>
+                </button>
                 <button
-                  type="button"
-                  onClick={() => {
-                    const newSound = !soundEnabled;
-                    setSoundEnabled(newSound);
-                    if (isEngaged) {
-                      if (newSound) startSirenAudio();
-                      else stopSirenAudio();
-                    }
-                  }}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: "10px",
-                    border: "1px solid #e2e8f0",
-                    background: soundEnabled ? "#fee2e2" : "#ffffff",
-                    color: soundEnabled ? "#dc2626" : "#64748b",
-                    fontSize: "12px",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
+                  className={`btn-auto-sim ${autoSimulate ? "active" : ""}`}
+                  onClick={() => setAutoSimulate(!autoSimulate)}
                 >
-                  {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                  {soundEnabled ? "Sirène Audio Active" : "Activer Son Sirène"}
+                  <RotateCcw size={16} />
+                  <span>Auto-Simulation : {autoSimulate ? "ON" : "OFF"}</span>
                 </button>
               </div>
 
-              {!isEngaged ? (
-                <button className="engage-button" onClick={handleActivate}>
-                  <Zap size={20} />
-                  Activer le Corridor Prioritaire
-                </button>
-              ) : (
-                <button className="disengage-button" onClick={handleDeactivate}>
-                  <CheckCircle2 size={20} />
-                  Désactiver / Fin de Mission
-                </button>
-              )}
-              <small className="engagement-note">
-                ⚡ Force les feux au vert et diffuse une alerte aux conducteurs civils.
-              </small>
+              {/* BROADCAST ALERT PREVIEW */}
+              <div className="broadcast-box">
+                <div className="broadcast-header">
+                  <Radio size={16} className="text-red-500 animate-pulse" />
+                  <span>Alerte diffusée aux automobilistes (Rayon 2.5 km)</span>
+                </div>
+                <p className="broadcast-msg">{activeMission.broadcastAlert.message}</p>
+                <div className="broadcast-action">
+                  <Volume2 size={14} />
+                  <span>Consigne : <strong>{activeMission.broadcastAlert.advisedAction}</strong></span>
+                </div>
+              </div>
             </div>
-          </section>
+          )}
+        </div>
 
-          {/* DROITE : CARTE ET STATUT EN TEMPS RÉEL */}
-          <section className="corridor-preview-panel">
-            {/* BANDEAU DE STATUT D'ENGAGEMENT */}
-            <div className={`status-banner ${isEngaged ? "engaged" : "ready"}`}>
-              <div className="status-indicator">
-                <span className="pulse-circle"></span>
-                <div>
-                  <strong>
-                    {isEngaged
-                      ? `MISSION ACTIVE : ${selectedVehicle.name}`
-                      : missionComplete
-                      ? "MISSION ACCOMPLIE AVEC SUCCÈS"
-                      : "Corridor en attente d'activation"}
-                  </strong>
-                  <span>
-                    {isEngaged
-                      ? `Onde verte synchronisée sur ${activeCorridor.signalsCount} carrefours clés.`
-                      : missionComplete
-                      ? `Le véhicule est arrivé à destination (${activeCorridor.destination}).`
-                      : "Prêt à être déployé par le centre de régulation."}
-                  </span>
-                </div>
+        {/* COLONNE DROITE : CARTE LEAFLET TEMPS RÉEL */}
+        <div className="emergency-map-col">
+          <div className="emergency-map-card">
+            <div className="map-card-header">
+              <div className="map-title-box">
+                <MapPin size={18} className="text-red-500" />
+                <span>Vue Tactique du Corridor • {selectedCity}</span>
               </div>
-
-              {isEngaged && (
-                <div className="live-speed-box" style={{ background: "#dc2626" }}>
-                  <span>ETA Hôpital</span>
-                  <strong>{formatTimeRemaining(remainingSeconds)}</strong>
-                </div>
-              )}
+              <div className="map-legend-items">
+                <span className="legend-item"><span className="legend-dot green"></span> Onde Verte</span>
+                <span className="legend-item"><span className="legend-dot red"></span> Voies Bloquées</span>
+                <span className="legend-item"><span className="legend-dot vehicle"></span> Véhicule Urgence</span>
+              </div>
             </div>
 
-            {/* ALERTE BROADCAST EN DIRECT */}
-            {broadcastMessage && (
-              <div className="broadcast-toast">
-                <Radio size={20} className="broadcast-icon" />
-                <div>
-                  <strong>Alerte d'Urgence Diffusée :</strong>
-                  <p>
-                    Notification push envoyée aux véhicules circulant sur l'axe{" "}
-                    <b>{activeCorridor.origin} ➔ {activeCorridor.destination}</b> : « Dégagez le couloir de droite ».
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* CARTE LEAFLET INTERACTIVE */}
-            <div className="emergency-map-card">
+            <div className="leaflet-emergency-wrapper">
               <MapContainer
-                center={activeCorridor.coords[0]}
-                zoom={13}
+                center={mapCenter}
+                zoom={13.2}
                 scrollWheelZoom={true}
-                className="emergency-leaflet-map"
+                className="emergency-leaflet-container"
               >
                 <TileLayer
-                  attribution='&copy; OpenStreetMap contributors'
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <ChangeMapCenter coords={activeCorridor.coords} />
 
-                {/* TRACÉ DU COULOIR */}
+                <ChangeMapView coords={currentCoords} />
+
+                {/* Tracé du corridor d'urgence */}
                 <Polyline
-                  positions={activeCorridor.coords}
+                  positions={currentCoords}
                   pathOptions={{
-                    color: isEngaged ? selectedVehicle.color : "#087f5b",
-                    weight: isEngaged ? 8 : 5,
-                    opacity: 0.95,
-                    dashArray: isEngaged ? undefined : "6, 8",
+                    color: activeMission ? "#22c55e" : "#ef4444",
+                    weight: 6,
+                    dashArray: activeMission ? undefined : "8, 8",
+                    opacity: 0.9,
                   }}
                 />
 
-                {/* VÉHICULE D'URGENCE EN MOUVEMENT RÉEL */}
-                {isEngaged && currentPosition && (
-                  <>
-                    {/* HALO GYROPHARE EXTÉRIEUR */}
+                {/* Marqueur du véhicule de secours */}
+                {activeMission && (
+                  <CircleMarker
+                    center={currentVehiclePos}
+                    radius={14}
+                    pathOptions={{
+                      fillColor: selectedVehicle.color,
+                      fillOpacity: 1,
+                      color: "#ffffff",
+                      weight: 3,
+                    }}
+                  >
+                    <Popup>
+                      <div className="popup-emergency">
+                        <strong>{activeMission.vehicleName}</strong>
+                        <p>Vitesse : 74 km/h • Onde Verte Active</p>
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                )}
+
+                {/* Carrefours à feux tricolores */}
+                {currentIntersections.map((int) => {
+                  const isGreenWave = int.state === "green_wave";
+                  const isCleared = int.state === "cleared";
+                  return (
                     <CircleMarker
-                      center={currentPosition}
-                      radius={22}
+                      key={int.id}
+                      center={int.position}
+                      radius={isGreenWave ? 10 : 7}
                       pathOptions={{
-                        color: "#ef4444",
-                        fillColor: "#3b82f6",
-                        fillOpacity: 0.35,
-                        weight: 2,
-                        className: "radar-marker-pulse",
-                      }}
-                    />
-                    {/* VÉHICULE */}
-                    <CircleMarker
-                      center={currentPosition}
-                      radius={12}
-                      pathOptions={{
+                        fillColor: isCleared ? "#64748b" : isGreenWave ? "#22c55e" : "#f59e0b",
+                        fillOpacity: 0.9,
                         color: "#ffffff",
-                        weight: 3,
-                        fillColor: selectedVehicle.color,
-                        fillOpacity: 1,
+                        weight: 2,
                       }}
                     >
                       <Popup>
-                        <strong>🚨 {selectedVehicle.name} EN COURSE</strong>
-                        <p style={{ margin: "4px 0 0", fontSize: "11px" }}>
-                          Vitesse prioritaire forcée • Feux au vert
-                        </p>
+                        <div className="popup-emergency">
+                          <strong>{int.name}</strong>
+                          <p>
+                            Statut : {isGreenWave ? "🟢 Onde Verte Active" : isCleared ? "✅ Franchi" : "⏳ En attente"}
+                          </p>
+                        </div>
                       </Popup>
                     </CircleMarker>
-                  </>
-                )}
-
-                {/* POINT DE DÉPART */}
-                <CircleMarker
-                  center={activeCorridor.coords[0]}
-                  radius={10}
-                  pathOptions={{
-                    color: "#ffffff",
-                    weight: 3,
-                    fillColor: selectedVehicle.color,
-                    fillOpacity: 1,
-                  }}
-                >
-                  <Popup>
-                    <strong>Départ d'Urgence</strong>
-                    <br />
-                    {activeCorridor.origin}
-                  </Popup>
-                </CircleMarker>
-
-                {/* DESTINATION HOSPITALIÈRE */}
-                <CircleMarker
-                  center={activeCorridor.coords[activeCorridor.coords.length - 1]}
-                  radius={12}
-                  pathOptions={{
-                    color: "#ffffff",
-                    weight: 3,
-                    fillColor: "#10b981",
-                    fillOpacity: 1,
-                  }}
-                >
-                  <Popup>
-                    <strong>🏥 Destination Sécurisée</strong>
-                    <br />
-                    {activeCorridor.destination}
-                  </Popup>
-                </CircleMarker>
+                  );
+                })}
               </MapContainer>
-
-              {/* LÉGENDE RAPIDE */}
-              <div className="emergency-map-legend">
-                <span>
-                  <i style={{ backgroundColor: selectedVehicle.color }}></i>
-                  Couloir réservé ({selectedVehicle.name})
-                </span>
-                <span>
-                  <i style={{ backgroundColor: "#10b981" }}></i>
-                  Destination hospitalière
-                </span>
-                <span>
-                  <Zap size={14} color="#f59e0b" />
-                  {activeCorridor.signalsCount} Feux synchronisés
-                </span>
-              </div>
             </div>
-
-            {/* ÉTAT DES CARREFOURS & ONDE VERTE */}
-            {isEngaged && activeCorridor.intersections && (
-              <div style={{ background: "#ffffff", border: "1px solid #bbf7d0", borderRadius: "14px", padding: "14px 18px", margin: "16px 0", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#065f46", fontWeight: "700", fontSize: "13px", marginBottom: "8px" }}>
-                  <Sparkles size={16} />
-                  <span>Synchronisation Onde Verte en Direct :</span>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "8px" }}>
-                  {activeCorridor.intersections.map((inter, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        background: "#f0fdf4",
-                        border: "1px solid #86efac",
-                        fontSize: "12px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{inter.name}</span>
-                      <span style={{ color: "#16a34a", fontWeight: "800", fontSize: "11px" }}>🟢 VERT (0s)</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* STATISTIQUES D'INTERVENTION */}
-            <div className="emergency-kpis">
-              <div className="kpi-box">
-                <Clock size={20} className="kpi-icon" />
-                <div>
-                  <span>Temps prioritaire</span>
-                  <strong>{activeCorridor.priorityTime}</strong>
-                </div>
-              </div>
-
-              <div className="kpi-box">
-                <Route size={20} className="kpi-icon" />
-                <div>
-                  <span>Distance corridor</span>
-                  <strong>{activeCorridor.distance}</strong>
-                </div>
-              </div>
-
-              <div className="kpi-box">
-                <Zap size={20} className="kpi-icon" />
-                <div>
-                  <span>Carrefours régulés</span>
-                  <strong>{activeCorridor.signalsCount} feux</strong>
-                </div>
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
       </div>
     </main>
   );
 }
-
-export default EmergencyPage;

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import wsService from "../services/websocketService";
 
 const CityContext = createContext();
 
@@ -44,7 +45,15 @@ export function CityProvider({ children }) {
   });
 
   useEffect(() => {
+    // Initialisation WebSocket
+    wsService.connect();
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem("cityflow_city", selectedCity);
+    if (selectedCity) {
+      wsService.subscribeCity(selectedCity);
+    }
   }, [selectedCity]);
 
   const currentCityData = cityCoordinates[selectedCity] || cityCoordinates["Yaoundé"];
@@ -70,3 +79,4 @@ export function useCity() {
   }
   return context;
 }
+

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -6,41 +6,14 @@ import {
   Popup,
   Polyline,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  Search,
-  Layers,
-  Crosshair,
-  Activity,
-  Navigation,
-  Sparkles,
-  MapPin,
-  Clock,
-  Gauge,
-  Car,
-} from "lucide-react";
 import { CITIES, YAOUNDE_NODES, DOUALA_NODES, CongestionLevels } from "../data/cityData";
+import { apiService } from "../services/api";
 import { useCity } from "../context/CityContext";
-import { fetchTrafficNodes } from "../services/api";
-
-const MAP_LAYERS = {
-  standard: {
-    name: "Standard",
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  },
-  dark: {
-    name: "Mode Nuit / Sombre",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-  },
-  satellite: {
-    name: "Satellite / Relief",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-  },
-};
+import wsService from "../services/websocketService";
+import { Navigation, Crosshair, MapPin, Radio, AlertCircle, ArrowRight } from "lucide-react";
 
 const trafficStyles = {
   [CongestionLevels.JAMMED]: {
@@ -49,6 +22,7 @@ const trafficStyles = {
     fillOpacity: 0.85,
     radius: 12,
     badgeText: "Saturé",
+    badgeClass: "badge-dense",
   },
   [CongestionLevels.HEAVY]: {
     color: "#ef4444",
@@ -56,6 +30,7 @@ const trafficStyles = {
     fillOpacity: 0.8,
     radius: 10,
     badgeText: "Dense",
+    badgeClass: "badge-dense",
   },
   [CongestionLevels.MODERATE]: {
     color: "#f59e0b",
@@ -63,6 +38,7 @@ const trafficStyles = {
     fillOpacity: 0.8,
     radius: 9,
     badgeText: "Modéré",
+    badgeClass: "badge-moderate",
   },
   [CongestionLevels.FLUID]: {
     color: "#10b981",
@@ -70,12 +46,29 @@ const trafficStyles = {
     fillOpacity: 0.8,
     radius: 8,
     badgeText: "Fluide",
+    badgeClass: "badge-fluid",
   },
-  dense: { color: "#ef4444", fillColor: "#ef4444", fillOpacity: 0.8, radius: 10 },
-  moderate: { color: "#f59e0b", fillColor: "#f59e0b", fillOpacity: 0.8, radius: 9 },
-  fluid: { color: "#10b981", fillColor: "#10b981", fillOpacity: 0.8, radius: 8 },
+  dense: {
+    color: "#ef4444",
+    fillColor: "#ef4444",
+    fillOpacity: 0.8,
+    radius: 10,
+  },
+  moderate: {
+    color: "#f59e0b",
+    fillColor: "#f59e0b",
+    fillOpacity: 0.8,
+    radius: 9,
+  },
+  fluid: {
+    color: "#10b981",
+    fillColor: "#10b981",
+    fillOpacity: 0.8,
+    radius: 8,
+  },
 };
 
+// Contrôleur de déplacement de caméra
 function ChangeCityView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
@@ -86,215 +79,193 @@ function ChangeCityView({ center, zoom }) {
   return null;
 }
 
-export default function CityMap({ customRoute, height = "520px" }) {
-  const { selectedCity, setSelectedCity } = useCity();
-  const defaultNodes = selectedCity === "Douala" ? DOUALA_NODES : YAOUNDE_NODES;
-  const [nodes, setNodes] = useState(defaultNodes);
-  const [isLiveApi, setIsLiveApi] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [selectedLayer, setSelectedLayer] = useState("standard");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [mapTargetCenter, setMapTargetCenter] = useState(null);
+// Gestionnaire d'événements de clic sur la carte
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      if (onMapClick) {
+        onMapClick([parseFloat(e.latlng.lat.toFixed(5)), parseFloat(e.latlng.lng.toFixed(5))]);
+      }
+    },
+  });
+  return null;
+}
 
+export default function CityMap({ customRoute, height = "480px", onPointSelect, allowClickToSelect = true }) {
+  const { selectedCity, setSelectedCity } = useCity();
+  const [nodes, setNodes] = useState(selectedCity === "Douala" ? DOUALA_NODES : YAOUNDE_NODES);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [wsOnline, setWsOnline] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsError, setGpsError] = useState(null);
+  const [clickedPoint, setClickedPoint] = useState(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState(new Date().toLocaleTimeString());
+
+  // 1. Abonnement direct aux flux WebSocket temps réel (TRAFFIC_PULSE)
   useEffect(() => {
     let isMounted = true;
 
-    const fetchLiveTraffic = async () => {
-      try {
-        const data = await fetchTrafficNodes(selectedCity);
-        if (isMounted && data && data.nodes && data.nodes.length > 0) {
-          setNodes(data.nodes);
-          setIsLiveApi(true);
-        }
-      } catch (_) {
-        if (isMounted) {
-          setNodes(selectedCity === "Douala" ? DOUALA_NODES : YAOUNDE_NODES);
-        }
+    // Écouteur WebSocket direct
+    const handleWsPulse = (data) => {
+      if (!isMounted || !data || !data.nodes) return;
+      if (data.city && data.city.toLowerCase() === selectedCity.toLowerCase()) {
+        setNodes(data.nodes);
+        setLastUpdateTime(new Date().toLocaleTimeString());
       }
     };
 
-    fetchLiveTraffic();
-    const interval = setInterval(fetchLiveTraffic, 3000);
+    const unsubPulse = wsService.on("TRAFFIC_PULSE", handleWsPulse);
+    const unsubStatus = wsService.onStatusChange((status) => {
+      if (isMounted) setWsOnline(status === "connected");
+    });
+
+    // Requête HTTP initiale pour charger les nœuds
+    apiService.getTrafficNodes(selectedCity).then((res) => {
+      if (isMounted && res && res.nodes) {
+        setNodes(res.nodes);
+        setLastUpdateTime(new Date().toLocaleTimeString());
+      }
+    });
+
+    // Polling de sécurité (si WebSocket hors-ligne)
+    const fallbackInterval = setInterval(() => {
+      if (wsService.status !== "connected") {
+        apiService.getTrafficNodes(selectedCity).then((res) => {
+          if (isMounted && res && res.nodes) {
+            setNodes(res.nodes);
+            setLastUpdateTime(new Date().toLocaleTimeString());
+          }
+        });
+      }
+    }, 4000);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      unsubPulse();
+      unsubStatus();
+      clearInterval(fallbackInterval);
     };
   }, [selectedCity]);
 
-  const currentCityConfig = (selectedCity === "Douala" ? CITIES.Douala : CITIES.Yaounde) || {
-    center: [3.848, 11.502],
-    zoom: 13,
+  // 2. Géolocalisation GPS du navigateur en direct
+  const handleLocateUser = () => {
+    if (!navigator.geolocation) {
+      setGpsError("La géolocalisation n'est pas supportée par votre navigateur.");
+      return;
+    }
+
+    setIsLocating(true);
+    setGpsError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = [pos.coords.latitude, pos.coords.longitude];
+        setUserLocation(coords);
+        setIsLocating(false);
+      },
+      (err) => {
+        setIsLocating(false);
+        setGpsError("Impossible d'obtenir votre position GPS (autorisation refusée ou signal faible).");
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+    );
   };
 
-  const handleLocateMe = () => {
-    // Simuler le positionnement GPS de l'utilisateur dans la ville active
-    const userPos = selectedCity === "Douala" ? [4.051, 9.704] : [3.875, 11.518];
-    setUserLocation(userPos);
-    setMapTargetCenter(userPos);
+  const handleMapClick = (coords) => {
+    setClickedPoint(coords);
+    if (onPointSelect) {
+      onPointSelect(coords);
+    }
   };
 
-  const handleSearchSelect = (node) => {
-    setSearchQuery(node.name);
-    setSelectedNode(node);
-    setMapTargetCenter(node.position);
-  };
+  const currentCityConfig = selectedCity === "Douala" ? CITIES.Douala : CITIES.Yaounde;
 
   const filteredNodes = nodes.filter((node) => {
-    // Filtre de recherche texte
-    if (searchQuery.trim() && !node.name.toLowerCase().includes(searchQuery.toLowerCase().trim())) {
-      return false;
-    }
-    // Filtre de criticité
     if (activeFilter === "all") return true;
-    if (activeFilter === "critical") {
+    if (activeFilter === "critical")
       return (
         node.currentCongestion === CongestionLevels.JAMMED ||
         node.currentCongestion === CongestionLevels.HEAVY ||
-        node.currentCongestion === "dense" ||
-        node.currentCongestion === "jammed" ||
-        (node.congestionValue && node.congestionValue >= 75)
+        node.currentCongestion === "dense"
       );
-    }
-    if (activeFilter === "moderate") {
+    if (activeFilter === "moderate")
       return (
         node.currentCongestion === CongestionLevels.MODERATE ||
-        node.currentCongestion === "moderate" ||
-        (node.congestionValue && node.congestionValue >= 40 && node.congestionValue < 75)
+        node.currentCongestion === "moderate"
       );
-    }
-    if (activeFilter === "fluid") {
+    if (activeFilter === "fluid")
       return (
         node.currentCongestion === CongestionLevels.FLUID ||
-        node.currentCongestion === "fluid" ||
-        (node.congestionValue && node.congestionValue < 40)
+        node.currentCongestion === "fluid"
       );
-    }
     return true;
   });
 
   return (
     <div className="city-map-wrapper">
-      {/* BARRE D'OUTILS ET CONTRÔLES SUPÉRIEURS */}
-      <div className="map-topbar" style={{ flexWrap: "wrap", gap: "12px", paddingBottom: "14px" }}>
+      {/* HEADER DE CONTRÔLE */}
+      <div className="map-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "10px" }}>
         <div>
-          <span className="section-label">
-            SURVEILLANCE GÉOSPATIALE MULTI-COUCHES {isLiveApi ? "• API BACKEND EN DIRECT" : "• SIMULATION"}
+          <span className="section-label" style={{ fontSize: "11px", fontWeight: "700", color: "#00875A", letterSpacing: "0.08em" }}>
+            SURVEILLANCE GÉOSPATIALE TEMPS RÉEL
           </span>
-          <h2>Situation du trafic en direct — {selectedCity}</h2>
+          <h2 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: "700" }}>
+            Situation du trafic en direct
+          </h2>
         </div>
 
-        {/* OUTILS : SÉLECTION VILLE + RECHERCHE + COUCHE */}
         <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-          {/* RECHERCHE RAPIDE */}
-          <div style={{ position: "relative", minWidth: "180px" }}>
-            <input
-              type="text"
-              placeholder="Rechercher carrefour..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                padding: "8px 12px 8px 32px",
-                borderRadius: "10px",
-                border: "1.5px solid #cbd5e1",
-                fontSize: "12px",
-                width: "100%",
-                background: "#ffffff",
-              }}
-            />
-            <Search size={14} style={{ position: "absolute", left: "10px", top: "10px", color: "#64748b" }} />
-          </div>
-
-          {/* SÉLECTEUR DE COUCHE */}
-          <select
-            value={selectedLayer}
-            onChange={(e) => setSelectedLayer(e.target.value)}
+          {/* BOUTON GPS */}
+          <button
+            onClick={handleLocateUser}
+            disabled={isLocating}
             style={{
-              padding: "8px 12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "7px 12px",
+              background: userLocation ? "#e8f5e9" : "#f1f5f9",
+              border: `1px solid ${userLocation ? "#00875A" : "#cbd5e1"}`,
               borderRadius: "10px",
-              border: "1.5px solid #cbd5e1",
-              fontSize: "12px",
+              color: userLocation ? "#00875A" : "#334155",
               fontWeight: "600",
-              background: "#ffffff",
+              fontSize: "12px",
               cursor: "pointer",
             }}
+            title="Activer la position GPS réelle du navigateur"
           >
-            <option value="standard">🗺️ Standard</option>
-            <option value="dark">🌙 Mode Nuit</option>
-            <option value="satellite">🛰️ Satellite</option>
-          </select>
+            <Crosshair size={15} className={isLocating ? "spin-icon" : ""} />
+            <span>{isLocating ? "Recherche GPS..." : userLocation ? "GPS Actif" : "Me géolocaliser"}</span>
+          </button>
 
           {/* SÉLECTEUR DE VILLE */}
           <select
             value={selectedCity}
-            onChange={(event) => {
-              setSelectedCity(event.target.value);
-              setMapTargetCenter(null);
-              setUserLocation(null);
-            }}
+            onChange={(event) => setSelectedCity(event.target.value)}
             className="city-select"
+            style={{
+              padding: "7px 12px",
+              borderRadius: "10px",
+              border: "1px solid #cbd5e1",
+              fontWeight: "600",
+              fontSize: "13px",
+              background: "#ffffff",
+              cursor: "pointer",
+            }}
           >
             <option value="Yaoundé">📍 Yaoundé (7 collines)</option>
             <option value="Douala">📍 Douala (Wouri)</option>
           </select>
-
-          {/* BOUTON GPS */}
-          <button
-            type="button"
-            onClick={handleLocateMe}
-            title="Localiser ma position"
-            style={{
-              padding: "8px 12px",
-              background: userLocation ? "#00875a" : "#f1f5f9",
-              color: userLocation ? "#ffffff" : "#0f172a",
-              border: "none",
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "12px",
-              fontWeight: "700",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-          >
-            <Crosshair size={14} /> Ma Position
-          </button>
         </div>
       </div>
 
-      {/* FILTRES DE FLUIDITÉ */}
-      <div style={{ display: "flex", gap: "8px", margin: "8px 0 14px", flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: "12px", fontWeight: "700", color: "#475569" }}>Filtre :</span>
-        {[
-          { key: "all", label: `Tous (${nodes.length})` },
-          { key: "critical", label: "🔴 Zones denses / saturées" },
-          { key: "moderate", label: "🟠 Zones modérées" },
-          { key: "fluid", label: "🟢 Zones fluides" },
-        ].map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setActiveFilter(f.key)}
-            style={{
-              padding: "5px 12px",
-              borderRadius: "20px",
-              fontSize: "11px",
-              fontWeight: "700",
-              border: "1px solid",
-              borderColor: activeFilter === f.key ? "#00875a" : "#e2e8f0",
-              background: activeFilter === f.key ? "#00875a" : "#ffffff",
-              color: activeFilter === f.key ? "#ffffff" : "#475569",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      {gpsError && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#b91c1c", padding: "8px 12px", borderRadius: "8px", fontSize: "12px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <AlertCircle size={15} />
+          <span>{gpsError}</span>
+        </div>
+      )}
 
       {/* CARTE LEAFLET */}
       <div
@@ -305,39 +276,78 @@ export default function CityMap({ customRoute, height = "520px" }) {
           borderRadius: "16px",
           overflow: "hidden",
           position: "relative",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
         }}
       >
         <MapContainer
-          center={mapTargetCenter || currentCityConfig.center}
+          center={userLocation || currentCityConfig.center}
           zoom={currentCityConfig.zoom}
           scrollWheelZoom={true}
           style={{ height: "100%", width: "100%" }}
         >
-          <ChangeCityView center={mapTargetCenter || currentCityConfig.center} zoom={currentCityConfig.zoom} />
+          <ChangeCityView center={userLocation || currentCityConfig.center} zoom={currentCityConfig.zoom} />
+          {allowClickToSelect && <MapClickHandler onMapClick={handleMapClick} />}
+
           <TileLayer
-            key={selectedLayer}
-            attribution={MAP_LAYERS[selectedLayer].attribution}
-            url={MAP_LAYERS[selectedLayer].url}
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* POSITION GPS SIMULÉE */}
+          {/* MARQUEUR DE POSITION GPS RÉELLE */}
           {userLocation && (
+            <>
+              <CircleMarker
+                center={userLocation}
+                radius={22}
+                pathOptions={{
+                  color: "#2563EB",
+                  fillColor: "#3B82F6",
+                  fillOpacity: 0.2,
+                  weight: 1.5,
+                  className: "radar-marker-pulse",
+                }}
+              />
+              <CircleMarker
+                center={userLocation}
+                radius={9}
+                pathOptions={{
+                  color: "#ffffff",
+                  fillColor: "#2563EB",
+                  fillOpacity: 1,
+                  weight: 3,
+                }}
+              >
+                <Popup>
+                  <div style={{ padding: "4px", fontSize: "12px", color: "#1e293b" }}>
+                    <strong>📍 Votre position GPS en direct</strong>
+                    <div style={{ color: "#64748b", marginTop: "2px" }}>
+                      Lat: {userLocation[0].toFixed(4)}, Lng: {userLocation[1].toFixed(4)}
+                    </div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            </>
+          )}
+
+          {/* POINT CLIQUE SUR LA CARTE */}
+          {clickedPoint && (
             <CircleMarker
-              center={userLocation}
-              radius={11}
+              center={clickedPoint}
+              radius={8}
               pathOptions={{
-                color: "#ffffff",
-                fillColor: "#2563eb",
-                fillOpacity: 1,
-                weight: 3,
+                color: "#7C3AED",
+                fillColor: "#8B5CF6",
+                fillOpacity: 0.9,
+                weight: 2,
               }}
             >
               <Popup>
-                <strong>📍 Votre position actuelle</strong>
-                <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#64748b" }}>
-                  Signal GPS actif (Précision : 5 mètres)
-                </p>
+                <div style={{ padding: "4px", fontSize: "12px" }}>
+                  <strong>Point sélectionné</strong>
+                  <p style={{ margin: "4px 0", color: "#64748b" }}>
+                    [{clickedPoint[0]}, {clickedPoint[1]}]
+                  </p>
+                </div>
               </Popup>
             </CircleMarker>
           )}
@@ -361,16 +371,11 @@ export default function CityMap({ customRoute, height = "520px" }) {
                 key={`segment_${node.id}`}
                 positions={node.connectedSegments}
                 pathOptions={{
-                  color: (
-                    trafficStyles[node.currentCongestion] ||
-                    trafficStyles[CongestionLevels.MODERATE] ||
-                    trafficStyles.moderate
-                  ).color,
+                  color: (trafficStyles[node.currentCongestion] || trafficStyles[CongestionLevels.MODERATE]).color,
                   weight: 4,
                   opacity: 0.65,
                   dashArray:
-                    node.currentCongestion === CongestionLevels.JAMMED ||
-                    node.currentCongestion === "jammed"
+                    node.currentCongestion === CongestionLevels.JAMMED || node.currentCongestion === "jammed"
                       ? "6, 6"
                       : undefined,
                 }}
@@ -387,16 +392,14 @@ export default function CityMap({ customRoute, height = "520px" }) {
             const isCritical =
               node.currentCongestion === CongestionLevels.JAMMED ||
               node.currentCongestion === CongestionLevels.HEAVY ||
-              node.currentCongestion === "jammed" ||
-              node.currentCongestion === "dense" ||
-              (node.congestionValue && node.congestionValue >= 75);
+              node.currentCongestion === "jammed";
 
             return (
               <div key={node.id}>
                 {isCritical && (
                   <CircleMarker
                     center={node.position}
-                    radius={(style.radius || 9) + 8}
+                    radius={style.radius ? style.radius + 8 : 18}
                     pathOptions={{
                       color: style.color,
                       fillColor: style.fillColor,
@@ -406,74 +409,40 @@ export default function CityMap({ customRoute, height = "520px" }) {
                     }}
                   />
                 )}
+
                 <CircleMarker
                   center={node.position}
                   radius={style.radius || 9}
-                  eventHandlers={{
-                    click: () => setSelectedNode(node),
-                  }}
                   pathOptions={{
                     color: style.color,
                     fillColor: style.fillColor,
-                    fillOpacity: isCritical ? 0.9 : style.fillOpacity || 0.8,
-                    weight: isCritical ? 3 : 2,
+                    fillOpacity: style.fillOpacity || 0.85,
+                    weight: 2,
                   }}
                 >
                   <Popup>
-                    <div style={{ padding: "6px", minWidth: "210px", color: "#0a2540" }}>
-                      <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>
-                        {node.name}
-                      </h3>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: "4px",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <span>Niveau de congestion :</span>
-                        <strong style={{ color: style.color }}>{node.congestionValue || 50}%</strong>
+                    <div style={{ padding: "4px", minWidth: "190px", color: "#0a2540" }}>
+                      <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>{node.name}</h3>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
+                        <span>Congestion :</span>
+                        <strong>{node.congestionValue || node.value || 50}%</strong>
                       </div>
-                      {node.averageSpeedKmh && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            marginBottom: "4px",
-                            fontSize: "12px",
-                          }}
-                        >
+                      {node.averageSpeedKmh !== undefined && (
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
                           <span>Vitesse moyenne :</span>
                           <strong style={{ color: "#00875A" }}>{node.averageSpeedKmh} km/h</strong>
                         </div>
                       )}
-                      {node.estimatedDelayMinutes && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            marginBottom: "6px",
-                            fontSize: "12px",
-                          }}
-                        >
+                      {node.estimatedDelayMinutes !== undefined && (
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px" }}>
                           <span>Retard estimé :</span>
-                          <strong style={{ color: style.color }}>
-                            +{node.estimatedDelayMinutes} min
-                          </strong>
+                          <strong style={{ color: style.color }}>+{node.estimatedDelayMinutes} min</strong>
                         </div>
                       )}
-                      {node.predictions && node.predictions.length > 0 && (
-                        <div
-                          style={{
-                            fontSize: "11px",
-                            color: "#475569",
-                            borderTop: "1px solid #e2e8f0",
-                            paddingTop: "6px",
-                            marginTop: "6px",
-                          }}
-                        >
-                          🔮 Prévision IA (+1h) : <strong>{node.predictions[0].congestionPercentage}%</strong>
+                      {node.vehicleCountPerHour !== undefined && (
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "11px", color: "#64748b" }}>
+                          <span>Débit :</span>
+                          <span>{node.vehicleCountPerHour} véh/h</span>
                         </div>
                       )}
                     </div>
@@ -500,92 +469,34 @@ export default function CityMap({ customRoute, height = "520px" }) {
           </span>
         </div>
 
-        {/* BADGE LIVE */}
-        <div className="map-live" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ animation: "pulseDot 1.2s infinite alternate" }}></span>
-          {isLiveApi ? "CityFlow Live Matrix (Port 3000)" : "LIVE IA TEMPS RÉEL"}
-        </div>
-      </div>
-
-      {/* INSPECTEUR DE CARREFOUR SÉLECTIONNÉ */}
-      {selectedNode && (
+        {/* BADGE LIVE CLIGNOTANT AVEC HEURE REELLE */}
         <div
+          className="map-live"
           style={{
-            marginTop: "16px",
-            background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-            border: "1.5px solid #e2e8f0",
-            borderRadius: "16px",
-            padding: "18px 22px",
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
-            flexWrap: "wrap",
-            gap: "16px",
-            boxShadow: "0 4px 15px rgba(0,0,0,0.03)",
+            gap: "7px",
+            background: wsOnline ? "rgba(16, 185, 129, 0.92)" : "rgba(30, 41, 59, 0.9)",
+            color: "#ffffff",
+            padding: "6px 12px",
+            borderRadius: "20px",
+            fontSize: "11px",
+            fontWeight: "700",
+            backdropFilter: "blur(6px)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "12px",
-                background: selectedNode.congestionValue >= 75 ? "#fee2e2" : selectedNode.congestionValue >= 40 ? "#fef3c7" : "#dcfce7",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Gauge size={24} color={selectedNode.congestionValue >= 75 ? "#dc2626" : selectedNode.congestionValue >= 40 ? "#d97706" : "#15803d"} />
-            </div>
-            <div>
-              <span style={{ fontSize: "11px", fontWeight: "800", color: "#00875a", textTransform: "uppercase" }}>
-                Carrefour Inspecté
-              </span>
-              <h3 style={{ margin: "2px 0 0", fontSize: "17px", color: "#0f172a" }}>{selectedNode.name}</h3>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: "24px", alignItems: "center", flexWrap: "wrap" }}>
-            <div>
-              <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>Congestion</span>
-              <strong style={{ fontSize: "16px", color: selectedNode.congestionValue >= 75 ? "#dc2626" : "#0f172a" }}>
-                {selectedNode.congestionValue || 50}%
-              </strong>
-            </div>
-
-            <div>
-              <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>Vitesse moyenne</span>
-              <strong style={{ fontSize: "16px", color: "#00875a" }}>
-                {selectedNode.averageSpeedKmh || 28} km/h
-              </strong>
-            </div>
-
-            <div>
-              <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>Véhicules / heure</span>
-              <strong style={{ fontSize: "16px", color: "#0f172a" }}>
-                {selectedNode.vehicleCountPerHour || 1450} v/h
-              </strong>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSelectedNode(null)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                background: "#ffffff",
-                fontSize: "12px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Fermer
-            </button>
-          </div>
+          <span
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              background: "#ffffff",
+              animation: "pulseDot 1.2s infinite",
+            }}
+          ></span>
+          <span>{wsOnline ? `FLUX LIVE TEMPS RÉEL (${lastUpdateTime})` : `MODE LOCAL (${lastUpdateTime})`}</span>
         </div>
-      )}
+      </div>
     </div>
   );
 }

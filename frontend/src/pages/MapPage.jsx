@@ -5,70 +5,33 @@ import {
   MapPin,
   Navigation,
   Clock3,
-  Wifi,
+  Radio,
   Sparkles,
-  Zap,
 } from "lucide-react";
 import CityMap from "../components/CityMap";
 import { useCity } from "../context/CityContext";
-import { apiService } from "../services/api";
+import wsService from "../services/websocketService";
 import "./MapPage.css";
 
 function MapPage() {
-  const { selectedCity, setSelectedCity } = useCity();
-  const [nodes, setNodes] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [isLive, setIsLive] = useState(true);
+  const { selectedCity } = useCity();
+  const [wsStatus, setWsStatus] = useState("disconnected");
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchNodes = async () => {
-      try {
-        const res = await apiService.getTrafficNodes(selectedCity);
-        if (isMounted && res && res.nodes) {
-          setNodes(res.nodes);
-          setLastUpdated(new Date());
-          setIsLive(true);
-        }
-      } catch (err) {
-        if (isMounted) setIsLive(false);
-      }
-    };
-
-    fetchNodes();
-    const interval = setInterval(fetchNodes, 3000);
+    wsService.connect();
+    const unsub = wsService.onStatusChange((s) => setWsStatus(s));
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    }, 1000);
 
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      unsub();
+      clearInterval(timer);
     };
-  }, [selectedCity]);
+  }, []);
 
-  // Statistiques en direct calculées depuis l'API
-  const fluidCount = nodes.filter(
-    (n) => n.currentCongestion === "fluid" || n.congestionValue < 40
-  ).length;
-
-  const moderateCount = nodes.filter(
-    (n) =>
-      n.currentCongestion === "moderate" ||
-      (n.congestionValue >= 40 && n.congestionValue < 75)
-  ).length;
-
-  const denseCount = nodes.filter(
-    (n) =>
-      n.currentCongestion === "dense" ||
-      n.currentCongestion === "heavy" ||
-      n.currentCongestion === "jammed" ||
-      n.congestionValue >= 75
-  ).length;
-
-  const avgSpeed = nodes.length > 0
-    ? Math.round(
-        nodes.reduce((acc, n) => acc + (n.averageSpeedKmh || 25), 0) / nodes.length
-      )
-    : 28;
+  const isLive = wsStatus === "connected";
 
   return (
     <main className="map-page">
@@ -77,20 +40,26 @@ function MapPage() {
         <div className="map-page-title">
           <span className="map-page-eyebrow">
             <Activity size={16} />
-            SURVEILLANCE GÉOSPATIALE EN DIRECT
+            SURVEILLANCE DU TRAFIC EN DIRECT
           </span>
-
-          <h1>Carte du trafic urbain</h1>
-
+          <h1>Carte du trafic {selectedCity}</h1>
           <p>
-            Surveillance en temps réel des carrefours et artères stratégiques de {selectedCity}.
+            Surveillance géospatiale dynamique des flux, ralentissements et carrefours stratégiques
+            avec recalibrage automatique toutes les 3 secondes.
           </p>
         </div>
 
-        <div className="map-page-status" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span className="status-dot" style={{ background: isLive ? "#22c55e" : "#f59e0b", animation: "pulseDot 1.2s infinite" }}></span>
-          <strong>{isLive ? "API Temps Réel Active" : "Mode Simulation"}</strong>
-          <span style={{ fontSize: "11px", color: "#64748b" }}>({nodes.length || 8} nœuds surveillés)</span>
+        <div className="map-page-status" style={{ border: isLive ? "1px solid #86efac" : "1px solid #e2e8f0", background: isLive ? "#f0fdf4" : "#f8fafc" }}>
+          <span
+            className="status-dot"
+            style={{
+              background: isLive ? "#22c55e" : "#94a3b8",
+              boxShadow: isLive ? "0 0 0 4px rgba(34, 197, 94, 0.2)" : "none",
+            }}
+          ></span>
+          <span style={{ color: isLive ? "#15803d" : "#64748b", fontWeight: "700" }}>
+            {isLive ? "Flux temps réel synchronisé (WebSockets)" : "Mode local / Hors-ligne"}
+          </span>
         </div>
       </section>
 
@@ -101,42 +70,37 @@ function MapPage() {
             <div className="map-card-icon">
               <Map size={20} />
             </div>
-
             <div>
               <h2>Situation du trafic à {selectedCity}</h2>
               <p>
-                Cliquez sur n'importe quel carrefour pour voir sa vitesse moyenne et ses prévisions.
+                Cliquez sur n'importe quel carrefour ou zone pour inspecter la vitesse moyenne et les retards calculés.
               </p>
             </div>
           </div>
 
           <div className="map-update">
             <Clock3 size={16} />
-            Mis à jour à {lastUpdated.toLocaleTimeString()}
+            <span>Dernière synchro : {currentTime}</span>
           </div>
         </div>
 
         <div className="map-page-content">
-          <CityMap />
+          <CityMap height="520px" />
         </div>
       </section>
 
-      {/* INDICATEURS DYNAMIQUES DU TRAFIC RÉEL */}
+      {/* INDICATEURS */}
       <section className="map-info-grid">
         <article className="map-info-card">
           <div className="map-info-icon fluid-icon">
             <Navigation size={20} />
           </div>
-
           <div>
-            <span>Circulation fluide</span>
-            <strong style={{ color: "#10b981" }}>
-              {fluidCount} zones (🟢)
-            </strong>
+            <span>Circulation fluide (&lt; 40%)</span>
+            <strong>🟢</strong>
           </div>
-
           <p>
-            Axes dégagés avec circulation libre et vitesse moyenne &gt; 35 km/h.
+            Trafic faible et vitesse optimale (35 - 55 km/h). Déplacements sans ralentissement notable.
           </p>
         </article>
 
@@ -144,16 +108,12 @@ function MapPage() {
           <div className="map-info-icon moderate-icon">
             <Activity size={20} />
           </div>
-
           <div>
-            <span>Circulation modérée</span>
-            <strong style={{ color: "#f59e0b" }}>
-              {moderateCount} zones (🟠)
-            </strong>
+            <span>Circulation modérée (40 - 75%)</span>
+            <strong>🟠</strong>
           </div>
-
           <p>
-            Ralentissements réguliers observés aux heures d'affluence.
+            Ralentissements présents sur les carrefours clés. Prévoir +5 à +15 min de temps de trajet.
           </p>
         </article>
 
@@ -161,16 +121,12 @@ function MapPage() {
           <div className="map-info-icon dense-icon">
             <MapPin size={20} />
           </div>
-
           <div>
-            <span>Circulation dense</span>
-            <strong style={{ color: "#ef4444" }}>
-              {denseCount} zones (🔴)
-            </strong>
+            <span>Circulation dense / saturée (&gt; 75%)</span>
+            <strong>🔴</strong>
           </div>
-
           <p>
-            Forte saturation. Voies de délestage et itinéraires alternatifs conseillés.
+            Forte congestion ou incident détecté. Retards supérieurs à 20 min : évitement fortement conseillé.
           </p>
         </article>
       </section>

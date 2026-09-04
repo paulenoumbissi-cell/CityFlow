@@ -421,7 +421,7 @@ export const register = (req, res) => {
 };
 
 export const updateProfile = (req, res) => {
-  const { email, phone, name, city, role, vehicleType } = req.body;
+  const { email, phone, name, username, bio, avatar, city, role, vehicleType } = req.body;
 
   let key = phone || email;
   let existing = usersDb.get(key);
@@ -439,8 +439,12 @@ export const updateProfile = (req, res) => {
   if (!existing) {
     existing = {
       id: "usr_" + Date.now(),
+      name: name || "Utilisateur CityFlow",
+      username: username || "city_user",
       email: email || "conducteur@cityflow.cm",
       phone: phone || "+237699123456",
+      bio: bio || "Citoyen actif et éco-responsable",
+      avatar: avatar || null,
       tripsCount: 10,
       timeSavedMin: 45,
       co2SavedKg: 3.5,
@@ -450,7 +454,12 @@ export const updateProfile = (req, res) => {
 
   const updatedUser = {
     ...existing,
-    name: name || existing.name,
+    name: name !== undefined ? name : existing.name,
+    username: username !== undefined ? username : existing.username,
+    bio: bio !== undefined ? bio : existing.bio,
+    avatar: avatar !== undefined ? avatar : existing.avatar,
+    email: email !== undefined ? email : existing.email,
+    phone: phone !== undefined ? phone : existing.phone,
     city: city || existing.city,
     role: role || existing.role,
     roleLabel: getRoleLabel(role || existing.role),
@@ -464,6 +473,7 @@ export const updateProfile = (req, res) => {
 
   res.json({
     success: true,
+    message: "Profil mis à jour avec succès.",
     user: userResponse,
   });
 };

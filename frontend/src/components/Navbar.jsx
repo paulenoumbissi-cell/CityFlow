@@ -268,10 +268,14 @@ function Navbar() {
             to="/profil"
             className={`profile-button ${location.pathname === "/profil" ? "active" : ""}`}
             aria-label="Profil utilisateur"
-            title={`Connecté : ${user.name || user.email || "Utilisateur"}`}
+            title={`Connecté : ${user.name || user.username || user.email || "Utilisateur"}`}
             onClick={closeAllMenus}
           >
-            <span>{user.initials || "PN"}</span>
+            {user.avatar ? (
+              <img src={user.avatar} alt="Avatar" className="navbar-avatar-img" />
+            ) : (
+              <span>{user.initials || "PN"}</span>
+            )}
           </Link>
         ) : (
           <Link

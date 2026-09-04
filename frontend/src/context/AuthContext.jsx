@@ -180,24 +180,43 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Mise à jour du profil
+  // Mise à jour du profil (Nom, Username, Photo/Avatar, Contact, Véhicule, Ville, Bio)
   const updateProfile = async (profileData) => {
     setIsLoading(true);
     try {
-      const res = await updateUserProfile({
-        email: user?.email,
-        phone: user?.phone,
+      const newName = profileData.name || user?.name || "Utilisateur";
+      const parts = newName.trim().split(" ");
+      const initials = parts.length > 1
+        ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+        : newName.slice(0, 2).toUpperCase();
+
+      let updatedUser = {
+        ...user,
         ...profileData,
-      });
-      if (res && res.user) {
-        const updated = {
-          ...user,
-          ...res.user,
-        };
-        setUser(updated);
-        setIsLoading(false);
-        return { success: true, user: updated };
+        initials,
+      };
+
+      try {
+        const res = await updateUserProfile({
+          email: user?.email,
+          phone: user?.phone,
+          ...profileData,
+        });
+        if (res && res.user) {
+          updatedUser = {
+            ...updatedUser,
+            ...res.user,
+            initials,
+          };
+        }
+      } catch (apiErr) {
+        console.warn("[CityFlow] Backend update fallback to local:", apiErr);
       }
+
+      setUser(updatedUser);
+      localStorage.setItem("cityflow_user", JSON.stringify(updatedUser));
+      setIsLoading(false);
+      return { success: true, user: updatedUser };
     } catch (err) {
       setIsLoading(false);
       throw err;

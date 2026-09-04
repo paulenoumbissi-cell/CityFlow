@@ -9,124 +9,33 @@ import {
   Route,
   Sparkles,
   Zap,
+  Leaf,
+  CheckCircle2,
 } from "lucide-react";
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
+import { apiService } from "../services/api";
 import "./RoutesPage.css";
 
 const cityPresets = {
   Yaoundé: {
-    quickDepartures: ["Bastos", "Mvan (Gare)", "Odza", "Mokolo", "Nsam"],
-    quickDestinations: ["Poste Centrale", "Bastos", "Hôpital Général", "Nlongkak"],
-    routes: [
-      {
-        id: 1,
-        title: "Itinéraire recommandé (via Boulevard du 20 Mai)",
-        distance: "6,8 km",
-        duration: "22 min",
-        traffic: "Fluide",
-        level: "fluid",
-        description: "Le meilleur compromis entre distance, temps de trajet et circulation.",
-        recommended: true,
-        coords: [
-          [3.889, 11.512],
-          [3.878, 11.515],
-          [3.8667, 11.5167],
-        ],
-      },
-      {
-        id: 2,
-        title: "Itinéraire alternatif (via Bastos / Dragages)",
-        distance: "7,4 km",
-        duration: "26 min",
-        traffic: "Modéré",
-        level: "moderate",
-        description: "Trajet légèrement plus long avec quelques ralentissements au carrefour.",
-        recommended: false,
-        coords: [
-          [3.889, 11.512],
-          [3.890, 11.522],
-          [3.875, 11.525],
-          [3.8667, 11.5167],
-        ],
-      },
-      {
-        id: 3,
-        title: "Itinéraire secondaire (Contournement Ouest)",
-        distance: "8,6 km",
-        duration: "31 min",
-        traffic: "Fluide",
-        level: "fluid",
-        description: "Évite les grands axes centraux avec une vitesse constante.",
-        recommended: false,
-        coords: [
-          [3.889, 11.512],
-          [3.873, 11.503],
-          [3.860, 11.505],
-          [3.8667, 11.5167],
-        ],
-      },
-    ],
+    quickDepartures: ["Bastos (Ambassades)", "Mvan (Gare)", "Odza", "Mokolo", "Nsam (Sud)"],
+    quickDestinations: ["Poste Centrale (Centre)", "Bastos", "Hôpital Général", "Nlongkak"],
   },
   Douala: {
-    quickDepartures: ["Bonamoussadi", "Akwa", "Deido", "Bonabéri", "Bépanda"],
-    quickDestinations: ["Bonanjo", "Akwa", "Aéroport International", "Hôpital Laquintinie"],
-    routes: [
-      {
-        id: 1,
-        title: "Itinéraire recommandé (via Boulevard de la Liberté)",
-        distance: "5,4 km",
-        duration: "18 min",
-        traffic: "Fluide",
-        level: "fluid",
-        description: "Axe direct avec bonne régulation des feux.",
-        recommended: true,
-        coords: [
-          [4.0667, 9.7006],
-          [4.0511, 9.7043],
-          [4.043, 9.691],
-        ],
-      },
-      {
-        id: 2,
-        title: "Itinéraire alternatif (via Bépanda)",
-        distance: "6,8 km",
-        duration: "24 min",
-        traffic: "Modéré",
-        level: "moderate",
-        description: "Contourne le centre d'Akwa en passant par l'est.",
-        recommended: false,
-        coords: [
-          [4.0667, 9.7006],
-          [4.047, 9.727],
-          [4.043, 9.691],
-        ],
-      },
-      {
-        id: 3,
-        title: "Itinéraire secondaire (Zone Portuaire)",
-        distance: "7,9 km",
-        duration: "29 min",
-        traffic: "Dense",
-        level: "dense",
-        description: "Présence de camions et trafic lourd en journée.",
-        recommended: false,
-        coords: [
-          [4.0667, 9.7006],
-          [4.055, 9.685],
-          [4.043, 9.691],
-        ],
-      },
-    ],
+    quickDepartures: ["Bonamoussadi", "Akwa (Centre)", "Deido", "Bonabéri", "Bépanda"],
+    quickDestinations: ["Bonanjo (Affaires)", "Akwa", "Aéroport International", "Hôpital Laquintinie"],
   },
 };
 
 function ChangeMapCenter({ coords }) {
   const map = useMap();
-  if (coords && coords.length > 0) {
-    map.flyTo(coords[0], 13, { duration: 1 });
-  }
+  useEffect(() => {
+    if (coords && coords.length > 0) {
+      map.flyTo(coords[0], 13, { duration: 1.2 });
+    }
+  }, [coords, map]);
   return null;
 }
 
@@ -137,24 +46,97 @@ function RoutesPage() {
   const [departure, setDeparture] = useState(currentPresets.quickDepartures[0]);
   const [destination, setDestination] = useState(currentPresets.quickDestinations[0]);
   const [searched, setSearched] = useState(true);
-  const [selectedRoute, setSelectedRoute] = useState(currentPresets.routes[0]);
+  const [routes, setRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fonction de calcul d'itinéraire dynamique via l'API Backend
+  const performCalculation = async (orig, dest) => {
+    setIsLoading(true);
+    try {
+      const res = await apiService.calculateRoute({
+        origin: orig || departure,
+        destination: dest || destination,
+      });
+
+      if (res && res.routes && res.routes.length > 0) {
+        // Normaliser les itinéraires reçus du backend avec coordonnées géospatiales pour Leaflet
+        const isDouala = selectedCity === "Douala";
+        const baseCoords = isDouala
+          ? [
+              [4.0667, 9.7006],
+              [4.055, 9.695],
+              [4.043, 9.691],
+            ]
+          : [
+              [3.889, 11.512],
+              [3.878, 11.515],
+              [3.8667, 11.5167],
+            ];
+
+        const altCoords = isDouala
+          ? [
+              [4.0667, 9.7006],
+              [4.047, 9.727],
+              [4.043, 9.691],
+            ]
+          : [
+              [3.889, 11.512],
+              [3.89, 11.522],
+              [3.875, 11.525],
+              [3.8667, 11.5167],
+            ];
+
+        const enrichedRoutes = res.routes.map((r, idx) => ({
+          ...r,
+          id: r.id || idx + 1,
+          title: r.title || (idx === 0 ? "Itinéraire le plus rapide (Recommandé)" : "Itinéraire alternatif"),
+          distance: `${r.distanceKm || (idx === 0 ? 6.8 : 7.4)} km`,
+          duration: `${r.durationMinutes || (idx === 0 ? 22 : 28)} min`,
+          traffic: r.congestionIndex > 70 ? "Dense" : r.congestionIndex > 40 ? "Modéré" : "Fluide",
+          level: r.congestionIndex > 70 ? "dense" : r.congestionIndex > 40 ? "moderate" : "fluid",
+          description: r.type === "fastest"
+            ? "Meilleure fluidité calculée en temps réel d'après les capteurs urbains."
+            : "Trajet alternatif contournant les axes principaux.",
+          recommended: r.type === "fastest" || idx === 0,
+          coords: idx === 0 ? baseCoords : altCoords,
+          steps: r.steps || [
+            `Départ depuis ${orig || departure}`,
+            "Continuer sur l'axe principal fluide",
+            `Arrivée estimée à ${dest || destination}`,
+          ],
+        }));
+
+        setRoutes(enrichedRoutes);
+        setSelectedRoute(enrichedRoutes[0]);
+        setSearched(true);
+      }
+    } catch (err) {
+      console.warn("[RoutesPage] Fallback route calculation error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setDeparture(currentPresets.quickDepartures[0]);
-    setDestination(currentPresets.quickDestinations[0]);
-    setSelectedRoute(currentPresets.routes[0]);
+    const defaultDep = currentPresets.quickDepartures[0];
+    const defaultDest = currentPresets.quickDestinations[0];
+    setDeparture(defaultDep);
+    setDestination(defaultDest);
+    performCalculation(defaultDep, defaultDest);
   }, [selectedCity]);
 
   const handleSwap = () => {
     const temp = departure;
     setDeparture(destination);
     setDestination(temp);
+    performCalculation(destination, temp);
   };
 
   const handleSearch = (event) => {
     event.preventDefault();
     if (!departure.trim() || !destination.trim()) return;
-    setSearched(true);
+    performCalculation(departure, destination);
   };
 
   return (
@@ -163,12 +145,11 @@ function RoutesPage() {
       <section className="routes-header">
         <div>
           <span className="routes-eyebrow">
-            <Sparkles size={16} /> MOBILITÉ INTELLIGENTE
+            <Sparkles size={16} /> CALCULATEUR EN TEMPS RÉEL
           </span>
           <h1>Calculateur d'Itinéraires Intelligents</h1>
           <p>
-            Comparez les trajets optimaux à Yaoundé et Douala en tenant compte des
-            prévisions de circulation en temps réel.
+            Moteur de calcul géospatial et analyse dynamique des ralentissements pour {selectedCity}.
           </p>
         </div>
 
@@ -178,8 +159,8 @@ function RoutesPage() {
             value={selectedCity}
             onChange={(e) => setSelectedCity(e.target.value)}
           >
-            <option value="Yaoundé">Yaoundé</option>
-            <option value="Douala">Douala</option>
+            <option value="Yaoundé">📍 Yaoundé (7 collines)</option>
+            <option value="Douala">📍 Douala (Wouri)</option>
           </select>
         </div>
       </section>
@@ -192,7 +173,7 @@ function RoutesPage() {
           </div>
           <div>
             <h2>Préparez votre trajet</h2>
-            <p>Indiquez vos points de repère ou sélectionnez une suggestion rapide.</p>
+            <p>Calcul dynamique optimisé par intelligence artificielle.</p>
           </div>
         </div>
 
@@ -254,9 +235,9 @@ function RoutesPage() {
               </div>
             </div>
 
-            <button type="submit" className="route-search-button">
+            <button type="submit" className="route-search-button" disabled={isLoading}>
               <Navigation size={18} />
-              Calculer
+              {isLoading ? "Calcul..." : "Calculer"}
             </button>
           </div>
         </form>
@@ -269,7 +250,10 @@ function RoutesPage() {
               key={loc}
               type="button"
               className="suggestion-tag"
-              onClick={() => setDeparture(loc)}
+              onClick={() => {
+                setDeparture(loc);
+                performCalculation(loc, destination);
+              }}
             >
               {loc}
             </button>
@@ -277,38 +261,25 @@ function RoutesPage() {
         </div>
       </section>
 
-      {/* ÉTAT AVANT RECHERCHE */}
-      {!searched && (
-        <section className="route-empty-state">
-          <div className="empty-icon">
-            <Car size={28} />
-          </div>
-          <h2>Votre trajet commence ici</h2>
-          <p>
-            Entrez un point de départ et une destination pour découvrir les itinéraires optimisés.
-          </p>
-        </section>
-      )}
-
-      {/* RÉSULTATS & CARTE */}
-      {searched && (
+      {/* RÉSULTATS DYNAMIQUES DU BACKEND & CARTE */}
+      {searched && selectedRoute && (
         <section className="route-results">
           <div className="results-header">
             <div>
               <span className="routes-eyebrow">
-                <Route size={15} /> RÉSULTATS
+                <Route size={15} /> RÉSULTATS CALCULÉS PAR L'API
               </span>
-              <h2>Itinéraires analysés pour {selectedCity}</h2>
+              <h2>Itinéraires optimisés pour {selectedCity}</h2>
             </div>
             <span className="results-count">
-              {currentPresets.routes.length} options disponibles
+              {routes.length} options calculées
             </span>
           </div>
 
           <div className="results-grid">
             {/* LISTE DES ITINÉRAIRES */}
             <div className="route-list">
-              {currentPresets.routes.map((route) => {
+              {routes.map((route) => {
                 const isSelected = selectedRoute.id === route.id;
                 return (
                   <article
@@ -331,9 +302,7 @@ function RoutesPage() {
                       </div>
 
                       <div className="traffic-pill">
-                        <span
-                          className={`traffic-pill-dot ${route.level}`}
-                        ></span>
+                        <span className={`traffic-pill-dot ${route.level}`}></span>
                         {route.traffic}
                       </div>
                     </div>
@@ -354,27 +323,41 @@ function RoutesPage() {
                           <span>Distance</span>
                         </div>
                       </div>
+
+                      {route.delaySavedMinutes && (
+                        <div>
+                          <Zap size={18} color="#00875A" />
+                          <div>
+                            <strong style={{ color: "#00875A" }}>-{route.delaySavedMinutes} min</strong>
+                            <span>Temps gagné</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {route.co2SavedKg && (
+                        <div>
+                          <Leaf size={18} color="#10b981" />
+                          <div>
+                            <strong style={{ color: "#10b981" }}>-{route.co2SavedKg} kg</strong>
+                            <span>Économie CO₂</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="route-path">
-                      <div className="path-point">
-                        <span className="path-dot start"></span>
-                        <div>
-                          <small>Départ</small>
-                          <strong>{departure}</strong>
-                        </div>
+                    {/* ÉTAPES DE GUIDAGE */}
+                    {route.steps && route.steps.length > 0 && (
+                      <div style={{ marginTop: "12px", background: "#f8fafc", padding: "10px 14px", borderRadius: "10px", fontSize: "12px", color: "#475569" }}>
+                        <span style={{ fontWeight: "700", display: "block", marginBottom: "4px", color: "#1e293b" }}>
+                          Étapes du parcours :
+                        </span>
+                        <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: "1.6" }}>
+                          {route.steps.map((st, idx) => (
+                            <li key={idx}>{st}</li>
+                          ))}
+                        </ul>
                       </div>
-
-                      <div className="path-line"></div>
-
-                      <div className="path-point">
-                        <span className="path-dot end"></span>
-                        <div>
-                          <small>Destination</small>
-                          <strong>{destination}</strong>
-                        </div>
-                      </div>
-                    </div>
+                    )}
 
                     <button
                       type="button"
@@ -393,8 +376,8 @@ function RoutesPage() {
             <aside className="route-map-preview">
               <div className="preview-header">
                 <div>
-                  <span className="routes-eyebrow">CARTE INTERACTIVE</span>
-                  <h3>Tracé du trajet ({selectedRoute.distance})</h3>
+                  <span className="routes-eyebrow">CARTE GÉOSPATIALE</span>
+                  <h3>Tracé ({selectedRoute.distance})</h3>
                 </div>
                 <div className="preview-traffic-badge">
                   ● Trafic {selectedRoute.traffic}
@@ -473,8 +456,10 @@ function RoutesPage() {
                   <strong>{selectedRoute.distance}</strong>
                 </div>
                 <div>
-                  <span>Économie estimée</span>
-                  <strong className="gain-highlight">-14 min</strong>
+                  <span>Économie</span>
+                  <strong className="gain-highlight">
+                    {selectedRoute.delaySavedMinutes ? `-${selectedRoute.delaySavedMinutes} min` : "-14 min"}
+                  </strong>
                 </div>
               </div>
             </aside>

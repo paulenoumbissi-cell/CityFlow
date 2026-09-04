@@ -46,12 +46,12 @@ export function AuthProvider({ children }) {
     }
   }, [user]);
 
-  // Envoi du code OTP via SMS ou WhatsApp
-  const sendOtpCode = async ({ phone, channel = "whatsapp", name, role, city, vehicleType }) => {
+  // Envoi du code OTP via WhatsApp, SMS ou E-mail
+  const sendOtpCode = async ({ identifier, phone, email, channel = "whatsapp", name, role, city, vehicleType }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await sendOtp({ phone, channel, name, role, city, vehicleType });
+      const res = await sendOtp({ identifier, phone, email, channel, name, role, city, vehicleType });
       setIsLoading(false);
       return res;
     } catch (err) {
@@ -62,11 +62,11 @@ export function AuthProvider({ children }) {
   };
 
   // Validation du code OTP
-  const verifyOtpCode = async ({ phone, code, channel, name, role, city, vehicleType }) => {
+  const verifyOtpCode = async ({ identifier, phone, email, code, channel, name, role, city, vehicleType }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await verifyOtp({ phone, code, channel, name, role, city, vehicleType });
+      const res = await verifyOtp({ identifier, phone, email, code, channel, name, role, city, vehicleType });
       if (res && res.user) {
         const names = (res.user.name || "Utilisateur").trim();
         const parts = names.split(" ");
@@ -76,9 +76,10 @@ export function AuthProvider({ children }) {
 
         const fullUser = {
           ...res.user,
-          phone: res.user.phone || phone,
+          phone: res.user.phone || phone || "+237 699 00 11 22",
+          email: res.user.email || email || "conducteur@cityflow.cm",
           phoneVerified: true,
-          authChannel: channel || "whatsapp",
+          authChannel: channel || res.user.channel || "whatsapp",
           initials,
           isAuthenticated: true,
           token: res.token || res.user.token,
@@ -101,11 +102,11 @@ export function AuthProvider({ children }) {
   };
 
   // Renvoi du code OTP
-  const resendOtpCode = async ({ phone, channel }) => {
+  const resendOtpCode = async ({ identifier, phone, email, channel }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await resendOtp({ phone, channel });
+      const res = await resendOtp({ identifier, phone, email, channel });
       setIsLoading(false);
       return res;
     } catch (err) {

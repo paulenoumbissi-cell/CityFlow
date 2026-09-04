@@ -74,48 +74,78 @@ const getRoleLabel = (role) => {
 };
 
 /**
- * 1. ENVOI DU CODE OTP PAR SMS OU WHATSAPP
+ * 1. ENVOI DU CODE OTP PAR WHATSAPP, SMS OU EMAIL
  */
 export const sendOtp = (req, res) => {
-  const { phone, channel = "whatsapp", name, role = "citizen", city = "Yaoundé", vehicleType = "Voiture particulière" } = req.body;
+  const {
+    identifier,
+    phone,
+    email,
+    channel = "whatsapp",
+    name,
+    role = "citizen",
+    city = "Yaoundé",
+    vehicleType = "Voiture particulière",
+  } = req.body;
 
-  if (!phone || phone.trim().length < 6) {
-    return res.status(400).json({ error: "Numéro de téléphone invalide." });
+  // L'identifiant peut être un téléphone ou un email
+  const rawId = (identifier || phone || email || "").trim();
+  if (!rawId || rawId.length < 4) {
+    return res.status(400).json({ error: "Numéro de téléphone ou adresse e-mail requis." });
   }
 
-  const cleanPhone = phone.replace(/\s+/g, "").trim();
+  const isEmail = rawId.includes("@");
+  const cleanId = isEmail ? rawId.toLowerCase() : rawId.replace(/\s+/g, "");
+
+  // Déterminer le canal effectif
+  let effectiveChannel = channel;
+  if (isEmail && channel !== "email") {
+    effectiveChannel = "email";
+  }
+
   // Générer un code à 6 chiffres
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
-  otpStore.set(cleanPhone, {
+  otpStore.set(cleanId, {
     code,
     expiresAt,
-    channel,
-    name: name ? name.trim() : "",
+    channel: effectiveChannel,
+    isEmail,
+    name: name ? name.trim() : (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`),
     role,
     city,
     vehicleType,
   });
 
-  // Message formaté pour simulation réaliste
-  const previewMessage =
-    channel === "whatsapp"
-      ? `💬 [WhatsApp CityFlow] 🚦 Votre code de sécurité CityFlow est : ${code}. Valable 5 minutes. Ne le partagez avec personne.`
-      : `📱 [SMS CityFlow] Votre code de connexion sécurisé est ${code}. Valable 5 minutes.`;
+  // Message formaté selon le canal
+  let previewMessage = "";
+  let channelLabel = "";
+  if (effectiveChannel === "whatsapp") {
+    channelLabel = "WhatsApp";
+    previewMessage = `💬 [WhatsApp CityFlow] 🚦 Votre code de sécurité CityFlow est : ${code}. Valable 5 minutes. Ne le partagez avec personne.`;
+  } else if (effectiveChannel === "sms") {
+    channelLabel = "SMS";
+    previewMessage = `📱 [SMS CityFlow] Votre code de connexion sécurisé est ${code}. Valable 5 minutes.`;
+  } else {
+    channelLabel = "E-mail";
+    previewMessage = `📧 [E-mail CityFlow Sécurité] Bonjour ${name || "Utilisateur"}, votre code de vérification est : ${code}. Valable 5 minutes.`;
+  }
 
   console.log(`\n======================================================`);
-  console.log(`📤 DISPATCH OTP [${channel.toUpperCase()}] vers ${cleanPhone}`);
+  console.log(`📤 DISPATCH OTP [${effectiveChannel.toUpperCase()}] vers ${cleanId}`);
   console.log(`🔑 CODE : ${code}`);
   console.log(`📩 MESSAGE : ${previewMessage}`);
   console.log(`======================================================\n`);
 
   res.json({
     success: true,
-    message: `Code de vérification envoyé avec succès par ${channel === "whatsapp" ? "WhatsApp" : "SMS"} au ${cleanPhone}`,
-    phone: cleanPhone,
-    channel,
-    previewCode: code, // Fourni pour permettre la saisie/copie instantanée en démo
+    message: `Code de vérification envoyé avec succès par ${channelLabel} à ${cleanId}`,
+    identifier: cleanId,
+    phone: isEmail ? undefined : cleanId,
+    email: isEmail ? cleanId : undefined,
+    channel: effectiveChannel,
+    previewCode: code,
     previewMessage,
     expiresInSeconds: 300,
   });
@@ -125,23 +155,35 @@ export const sendOtp = (req, res) => {
  * 2. VÉRIFICATION DU CODE OTP & AUTHENTIFICATION
  */
 export const verifyOtp = (req, res) => {
-  const { phone, code, channel = "whatsapp", name, role, city, vehicleType } = req.body;
+  const {
+    identifier,
+    phone,
+    email,
+    code,
+    channel,
+    name,
+    role,
+    city,
+    vehicleType,
+  } = req.body;
 
-  if (!phone || !code) {
-    return res.status(400).json({ error: "Numéro de téléphone et code OTP requis." });
+  const rawId = (identifier || phone || email || "").trim();
+  if (!rawId || !code) {
+    return res.status(400).json({ error: "Identifiant et code OTP requis." });
   }
 
-  const cleanPhone = phone.replace(/\s+/g, "").trim();
-  const storedOtp = otpStore.get(cleanPhone);
+  const isEmail = rawId.includes("@");
+  const cleanId = isEmail ? rawId.toLowerCase() : rawId.replace(/\s+/g, "");
+  const storedOtp = otpStore.get(cleanId);
 
   if (!storedOtp) {
     return res.status(400).json({
-      error: "Aucun code en attente pour ce numéro ou code expiré. Veuillez renvoyer un code.",
+      error: "Aucun code en attente pour cet identifiant ou code expiré. Veuillez renvoyer un code.",
     });
   }
 
   if (Date.now() > storedOtp.expiresAt) {
-    otpStore.delete(cleanPhone);
+    otpStore.delete(cleanId);
     return res.status(400).json({ error: "Ce code a expiré. Veuillez demander un nouveau code." });
   }
 
@@ -150,36 +192,37 @@ export const verifyOtp = (req, res) => {
   }
 
   // Code valide ! Supprimer l'OTP consommé
-  otpStore.delete(cleanPhone);
+  otpStore.delete(cleanId);
 
   // Chercher ou créer l'utilisateur
-  let user = usersDb.get(cleanPhone);
+  let user = usersDb.get(cleanId);
   const token = "jwt_cityflow_otp_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+  const finalChannel = channel || storedOtp.channel || (isEmail ? "email" : "whatsapp");
 
   if (!user) {
     const finalRole = role || storedOtp.role || "citizen";
-    const userName = name || storedOtp.name || `Utilisateur ${cleanPhone.slice(-4)}`;
+    const userName = name || storedOtp.name || (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
 
     user = {
       id: "usr_" + Math.floor(Math.random() * 10000),
       name: userName,
-      phone: cleanPhone,
-      email: `${userName.toLowerCase().replace(/\s+/g, "")}@cityflow.cm`,
+      phone: isEmail ? "+237 699 00 11 22" : cleanId,
+      email: isEmail ? cleanId : `${userName.toLowerCase().replace(/\s+/g, "")}@cityflow.cm`,
       city: city || storedOtp.city || "Yaoundé",
       role: finalRole,
       roleLabel: getRoleLabel(finalRole),
       vehicleType: vehicleType || storedOtp.vehicleType || "Voiture particulière",
-      channel,
+      channel: finalChannel,
       tripsCount: 1,
       timeSavedMin: 12,
       co2SavedKg: 1.0,
       score: 90,
-      verifiedVia: channel.toUpperCase(),
+      verifiedVia: finalChannel.toUpperCase(),
     };
 
-    usersDb.set(cleanPhone, user);
+    usersDb.set(cleanId, user);
   } else {
-    user.verifiedVia = channel.toUpperCase();
+    user.verifiedVia = finalChannel.toUpperCase();
     if (name) user.name = name;
     if (role) {
       user.role = role;

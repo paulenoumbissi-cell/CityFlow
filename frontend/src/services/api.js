@@ -60,34 +60,34 @@ export async function calculateRoute(origin, destination, options = {}) {
   }
 }
 
-// Authentification OTP SMS & WhatsApp
-export async function sendOtp({ phone, channel = "whatsapp", name, role, city, vehicleType }) {
+// Authentification OTP WhatsApp, SMS & E-mail
+export async function sendOtp({ identifier, phone, email, channel = "whatsapp", name, role, city, vehicleType }) {
   const res = await fetch(`${API_BASE_URL}/auth/send-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone, channel, name, role, city, vehicleType }),
+    body: JSON.stringify({ identifier: identifier || phone || email, phone, email, channel, name, role, city, vehicleType }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Impossible d'envoyer le code.");
   return data;
 }
 
-export async function verifyOtp({ phone, code, channel, name, role, city, vehicleType }) {
+export async function verifyOtp({ identifier, phone, email, code, channel, name, role, city, vehicleType }) {
   const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone, code, channel, name, role, city, vehicleType }),
+    body: JSON.stringify({ identifier: identifier || phone || email, phone, email, code, channel, name, role, city, vehicleType }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Code de vérification invalide.");
   return data;
 }
 
-export async function resendOtp({ phone, channel }) {
+export async function resendOtp({ identifier, phone, email, channel }) {
   const res = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone, channel }),
+    body: JSON.stringify({ identifier: identifier || phone || email, phone, email, channel }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Impossible de renvoyer le code.");

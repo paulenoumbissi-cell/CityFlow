@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { 
   Menu, 
   X, 
@@ -6,13 +6,13 @@ import {
   MapPin, 
   Siren, 
   LogIn, 
-  Users, 
   Settings, 
-  ChevronDown, 
   Map, 
   Route, 
   Sparkles, 
-  Info
+  Users, 
+  Info,
+  Home
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useCity } from "../context/CityContext";
@@ -25,9 +25,7 @@ function Navbar() {
   const { selectedCity, setSelectedCity } = useCity();
   const { user, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobilityDropdownOpen, setMobilityDropdownOpen] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected");
-  const dropdownRef = useRef(null);
 
   useEffect(() => {
     wsService.connect();
@@ -41,23 +39,9 @@ function Navbar() {
     }
   }, [selectedCity]);
 
-  // Fermer le dropdown lors d'un clic extérieur
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setMobilityDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const closeAllMenus = () => {
+  const closeMenu = () => {
     setMobileMenuOpen(false);
-    setMobilityDropdownOpen(false);
   };
-
-  const isMobilityActive = ["/carte", "/routes", "/prediction"].includes(location.pathname);
 
   return (
     <header className="navbar">
@@ -71,7 +55,7 @@ function Navbar() {
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        <Link to="/" className="brand" onClick={closeAllMenus}>
+        <Link to="/" className="brand" onClick={closeMenu}>
           <img
             src="/logo.png"
             alt="Logo CityFlow"
@@ -84,110 +68,60 @@ function Navbar() {
         </Link>
       </div>
 
-      {/* NAVIGATION CENTRALE ERGONOMIQUE & REGROUPÉE */}
+      {/* NAVIGATION CENTRALE : ACCÈS DIRECT ET FLUIDE À TOUTES LES INTERFACES */}
       <nav className={`desktop-nav ${mobileMenuOpen ? "mobile-open" : ""}`}>
-        {/* ACCUEIL */}
         <Link
           to="/"
           className={`nav-link ${location.pathname === "/" ? "active" : ""}`}
-          onClick={closeAllMenus}
+          onClick={closeMenu}
         >
           Accueil
         </Link>
 
-        {/* GROUPE 1 : MOBILITÉ & TRAFIC (MENU DÉROULANT ERGONOMIQUE) */}
-        <div 
-          className={`nav-dropdown-wrapper ${isMobilityActive ? "active-parent" : ""}`}
-          ref={dropdownRef}
-          onMouseEnter={() => setMobilityDropdownOpen(true)}
-          onMouseLeave={() => setMobilityDropdownOpen(false)}
+        <Link
+          to="/carte"
+          className={`nav-link ${location.pathname === "/carte" ? "active" : ""}`}
+          onClick={closeMenu}
         >
-          <button 
-            type="button"
-            className={`nav-dropdown-trigger ${isMobilityActive ? "active" : ""}`}
-            onClick={() => setMobilityDropdownOpen(!mobilityDropdownOpen)}
-            aria-expanded={mobilityDropdownOpen}
-          >
-            <span>Mobilité & Trafic</span>
-            <ChevronDown size={15} className={`dropdown-chevron ${mobilityDropdownOpen ? "open" : ""}`} />
-          </button>
+          Carte
+        </Link>
 
-          {mobilityDropdownOpen && (
-            <div className="nav-dropdown-menu">
-              <Link
-                to="/carte"
-                className={`dropdown-item ${location.pathname === "/carte" ? "active" : ""}`}
-                onClick={closeAllMenus}
-              >
-                <div className="dropdown-item-icon map-icon">
-                  <Map size={18} />
-                </div>
-                <div className="dropdown-item-text">
-                  <strong>Carte Interactive</strong>
-                  <span>Flux temps réel, carrefours & caméras</span>
-                </div>
-              </Link>
+        <Link
+          to="/routes"
+          className={`nav-link ${location.pathname === "/routes" ? "active" : ""}`}
+          onClick={closeMenu}
+        >
+          Itinéraires
+        </Link>
 
-              <Link
-                to="/routes"
-                className={`dropdown-item ${location.pathname === "/routes" ? "active" : ""}`}
-                onClick={closeAllMenus}
-              >
-                <div className="dropdown-item-icon route-icon">
-                  <Route size={18} />
-                </div>
-                <div className="dropdown-item-text">
-                  <strong>Itinéraires & GPS</strong>
-                  <span>Navigation intelligente & guidage vocal</span>
-                </div>
-              </Link>
+        <Link
+          to="/prediction"
+          className={`nav-link ${location.pathname === "/prediction" ? "active" : ""}`}
+          onClick={closeMenu}
+        >
+          Prédiction
+        </Link>
 
-              <Link
-                to="/prediction"
-                className={`dropdown-item ${location.pathname === "/prediction" ? "active" : ""}`}
-                onClick={closeAllMenus}
-              >
-                <div className="dropdown-item-icon ai-icon">
-                  <Sparkles size={18} />
-                </div>
-                <div className="dropdown-item-text">
-                  <strong>Prédictions IA</strong>
-                  <span>Anticipation des bouchons & météo</span>
-                </div>
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* GROUPE 2 : COMMUNAUTÉ & CITOYENS */}
         <Link
           to="/communaute"
           className={`nav-link ${location.pathname === "/communaute" ? "active" : ""}`}
-          onClick={closeAllMenus}
+          onClick={closeMenu}
         >
-          <span className="nav-link-with-icon">
-            <Users size={16} />
-            Communauté
-          </span>
+          Communauté
         </Link>
 
-        {/* GROUPE 3 : À PROPOS */}
         <Link
           to="/a-propos"
           className={`nav-link ${location.pathname === "/a-propos" ? "active" : ""}`}
-          onClick={closeAllMenus}
+          onClick={closeMenu}
         >
-          <span className="nav-link-with-icon">
-            <Info size={16} />
-            À propos
-          </span>
+          À propos
         </Link>
 
-        {/* GROUPE 4 : COULOIR D'URGENCE (BOUTON DISTINCTIF ERGONOMIQUE) */}
         <Link
           to="/urgences"
           className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
-          onClick={closeAllMenus}
+          onClick={closeMenu}
         >
           <Siren size={16} />
           Urgences
@@ -236,7 +170,7 @@ function Navbar() {
           className={`icon-nav-btn ${location.pathname === "/notifications" ? "active" : ""}`}
           aria-label="Notifications"
           title="Notifications & Alertes"
-          onClick={closeAllMenus}
+          onClick={closeMenu}
         >
           <Bell size={20} />
           <span className="notification-dot"></span>
@@ -247,8 +181,8 @@ function Navbar() {
           to="/parametres"
           className={`icon-nav-btn ${location.pathname === "/parametres" ? "active" : ""}`}
           aria-label="Paramètres"
-          title="Paramètres de l'application"
-          onClick={closeAllMenus}
+          title="Paramètres de configuration"
+          onClick={closeMenu}
         >
           <Settings size={20} className="settings-gear-icon" />
         </Link>
@@ -260,7 +194,7 @@ function Navbar() {
             className={`profile-button ${location.pathname === "/profil" ? "active" : ""}`}
             aria-label="Profil utilisateur"
             title={`Connecté : ${user.name || user.email || "Utilisateur"}`}
-            onClick={closeAllMenus}
+            onClick={closeMenu}
           >
             <span>{user.initials || "PN"}</span>
           </Link>
@@ -268,7 +202,7 @@ function Navbar() {
           <Link
             to="/connexion"
             className="login-navbar-btn"
-            onClick={closeAllMenus}
+            onClick={closeMenu}
           >
             <LogIn size={16} />
             <span>Connexion</span>

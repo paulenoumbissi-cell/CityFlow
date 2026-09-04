@@ -177,19 +177,28 @@ a:active {
 .desktop-nav {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 8px;
 }
 
 .desktop-nav a {
   font-size: 14px;
   font-weight: 600;
   color: #536174;
-
-  transition: 0.2s ease;
+  padding: 8px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
 
 .desktop-nav a:hover {
   color: var(--cityflow-primary);
+  background: #f1f7f4;
+}
+
+.desktop-nav a.active {
+  color: var(--cityflow-primary);
+  background: #eef8f4;
+  font-weight: 700;
 }
 
 /* Partie droite */

@@ -94,6 +94,17 @@ export async function resendOtp({ identifier, phone, email, channel }) {
   return data;
 }
 
+export async function resetOtpPassword({ identifier, phone, email, newPassword }) {
+  const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: identifier || phone || email, phone, email, newPassword }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Impossible de réinitialiser le mot de passe.");
+  return data;
+}
+
 // Authentification API classique
 export async function loginUser(email, password) {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {

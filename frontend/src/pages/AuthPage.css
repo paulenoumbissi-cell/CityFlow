@@ -1,69 +1,68 @@
-/* =========================================================
-   PAGE D'AUTHENTIFICATION ÉPURÉE & MODERNE (NON SATURÉE)
-   ========================================================= */
+/* =========================================================================
+   AUTHENTIFICATION CITYFLOW - OPTION B (GLASSMORPHIC CARTE FLOTTANTE)
+   ========================================================================= */
 
-.auth-clean-page {
+.auth-glass-screen {
   min-height: calc(100vh - 80px);
-  background: #f8faf9;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px 16px 50px;
+  padding: 40px 16px;
+  background: radial-gradient(circle at 50% 0%, #e8f5e9 0%, #f1f5f3 50%, #e2e8f0 100%);
   position: relative;
   font-family: inherit;
 }
 
-/* TOAST DISCRET DE TEST EN HAUT */
-.clean-demo-toast {
+/* TOAST FLOTTANT DISCRET */
+.glass-demo-toast {
   position: fixed;
   top: 90px;
   right: 20px;
   background: #ffffff;
-  border: 1px solid #d1fae5;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  border: 1px solid #bbf7d0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
   z-index: 1000;
-  animation: fadeInDown 0.3s ease;
+  animation: slideDownToast 0.3s ease;
 }
 
-@keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-10px); }
+@keyframes slideDownToast {
+  from { opacity: 0; transform: translateY(-12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.toast-tag {
-  background: #ecfdf5;
-  color: #059669;
+.toast-text-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #334155;
+}
+
+.toast-chip {
+  background: #dcfce7;
+  color: #15803d;
   font-size: 10px;
   font-weight: 800;
   padding: 2px 6px;
-  border-radius: 6px;
-  letter-spacing: 0.5px;
-}
-
-.toast-info {
-  font-size: 12px;
-  color: #374151;
+  border-radius: 4px;
 }
 
 .toast-code {
-  background: #f3f4f6;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 800;
-  font-size: 14px;
   color: #087f5b;
-  letter-spacing: 1px;
+  font-size: 15px;
+  letter-spacing: 2px;
+  font-family: monospace;
 }
 
-.toast-paste-btn {
-  background: #00875a;
-  color: white;
+.toast-btn-action {
+  background: #087f5b;
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   padding: 6px 10px;
@@ -73,238 +72,181 @@
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  transition: background 0.2s;
 }
 
-.toast-paste-btn:hover {
+.toast-btn-action:hover {
   background: #066649;
 }
 
-/* CARTE CENTRALE PRINCIPALE */
-.auth-clean-card {
-  background: #ffffff;
+/* CARTE GLASSMORPHIC CENTRALE */
+.glass-auth-box {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 28px;
   width: 100%;
-  max-width: 460px;
-  border-radius: 20px;
-  border: 1px solid #e2e8f0;
-  padding: 32px 28px;
-  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.04);
-}
-
-/* STEPPER VISUEL (1 - 2 - 3) */
-.clean-stepper {
+  max-width: 440px;
+  padding: 38px 32px 30px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  flex-direction: column;
 }
 
-.step-item {
+/* EN-TÊTE : LOGO CITYFLOW */
+.glass-brand-header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  text-align: center;
+  margin-bottom: 24px;
 }
 
-.step-circle {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #f1f5f9;
-  color: #94a3b8;
-  font-size: 12px;
-  font-weight: 700;
+.cityflow-logo-icon {
+  width: 58px;
+  height: 58px;
+  background: #e8f5e9;
+  border: 2px solid #bbf7d0;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  margin-bottom: 12px;
+  box-shadow: 0 6px 16px rgba(8, 127, 91, 0.12);
 }
 
-.step-item span {
-  font-size: 11px;
-  font-weight: 600;
-  color: #94a3b8;
-}
-
-.step-item.active .step-circle {
-  background: #087f5b;
-  color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.15);
-}
-
-.step-item.active span {
-  color: #087f5b;
-  font-weight: 700;
-}
-
-.step-item.completed .step-circle {
-  background: #10b981;
-  color: #ffffff;
-}
-
-.step-line {
-  flex: 1;
-  height: 2px;
-  background: #f1f5f9;
-  margin: -14px 8px 0;
-}
-
-/* EN-TÊTE ÉPURÉ */
-.auth-clean-header {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.auth-clean-header h1 {
-  margin: 0 0 6px;
+.cityflow-logo-title {
+  font-size: 26px;
+  font-weight: 900;
   color: #0f172a;
-  font-size: 21px;
-  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
 }
 
-.auth-clean-header p {
-  margin: 0;
+.cityflow-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #087f5b;
+  margin-top: 4px;
+}
+
+/* SOUS-EN-TÊTE (INSCRIPTION / MOT DE PASSE OUBLIÉ) */
+.glass-sub-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.glass-sub-header h2 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.glass-sub-header p {
+  font-size: 12.5px;
   color: #64748b;
-  font-size: 13px;
-  line-height: 1.45;
+  margin: 0;
 }
 
 /* ALERTES */
-.clean-alert {
+.glass-alert {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
   font-size: 12.5px;
   font-weight: 600;
   margin-bottom: 16px;
 }
 
-.clean-alert.error {
+.glass-alert.error {
   background: #fef2f2;
   color: #dc2626;
   border: 1px solid #fecaca;
 }
 
-.clean-alert.success {
+.glass-alert.success {
   background: #f0fdf4;
   color: #16a34a;
   border: 1px solid #bbf7d0;
 }
 
-/* FORMULAIRE & CHAMPS */
-.clean-form {
+/* FORMULAIRES */
+.glass-body-form,
+.glass-sub-form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 16px;
 }
 
-.clean-field {
+.glass-field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
-.clean-field label {
-  font-size: 12px;
+.glass-field label {
+  font-size: 12.5px;
   font-weight: 700;
   color: #334155;
 }
 
-.clean-input-wrap {
+.glass-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.field-icon {
+.glass-field-icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
   color: #94a3b8;
   pointer-events: none;
 }
 
-.clean-input-wrap input,
-.clean-field select {
+.glass-input-wrapper input,
+.glass-field select {
   width: 100%;
-  padding: 11px 12px 11px 38px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 13.5px;
+  padding: 12px 14px 12px 42px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 14px;
   color: #0f172a;
   outline: none;
   background: #ffffff;
   transition: all 0.2s ease;
 }
 
-.clean-field select {
-  padding-left: 12px;
+.glass-field select {
+  padding-left: 14px;
 }
 
-.clean-input-wrap input:focus,
-.clean-field select:focus {
+.glass-input-wrapper input:focus,
+.glass-field select:focus {
   border-color: #087f5b;
-  box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.1);
+  box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.12);
 }
 
-/* ONGLETS CANAL (WHATSAPP / SMS / EMAIL) */
-.channel-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-
-.channel-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 4px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 11.5px;
-  font-weight: 700;
+.glass-password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #94a3b8;
   cursor: pointer;
-  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  padding: 4px;
 }
 
-.channel-btn:hover {
-  background: #ffffff;
-  border-color: #cbd5e1;
+.glass-password-toggle:hover {
+  color: #087f5b;
 }
 
-.channel-btn.active.whatsapp {
-  background: #f0fdf4;
-  border-color: #25d366;
-  color: #15803d;
-}
-
-.channel-btn.active.sms {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #1d4ed8;
-}
-
-.channel-btn.active.email {
-  background: #f0fdfa;
-  border-color: #0d9488;
-  color: #0f766e;
-}
-
-.clean-row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-/* BOUTON D'ACTION PRINCIPAL */
-.clean-submit-btn {
+/* BOUTON PRINCIPAL SE CONNECTER */
+.glass-primary-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -312,63 +254,142 @@
   background: #087f5b;
   color: #ffffff;
   border: none;
-  padding: 13px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 4px;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 6px 18px rgba(8, 127, 91, 0.25);
+  margin-top: 6px;
 }
 
-.clean-submit-btn:hover {
+.glass-primary-btn:hover {
   background: #066649;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(8, 127, 91, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(8, 127, 91, 0.35);
 }
 
-.clean-submit-btn:disabled {
+.glass-primary-btn:active {
+  transform: translateY(0);
+}
+
+.glass-primary-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-/* ÉTAPE 2 : CARTE RÉCAPITULATIVE & CASES OTP */
-.otp-summary-card {
+/* LIENS BAS DE PAGE */
+.glass-links-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.glass-text-link {
+  background: none;
+  border: none;
+  color: #087f5b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.glass-text-link:hover {
+  text-decoration: underline;
+}
+
+.glass-register-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.glass-highlight-link {
+  background: none;
+  border: none;
+  color: #087f5b;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* SÉLECTEUR DE CANAUX */
+.glass-channels-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.glass-chan-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.glass-chan-card:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.glass-chan-card.active-wa {
+  background: #f0fdf4;
+  border-color: #25d366;
+  color: #15803d;
+}
+
+.glass-chan-card.active-sms {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.glass-chan-card.active-mail {
+  background: #f0fdfa;
+  border-color: #0d9488;
+  color: #0f766e;
+}
+
+.glass-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* RECAPITULATIF OTP & GRILLE DE 6 CHIFFRES */
+.glass-recap-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 10px 14px;
-}
-
-.summary-text {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-}
-
-.summary-text small {
-  color: #64748b;
-}
-
-.summary-text strong {
-  color: #0f172a;
-}
-
-.channel-chip {
-  background: #e2e8f0;
-  font-size: 9px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
   color: #475569;
 }
 
-.summary-edit-btn {
+.recap-btn {
   background: none;
   border: none;
   color: #087f5b;
@@ -377,19 +398,17 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 2px;
 }
 
-.clean-otp-grid {
+.glass-otp-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 8px;
-  margin-top: 4px;
 }
 
-.clean-otp-box {
+.glass-otp-digit {
   width: 100%;
-  height: 52px;
+  height: 50px;
   border: 1.5px solid #cbd5e1;
   border-radius: 10px;
   font-size: 20px;
@@ -401,29 +420,33 @@
   transition: all 0.2s ease;
 }
 
-.clean-otp-box:focus {
+.glass-otp-digit:focus {
   border-color: #087f5b;
   box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.12);
 }
 
-.clean-otp-box.filled {
+.glass-otp-digit.filled {
   border-color: #087f5b;
   background: #f0fdf4;
 }
 
-.otp-timer-bar {
+.glass-timer-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11.5px;
-  padding: 4px 2px;
+  font-size: 12px;
+  color: #64748b;
+  padding: 2px;
 }
 
-.timer-text {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #64748b;
+.glass-resend-btn {
+  background: none;
+  border: none;
+  color: #087f5b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .spin {
@@ -435,70 +458,49 @@
   to { transform: rotate(360deg); }
 }
 
-.resend-link {
-  background: none;
-  border: none;
-  color: #087f5b;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-/* =========================================================
-   ÉTAPE 3 : TEST ANTI-ROBOT INTERACTIF (HUMAN CHECK)
-   ========================================================= */
-.captcha-step {
-  align-items: center;
-  text-align: center;
-}
-
-.captcha-card {
-  width: 100%;
+/* CARTE CAPTCHA ANTI-ROBOT */
+.glass-captcha-card {
   background: #f8fafc;
   border: 1.5px solid #e2e8f0;
   border-radius: 16px;
-  padding: 24px 18px;
+  padding: 20px 16px;
+  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.captcha-icon-wrap {
-  width: 60px;
-  height: 60px;
+.captcha-badge-icon {
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 4px;
 }
 
-.captcha-card h3 {
+.glass-captcha-card h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 15px;
   color: #0f172a;
 }
 
-.captcha-card p {
-  margin: 0 0 12px;
-  font-size: 12.5px;
+.glass-captcha-card p {
+  margin: 0 0 8px;
+  font-size: 12px;
   color: #64748b;
-  max-width: 320px;
-  line-height: 1.4;
 }
 
-/* SLIDER DE SÉCURITÉ */
-.slider-track {
+.glass-slider-track {
   position: relative;
   width: 100%;
-  max-width: 320px;
-  height: 48px;
+  max-width: 300px;
+  height: 44px;
   background: #e2e8f0;
-  border-radius: 24px;
+  border-radius: 22px;
   overflow: hidden;
   user-select: none;
   touch-action: none;
@@ -508,126 +510,120 @@
   transition: background 0.3s ease;
 }
 
-.slider-track.verified {
+.glass-slider-track.verified {
   background: #10b981;
 }
 
-.slider-progress {
+.slider-fill-track {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
   background: #a7f3d0;
-  border-radius: 24px 0 0 24px;
+  border-radius: 22px 0 0 22px;
   pointer-events: none;
 }
 
-.slider-thumb {
+.slider-knob-btn {
   position: absolute;
-  top: 4px;
-  width: 40px;
-  height: 40px;
+  top: 3px;
+  width: 38px;
+  height: 38px;
   background: #ffffff;
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   z-index: 2;
-  transition: transform 0.1s ease;
 }
 
-.slider-track.verified .slider-thumb {
+.glass-slider-track.verified .slider-knob-btn {
   background: #059669;
   cursor: default;
 }
 
-.slider-thumb:active {
+.slider-knob-btn:active {
   cursor: grabbing;
 }
 
-.slider-label {
-  font-size: 12px;
+.slider-hint-text {
+  font-size: 11.5px;
   font-weight: 700;
   color: #475569;
   z-index: 1;
   pointer-events: none;
 }
 
-.slider-track.verified .slider-label {
+.glass-slider-track.verified .slider-hint-text {
   color: #ffffff;
 }
 
-.captcha-alt-btn {
+.glass-direct-click-btn {
   background: #f1f5f9;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 9px 12px;
   font-size: 12px;
   font-weight: 600;
   color: #334155;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
   width: 100%;
   justify-content: center;
 }
 
-.captcha-alt-btn:hover {
+.glass-direct-click-btn:hover {
   background: #e2e8f0;
 }
 
-.back-step-btn {
+.glass-bottom-switch {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.glass-back-link {
   background: none;
   border: none;
   color: #64748b;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
 }
 
-.back-step-btn:hover {
-  color: #0f172a;
+.glass-back-link:hover {
+  color: #087f5b;
 }
 
-/* PIED DE PAGE */
-.auth-clean-footer {
+.glass-card-bottom-link {
   margin-top: 20px;
   text-align: center;
-  padding-top: 14px;
-  border-top: 1px solid #f1f5f9;
 }
 
-.clean-back-link {
+.glass-home-link {
   font-size: 12.5px;
   color: #64748b;
   text-decoration: none;
   font-weight: 600;
 }
 
-.clean-back-link:hover {
+.glass-home-link:hover {
   color: #087f5b;
 }
 
 @media (max-width: 480px) {
-  .auth-clean-card {
-    padding: 24px 18px;
+  .glass-auth-box {
+    padding: 28px 20px 24px;
+    border-radius: 20px;
   }
-  .clean-otp-grid {
+  .glass-otp-grid {
     gap: 4px;
   }
-  .clean-otp-box {
+  .glass-otp-digit {
     height: 44px;
     font-size: 18px;
-  }
-  .clean-row-2 {
-    grid-template-columns: 1fr;
   }
 }

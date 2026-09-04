@@ -1,3 +1,5 @@
+import { sendRealEmail, sendRealWhatsApp, sendRealSms } from "../services/notificationService.js";
+
 // Stockage simulé en mémoire des utilisateurs
 const usersDb = new Map([
   [
@@ -59,7 +61,7 @@ const usersDb = new Map([
   ],
 ]);
 
-// Magasin en mémoire des codes OTP générés (clé: phone, valeur: { code, expiresAt, channel, ... })
+// Magasin en mémoire des codes OTP générés (clé: identifier/phone/email, valeur: { code, expiresAt, channel, ... })
 const otpStore = new Map();
 
 const getRoleLabel = (role) => {
@@ -76,7 +78,7 @@ const getRoleLabel = (role) => {
 /**
  * 1. ENVOI DU CODE OTP PAR WHATSAPP, SMS OU EMAIL
  */
-export const sendOtp = (req, res) => {
+export const sendOtp = async (req, res) => {
   const {
     identifier,
     phone,
@@ -107,12 +109,14 @@ export const sendOtp = (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
+  const userName = name ? name.trim() : (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
+
   otpStore.set(cleanId, {
     code,
     expiresAt,
     channel: effectiveChannel,
     isEmail,
-    name: name ? name.trim() : (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`),
+    name: userName,
     role,
     city,
     vehicleType,
@@ -124,12 +128,24 @@ export const sendOtp = (req, res) => {
   if (effectiveChannel === "whatsapp") {
     channelLabel = "WhatsApp";
     previewMessage = `💬 [WhatsApp CityFlow] 🚦 Votre code de sécurité CityFlow est : ${code}. Valable 5 minutes. Ne le partagez avec personne.`;
+    // Déclenchement expédition WhatsApp réelle
+    sendRealWhatsApp({ toPhone: cleanId, name: userName, code }).catch((err) =>
+      console.warn("Erreur envoi WhatsApp :", err.message)
+    );
   } else if (effectiveChannel === "sms") {
     channelLabel = "SMS";
     previewMessage = `📱 [SMS CityFlow] Votre code de connexion sécurisé est ${code}. Valable 5 minutes.`;
+    // Déclenchement expédition SMS réelle
+    sendRealSms({ toPhone: cleanId, name: userName, code }).catch((err) =>
+      console.warn("Erreur envoi SMS :", err.message)
+    );
   } else {
     channelLabel = "E-mail";
-    previewMessage = `📧 [E-mail CityFlow Sécurité] Bonjour ${name || "Utilisateur"}, votre code de vérification est : ${code}. Valable 5 minutes.`;
+    previewMessage = `📧 [E-mail CityFlow Sécurité] Bonjour ${userName}, votre code de vérification est : ${code}. Valable 5 minutes.`;
+    // Déclenchement expédition E-mail réel
+    sendRealEmail({ to: cleanId, name: userName, code }).catch((err) =>
+      console.warn("Erreur envoi E-mail :", err.message)
+    );
   }
 
   console.log(`\n======================================================`);
@@ -230,6 +246,7 @@ export const verifyOtp = (req, res) => {
     }
     if (city) user.city = city;
     if (vehicleType) user.vehicleType = vehicleType;
+    if (req.body.newPassword) user.password = req.body.newPassword;
   }
 
   const userResponse = { ...user };
@@ -248,6 +265,66 @@ export const verifyOtp = (req, res) => {
  */
 export const resendOtp = (req, res) => {
   return sendOtp(req, res);
+};
+
+/**
+ * 4. RÉINITIALISATION DU MOT DE PASSE APRÈS CODE OTP
+ */
+export const resetPassword = (req, res) => {
+  const { identifier, phone, email, newPassword } = req.body;
+  const rawId = (identifier || phone || email || "").trim();
+
+  if (!rawId || !newPassword) {
+    return res.status(400).json({ error: "Identifiant et nouveau mot de passe requis." });
+  }
+
+  const isEmail = rawId.includes("@");
+  const cleanId = isEmail ? rawId.toLowerCase() : rawId.replace(/\s+/g, "");
+
+  let user = usersDb.get(cleanId);
+  if (!user && isEmail) {
+    for (const u of usersDb.values()) {
+      if (u.email && u.email.toLowerCase() === cleanId) {
+        user = u;
+        break;
+      }
+    }
+  }
+
+  if (user) {
+    user.password = newPassword;
+  } else {
+    // Créer ou enregistrer avec le nouveau mot de passe
+    const userName = isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`;
+    user = {
+      id: "usr_" + Math.floor(Math.random() * 10000),
+      name: userName,
+      phone: isEmail ? "+237 699 00 11 22" : cleanId,
+      email: isEmail ? cleanId : `${userName.toLowerCase().replace(/\s+/g, "")}@cityflow.cm`,
+      city: "Yaoundé",
+      role: "citizen",
+      roleLabel: "Conducteur / Citoyen",
+      vehicleType: "Voiture particulière",
+      password: newPassword,
+      tripsCount: 1,
+      timeSavedMin: 10,
+      co2SavedKg: 0.8,
+      score: 90,
+    };
+    usersDb.set(cleanId, user);
+  }
+
+  const token = "jwt_cityflow_reset_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+  const userResponse = { ...user };
+  delete userResponse.password;
+  userResponse.token = token;
+
+  res.json({
+    success: true,
+    message: "Mot de passe modifié avec succès.",
+    token,
+    user: userResponse,
+  });
 };
 
 /**

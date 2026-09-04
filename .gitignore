@@ -1,4 +1,4 @@
-# Node / Frontend
+# Node / Frontend & Backend
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -7,6 +7,8 @@ yarn-error.log*
 dist/
 dist-ssr/
 *.local
+.env
+!.env.example
 
 # Flutter / Dart / Android / iOS
 .dart_tool/

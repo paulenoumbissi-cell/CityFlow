@@ -1,1 +1,176 @@
-[]
+[
+  {
+    "id": "mission_1788531893338",
+    "status": "in_progress",
+    "vehicleType": "ambulance",
+    "vehicleName": "Ambulance SAMU 119",
+    "badge": "Urgence médicale vitale",
+    "color": "#EF4444",
+    "city": "Yaoundé",
+    "corridorId": "yde_corridor_hopital_central",
+    "corridorName": "Corridor Nord ➔ Hôpital Central de Yaoundé",
+    "origin": "Caserne Sapeurs-Pompiers Nlongkak",
+    "destination": "Urgences - Hôpital Central de Yaoundé",
+    "distanceKm": 5.4,
+    "nominalDurationMinutes": 24,
+    "priorityDurationMinutes": 9,
+    "timeSavedMinutes": 15,
+    "startedAt": "2026-09-04T14:24:53.338Z",
+    "speedKmh": 74,
+    "currentStepIndex": 0,
+    "coordinates": [
+      [
+        3.882,
+        11.517
+      ],
+      [
+        3.873,
+        11.518
+      ],
+      [
+        3.864,
+        11.519
+      ],
+      [
+        3.859,
+        11.513
+      ]
+    ],
+    "intersections": [
+      {
+        "id": "int_yde_1",
+        "name": "Carrefour Nlongkak",
+        "position": [
+          3.882,
+          11.517
+        ],
+        "state": "green_wave",
+        "crossTrafficLight": "red"
+      },
+      {
+        "id": "int_yde_2",
+        "name": "Carrefour Warda / Mfoundi",
+        "position": [
+          3.873,
+          11.518
+        ],
+        "state": "pending",
+        "crossTrafficLight": "red"
+      },
+      {
+        "id": "int_yde_3",
+        "name": "Poste Centrale (Bld 20 Mai)",
+        "position": [
+          3.864,
+          11.519
+        ],
+        "state": "pending",
+        "crossTrafficLight": "red"
+      },
+      {
+        "id": "int_yde_4",
+        "name": "Carrefour Hôpital Central",
+        "position": [
+          3.859,
+          11.513
+        ],
+        "state": "pending",
+        "crossTrafficLight": "red"
+      }
+    ],
+    "broadcastAlert": {
+      "active": true,
+      "title": "🚨 VÉHICULE D'URGENCE EN APPROCHE (AMBULANCE SAMU 119)",
+      "message": "Corridor prioritaire activé entre Caserne Sapeurs-Pompiers Nlongkak et Urgences - Hôpital Central de Yaoundé. Automobilistes : serrez à droite et libérez l'axe central.",
+      "advisedAction": "Serrer à droite et maintenir les intersections dégagées",
+      "zoneRadiusKm": 2.5
+    }
+  },
+  {
+    "id": "mission_1788531882771",
+    "status": "completed",
+    "vehicleType": "ambulance",
+    "vehicleName": "Ambulance SAMU 119",
+    "badge": "Urgence médicale vitale",
+    "color": "#EF4444",
+    "city": "Yaoundé",
+    "corridorId": "yde_corridor_hopital_central",
+    "corridorName": "Corridor Nord ➔ Hôpital Central de Yaoundé",
+    "origin": "Caserne Sapeurs-Pompiers Nlongkak",
+    "destination": "Urgences - Hôpital Central de Yaoundé",
+    "distanceKm": 5.4,
+    "nominalDurationMinutes": 24,
+    "priorityDurationMinutes": 9,
+    "timeSavedMinutes": 15,
+    "startedAt": "2026-09-04T14:24:42.771Z",
+    "speedKmh": 74,
+    "currentStepIndex": 3,
+    "coordinates": [
+      [
+        3.882,
+        11.517
+      ],
+      [
+        3.873,
+        11.518
+      ],
+      [
+        3.864,
+        11.519
+      ],
+      [
+        3.859,
+        11.513
+      ]
+    ],
+    "intersections": [
+      {
+        "id": "int_yde_1",
+        "name": "Carrefour Nlongkak",
+        "position": [
+          3.882,
+          11.517
+        ],
+        "state": "cleared",
+        "crossTrafficLight": "red"
+      },
+      {
+        "id": "int_yde_2",
+        "name": "Carrefour Warda / Mfoundi",
+        "position": [
+          3.873,
+          11.518
+        ],
+        "state": "cleared",
+        "crossTrafficLight": "red"
+      },
+      {
+        "id": "int_yde_3",
+        "name": "Poste Centrale (Bld 20 Mai)",
+        "position": [
+          3.864,
+          11.519
+        ],
+        "state": "cleared",
+        "crossTrafficLight": "red"
+      },
+      {
+        "id": "int_yde_4",
+        "name": "Carrefour Hôpital Central",
+        "position": [
+          3.859,
+          11.513
+        ],
+        "state": "cleared",
+        "crossTrafficLight": "red"
+      }
+    ],
+    "broadcastAlert": {
+      "active": false,
+      "title": "🚨 VÉHICULE D'URGENCE EN APPROCHE (AMBULANCE SAMU 119)",
+      "message": "Corridor prioritaire activé entre Caserne Sapeurs-Pompiers Nlongkak et Urgences - Hôpital Central de Yaoundé. Automobilistes : serrez à droite et libérez l'axe central.",
+      "advisedAction": "Serrer à droite et maintenir les intersections dégagées",
+      "zoneRadiusKm": 2.5
+    }
+  }
+]

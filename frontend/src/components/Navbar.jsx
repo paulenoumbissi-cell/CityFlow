@@ -1,5 +1,19 @@
-import { useState, useEffect } from "react";
-import { Menu, X, Bell, MapPin, Siren, User, LogIn, Users, Radio } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { 
+  Menu, 
+  X, 
+  Bell, 
+  MapPin, 
+  Siren, 
+  LogIn, 
+  Users, 
+  Settings, 
+  ChevronDown, 
+  Map, 
+  Route, 
+  Sparkles, 
+  Info
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -11,7 +25,9 @@ function Navbar() {
   const { selectedCity, setSelectedCity } = useCity();
   const { user, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobilityDropdownOpen, setMobilityDropdownOpen] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected");
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     wsService.connect();
@@ -25,11 +41,27 @@ function Navbar() {
     }
   }, [selectedCity]);
 
-  const closeMenu = () => setMobileMenuOpen(false);
+  // Fermer le dropdown lors d'un clic extérieur
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setMobilityDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const closeAllMenus = () => {
+    setMobileMenuOpen(false);
+    setMobilityDropdownOpen(false);
+  };
+
+  const isMobilityActive = ["/carte", "/routes", "/prediction"].includes(location.pathname);
 
   return (
     <header className="navbar">
-      {/* GAUCHE */}
+      {/* GAUCHE : LOGO & MENU MOBILE */}
       <div className="navbar-left">
         <button
           className="menu-button"
@@ -39,7 +71,7 @@ function Navbar() {
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        <Link to="/" className="brand" onClick={closeMenu}>
+        <Link to="/" className="brand" onClick={closeAllMenus}>
           <img
             src="/logo.png"
             alt="Logo CityFlow"
@@ -52,75 +84,117 @@ function Navbar() {
         </Link>
       </div>
 
-      {/* NAVIGATION CENTRALE */}
+      {/* NAVIGATION CENTRALE ERGONOMIQUE & REGROUPÉE */}
       <nav className={`desktop-nav ${mobileMenuOpen ? "mobile-open" : ""}`}>
+        {/* ACCUEIL */}
         <Link
           to="/"
-          className={location.pathname === "/" ? "active" : ""}
-          onClick={closeMenu}
+          className={`nav-link ${location.pathname === "/" ? "active" : ""}`}
+          onClick={closeAllMenus}
         >
           Accueil
         </Link>
 
-        <Link
-          to="/carte"
-          className={location.pathname === "/carte" ? "active" : ""}
-          onClick={closeMenu}
+        {/* GROUPE 1 : MOBILITÉ & TRAFIC (MENU DÉROULANT ERGONOMIQUE) */}
+        <div 
+          className={`nav-dropdown-wrapper ${isMobilityActive ? "active-parent" : ""}`}
+          ref={dropdownRef}
+          onMouseEnter={() => setMobilityDropdownOpen(true)}
+          onMouseLeave={() => setMobilityDropdownOpen(false)}
         >
-          Carte
-        </Link>
+          <button 
+            type="button"
+            className={`nav-dropdown-trigger ${isMobilityActive ? "active" : ""}`}
+            onClick={() => setMobilityDropdownOpen(!mobilityDropdownOpen)}
+            aria-expanded={mobilityDropdownOpen}
+          >
+            <span>Mobilité & Trafic</span>
+            <ChevronDown size={15} className={`dropdown-chevron ${mobilityDropdownOpen ? "open" : ""}`} />
+          </button>
 
-        <Link
-          to="/routes"
-          className={location.pathname === "/routes" ? "active" : ""}
-          onClick={closeMenu}
-        >
-          Itinéraires
-        </Link>
+          {mobilityDropdownOpen && (
+            <div className="nav-dropdown-menu">
+              <Link
+                to="/carte"
+                className={`dropdown-item ${location.pathname === "/carte" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon map-icon">
+                  <Map size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Carte Interactive</strong>
+                  <span>Flux temps réel, carrefours & caméras</span>
+                </div>
+              </Link>
 
-        <Link
-          to="/prediction"
-          className={location.pathname === "/prediction" ? "active" : ""}
-          onClick={closeMenu}
-        >
-          Prédiction
-        </Link>
+              <Link
+                to="/routes"
+                className={`dropdown-item ${location.pathname === "/routes" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon route-icon">
+                  <Route size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Itinéraires & GPS</strong>
+                  <span>Navigation intelligente & guidage vocal</span>
+                </div>
+              </Link>
 
+              <Link
+                to="/prediction"
+                className={`dropdown-item ${location.pathname === "/prediction" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon ai-icon">
+                  <Sparkles size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Prédictions IA</strong>
+                  <span>Anticipation des bouchons & météo</span>
+                </div>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* GROUPE 2 : COMMUNAUTÉ & CITOYENS */}
         <Link
           to="/communaute"
-          className={location.pathname === "/communaute" ? "active" : ""}
-          onClick={closeMenu}
+          className={`nav-link ${location.pathname === "/communaute" ? "active" : ""}`}
+          onClick={closeAllMenus}
         >
-          Communauté
+          <span className="nav-link-with-icon">
+            <Users size={16} />
+            Communauté
+          </span>
         </Link>
 
+        {/* GROUPE 3 : COULOIR D'URGENCE (BOUTON DISTINCTIF ERGONOMIQUE) */}
         <Link
           to="/urgences"
           className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
-          onClick={closeMenu}
+          onClick={closeAllMenus}
         >
           <Siren size={16} />
           Urgences
         </Link>
 
-        <Link
-          to="/parametres"
-          className={location.pathname === "/parametres" ? "active" : ""}
-          onClick={closeMenu}
-        >
-          Paramètres
-        </Link>
-
-        <Link
-          to="/a-propos"
-          className={location.pathname === "/a-propos" ? "active" : ""}
-          onClick={closeMenu}
-        >
-          À propos
-        </Link>
+        {/* LIENS COMPLÉMENTAIRES MOBILES */}
+        <div className="mobile-only-links">
+          <Link
+            to="/a-propos"
+            className={`nav-link ${location.pathname === "/a-propos" ? "active" : ""}`}
+            onClick={closeAllMenus}
+          >
+            <Info size={16} />
+            À propos
+          </Link>
+        </div>
       </nav>
 
-      {/* DROITE */}
+      {/* DROITE : OUTILS, LIVE WS, VILLE, NOTIFICATIONS, PARAMÈTRES (PETITE ICÔNE) & PROFIL */}
       <div className="navbar-right">
         {/* INDICATEUR LIVE WEBSOCKET */}
         <div
@@ -156,15 +230,27 @@ function Navbar() {
           </select>
         </div>
 
-        {/* NOTIFICATIONS */}
+        {/* NOTIFICATIONS (ICÔNE) */}
         <Link
           to="/notifications"
-          className={`notification-button ${location.pathname === "/notifications" ? "active" : ""}`}
+          className={`icon-nav-btn ${location.pathname === "/notifications" ? "active" : ""}`}
           aria-label="Notifications"
-          onClick={closeMenu}
+          title="Notifications & Alertes"
+          onClick={closeAllMenus}
         >
-          <Bell size={21} />
+          <Bell size={20} />
           <span className="notification-dot"></span>
+        </Link>
+
+        {/* PARAMÈTRES (PETITE ICÔNE ERGONOMIQUE) */}
+        <Link
+          to="/parametres"
+          className={`icon-nav-btn ${location.pathname === "/parametres" ? "active" : ""}`}
+          aria-label="Paramètres"
+          title="Paramètres de l'application"
+          onClick={closeAllMenus}
+        >
+          <Settings size={20} className="settings-gear-icon" />
         </Link>
 
         {/* PROFIL OU CONNEXION */}
@@ -172,8 +258,9 @@ function Navbar() {
           <Link
             to="/profil"
             className={`profile-button ${location.pathname === "/profil" ? "active" : ""}`}
-            aria-label="Profil"
-            onClick={closeMenu}
+            aria-label="Profil utilisateur"
+            title={`Connecté : ${user.name || user.email || "Utilisateur"}`}
+            onClick={closeAllMenus}
           >
             <span>{user.initials || "PN"}</span>
           </Link>
@@ -181,7 +268,7 @@ function Navbar() {
           <Link
             to="/connexion"
             className="login-navbar-btn"
-            onClick={closeMenu}
+            onClick={closeAllMenus}
           >
             <LogIn size={16} />
             <span>Connexion</span>

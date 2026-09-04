@@ -1,4 +1,4 @@
-/* Styles pour le Calculateur d'Itinéraires, Suggestions Google Maps & Tracé Trafic Yango */
+/* Styles pour le Calculateur d'Itinéraires, Suggestions Intelligentes & Tracé de Trafic en Direct */
 
 .routes-page {
   width: 100%;
@@ -554,7 +554,7 @@
 }
 
 /* ===================================================
-   YANGO TRAFFIC SEGMENTS PREVIEW
+   TRAFFIC SEGMENTS PREVIEW
 =================================================== */
 .traffic-segments-bar-preview {
   display: flex;
@@ -572,7 +572,7 @@
   transition: all 0.2s ease;
 }
 
-.map-traffic-legend-yango {
+.map-traffic-legend {
   position: absolute;
   top: 14px;
   right: 14px;

@@ -358,7 +358,7 @@ export default function RoutesPage() {
         <div>
           <div className="routes-eyebrow">
             <Sparkles size={16} />
-            <span>NAVIGATION SMART CITY & TRACÉ DE CONGESTION YANGO</span>
+            <span>NAVIGATION SMART CITY & TRACÉ DE TRAFIC EN DIRECT</span>
           </div>
           <h1>Calculateur d'Itinéraires & Guidage GPS</h1>
           <p>
@@ -661,7 +661,7 @@ export default function RoutesPage() {
           <div className="routes-list-header">
             <h3>{routes.length} Itinéraires suggérés</h3>
             <span className="traffic-live-tag" style={{ background: "#e8f5e9", color: "#00875A", border: "1px solid #a7f3d0" }}>
-              ● Segments Trafic Yango en direct
+              ● Trafic en temps réel
             </span>
           </div>
 
@@ -696,7 +696,7 @@ export default function RoutesPage() {
 
                 <h4>{route.title}</h4>
 
-                {/* BARRE DE SEGMENTS DE TRAFIC (YANGO PREVIEW) */}
+                {/* BARRE DE SEGMENTS DE TRAFIC EN TEMPS RÉEL */}
                 {route.trafficSegments && route.trafficSegments.length > 0 && (
                   <div className="traffic-segments-bar-preview">
                     {route.trafficSegments.map((seg, sIdx) => (
@@ -758,7 +758,7 @@ export default function RoutesPage() {
           )}
         </div>
 
-        {/* COLONNE DROITE : CARTE LEAFLET TACTIQUE STYLE YANGO */}
+        {/* COLONNE DROITE : CARTE LEAFLET TACTIQUE */}
         <div className="routes-map-col">
           <div className="routes-map-wrapper" style={{ position: "relative" }}>
             <MapContainer
@@ -814,7 +814,7 @@ export default function RoutesPage() {
                   </React.Fragment>
                 ))}
 
-              {/* TRACÉ DE L'ITINÉRAIRE SÉLECTIONNÉ AVEC SEGMENTS DE TRAFIC YANGO (Vert, Orange, Rouge) */}
+              {/* TRACÉ DE L'ITINÉRAIRE SÉLECTIONNÉ AVEC SEGMENTS DE TRAFIC (Vert, Orange, Rouge) */}
               {selectedRoute && (
                 <>
                   {/* FOND DE LIGNE BRILLANTE */}
@@ -910,8 +910,8 @@ export default function RoutesPage() {
               )}
             </MapContainer>
 
-            {/* LÉGENDE DU TRAFIC YANGO SUR CARTE */}
-            <div className="map-traffic-legend-yango">
+            {/* LÉGENDE DU TRAFIC SUR CARTE */}
+            <div className="map-traffic-legend">
               <div className="leg-item">
                 <span className="dot green"></span>
                 <span>Fluide</span>

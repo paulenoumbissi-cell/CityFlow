@@ -1,4 +1,4 @@
-// Contrôleur de Calcul d'Itinéraires Multi-Critères, Éco-Mobilité, Segments Trafic Yango & OSRM Réel
+// Contrôleur de Calcul d'Itinéraires Multi-Critères, Éco-Mobilité, Segments de Trafic en Direct & OSRM Réel
 
 export const CITY_LANDMARKS = {
   "Yaoundé": {
@@ -143,7 +143,7 @@ function generatePolyline(start, end, variant = 0) {
   return points;
 }
 
-// Découpeur d'itinéraire en segments de trafic style YANGO / GOOGLE MAPS TRAFFIC
+// Découpeur d'itinéraire en segments de congestion et trafic en temps réel
 function buildTrafficSegments(coordinates, congestionMultiplier = 1.0) {
   if (!coordinates || coordinates.length < 2) return [];
 
@@ -314,7 +314,7 @@ export const calculateRoute = async (req, res) => {
     const secureDuration = Math.round(fastestDuration * 1.25 + 3);
     const secureCoords = generatePolyline(startCoords, endCoords, 2);
 
-    // Segments de congestion Yango
+    // Segments de congestion et état du trafic
     const fastestTrafficSegments = buildTrafficSegments(fastestCoords, 1.35);
     const ecoTrafficSegments = buildTrafficSegments(ecoCoords, 0.9);
     const secureTrafficSegments = buildTrafficSegments(secureCoords, 1.1);

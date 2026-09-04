@@ -171,7 +171,19 @@ function Navbar() {
           </span>
         </Link>
 
-        {/* GROUPE 3 : COULOIR D'URGENCE (BOUTON DISTINCTIF ERGONOMIQUE) */}
+        {/* GROUPE 3 : À PROPOS */}
+        <Link
+          to="/a-propos"
+          className={`nav-link ${location.pathname === "/a-propos" ? "active" : ""}`}
+          onClick={closeAllMenus}
+        >
+          <span className="nav-link-with-icon">
+            <Info size={16} />
+            À propos
+          </span>
+        </Link>
+
+        {/* GROUPE 4 : COULOIR D'URGENCE (BOUTON DISTINCTIF ERGONOMIQUE) */}
         <Link
           to="/urgences"
           className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
@@ -180,18 +192,6 @@ function Navbar() {
           <Siren size={16} />
           Urgences
         </Link>
-
-        {/* LIENS COMPLÉMENTAIRES MOBILES */}
-        <div className="mobile-only-links">
-          <Link
-            to="/a-propos"
-            className={`nav-link ${location.pathname === "/a-propos" ? "active" : ""}`}
-            onClick={closeAllMenus}
-          >
-            <Info size={16} />
-            À propos
-          </Link>
-        </div>
       </nav>
 
       {/* DROITE : OUTILS, LIVE WS, VILLE, NOTIFICATIONS, PARAMÈTRES (PETITE ICÔNE) & PROFIL */}

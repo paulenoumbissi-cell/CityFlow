@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { loginUser, registerUser, updateUserProfile } from "../services/api";
+import { loginUser, registerUser, updateUserProfile, sendOtp, verifyOtp, resendOtp } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -18,6 +18,9 @@ export function AuthProvider({ children }) {
       id: "usr_001",
       name: "Paule Noumbissi",
       email: "conducteur@cityflow.cm",
+      phone: "+237 699 00 11 22",
+      phoneVerified: true,
+      authChannel: "whatsapp",
       role: "citizen",
       roleLabel: "Conducteur / Citoyen",
       city: "Yaoundé",
@@ -43,7 +46,76 @@ export function AuthProvider({ children }) {
     }
   }, [user]);
 
-  // Connexion via le backend
+  // Envoi du code OTP via SMS ou WhatsApp
+  const sendOtpCode = async ({ phone, channel = "whatsapp", name, role, city, vehicleType }) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await sendOtp({ phone, channel, name, role, city, vehicleType });
+      setIsLoading(false);
+      return res;
+    } catch (err) {
+      setError(err.message || "Erreur d'envoi du code OTP");
+      setIsLoading(false);
+      throw err;
+    }
+  };
+
+  // Validation du code OTP
+  const verifyOtpCode = async ({ phone, code, channel, name, role, city, vehicleType }) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await verifyOtp({ phone, code, channel, name, role, city, vehicleType });
+      if (res && res.user) {
+        const names = (res.user.name || "Utilisateur").trim();
+        const parts = names.split(" ");
+        const initials = parts.length > 1
+          ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+          : names.slice(0, 2).toUpperCase();
+
+        const fullUser = {
+          ...res.user,
+          phone: res.user.phone || phone,
+          phoneVerified: true,
+          authChannel: channel || "whatsapp",
+          initials,
+          isAuthenticated: true,
+          token: res.token || res.user.token,
+          tripsCount: user?.tripsCount || 1,
+          timeSavedMin: user?.timeSavedMin || 15,
+          co2SavedKg: user?.co2SavedKg || 1.2,
+          score: user?.score || 95,
+        };
+
+        setUser(fullUser);
+        setIsLoading(false);
+        return { success: true, user: fullUser, message: res.message };
+      }
+      throw new Error("Réponse serveur invalide");
+    } catch (err) {
+      setError(err.message || "Erreur de validation du code OTP");
+      setIsLoading(false);
+      throw err;
+    }
+  };
+
+  // Renvoi du code OTP
+  const resendOtpCode = async ({ phone, channel }) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await resendOtp({ phone, channel });
+      setIsLoading(false);
+      return res;
+    } catch (err) {
+      setError(err.message || "Erreur de renvoi du code");
+      setIsLoading(false);
+      throw err;
+    }
+  };
+
+  // Connexion email classique via le backend
   const login = async (email, password) => {
     setIsLoading(true);
     setError(null);
@@ -75,7 +147,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Inscription via le backend
+  // Inscription email via le backend
   const register = async (userData) => {
     setIsLoading(true);
     setError(null);
@@ -113,6 +185,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await updateUserProfile({
         email: user?.email,
+        phone: user?.phone,
         ...profileData,
       });
       if (res && res.user) {
@@ -144,6 +217,9 @@ export function AuthProvider({ children }) {
         roleLabel: user?.roleLabel || "Conducteur / Citoyen",
         isLoading,
         error,
+        sendOtpCode,
+        verifyOtpCode,
+        resendOtpCode,
         login,
         register,
         updateProfile,
@@ -165,3 +241,4 @@ export function useAuth() {
 }
 
 export default AuthContext;
+

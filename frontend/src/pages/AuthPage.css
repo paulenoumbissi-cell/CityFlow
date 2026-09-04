@@ -1,20 +1,221 @@
 .auth-page {
   min-height: calc(100vh - 80px);
-  background: #f5f8f7;
+  background: radial-gradient(circle at 50% 0%, #e8f5e9 0%, #f4f7f6 60%, #eef2f0 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px 60px;
+  position: relative;
+}
+
+/* FLOATING INCOMING NOTIFICATION TOAST (WHATSAPP / SMS) */
+.incoming-message-toast {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  width: calc(100% - 48px);
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  animation: slideDownToast 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 2px solid transparent;
+}
+
+@keyframes slideDownToast {
+  from {
+    opacity: 0;
+    transform: translateY(-25px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.incoming-message-toast.whatsapp {
+  border-color: #25d366;
+}
+
+.incoming-message-toast.sms {
+  border-color: #3b82f6;
+}
+
+.toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.toast-sender {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.channel-icon-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  color: white;
 }
 
+.channel-icon-circle.whatsapp {
+  background: #25d366;
+}
+
+.channel-icon-circle.sms {
+  background: #3b82f6;
+}
+
+.toast-sender strong {
+  display: block;
+  font-size: 13px;
+  color: #172033;
+}
+
+.toast-sender span {
+  font-size: 11px;
+  color: #687386;
+}
+
+.live-pill {
+  font-size: 10px;
+  font-weight: 800;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+.toast-body {
+  background: #f8faf9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px dashed #d1d5db;
+}
+
+.toast-text {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #374151;
+  font-family: monospace;
+}
+
+.toast-code-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.code-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.code-val {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #087f5b;
+  font-family: monospace;
+}
+
+.toast-actions {
+  display: flex;
+}
+
+.toast-autofill-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #00875a;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toast-autofill-btn:hover {
+  background: #066649;
+  transform: translateY(-1px);
+}
+
+/* MAIN AUTH CARD */
 .auth-card {
   background: white;
   width: 100%;
-  max-width: 480px;
-  border-radius: 20px;
+  max-width: 520px;
+  border-radius: 24px;
   border: 1px solid #e6ebe9;
-  padding: 36px 32px;
-  box-shadow: 0 10px 30px rgba(23, 32, 51, 0.05);
+  padding: 32px 30px;
+  box-shadow: 0 16px 40px rgba(23, 32, 51, 0.07);
+}
+
+/* METHOD SWITCHER (PHONE vs EMAIL) */
+.auth-method-switcher {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 8px;
+  background: #f0f4f2;
+  border-radius: 14px;
+  padding: 5px;
+  margin-bottom: 22px;
+}
+
+.method-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #687386;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.method-pill.active {
+  background: #ffffff;
+  color: #087f5b;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.recommended-badge {
+  font-size: 9px;
+  font-weight: 800;
+  background: #dcfce7;
+  color: #15803d;
+  padding: 2px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
 }
 
 .auth-badge {
@@ -22,19 +223,22 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.5px;
+  display: inline-block;
+  margin-bottom: 4px;
 }
 
 .auth-header h1 {
-  margin: 8px 0 6px;
+  margin: 4px 0 6px;
   color: #172033;
-  font-size: 26px;
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .auth-header p {
   margin: 0;
   color: #687386;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 
 /* DEMO ACCOUNTS QUICK SWITCH */
@@ -43,14 +247,15 @@
   border: 1px solid #bbf7d0;
   border-radius: 12px;
   padding: 12px 14px;
-  margin-top: 18px;
+  margin-top: 16px;
+  margin-bottom: 8px;
 }
 
 .demo-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   color: #064e3b;
   margin-bottom: 8px;
@@ -65,13 +270,12 @@
 .demo-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 10px;
+  padding: 8px 12px;
   background: white;
   border: 1px solid #dcfce7;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 12px;
-  font-weight: 600;
   color: #1e293b;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -91,6 +295,295 @@
 
 .demo-chip.selected svg {
   color: white !important;
+}
+
+.demo-chip.selected small {
+  color: #d1fae5;
+}
+
+.demo-chip-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.demo-chip-text strong {
+  font-size: 12.5px;
+}
+
+.demo-chip-text small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* CHANNEL SELECTOR (WHATSAPP vs SMS) */
+.channel-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.channel-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  position: relative;
+}
+
+.channel-option:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.channel-option.whatsapp.selected {
+  background: #f0fdf4;
+  border-color: #25d366;
+  box-shadow: 0 2px 10px rgba(37, 211, 102, 0.15);
+}
+
+.channel-option.sms.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.15);
+}
+
+.channel-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.channel-option.whatsapp.selected .channel-icon-wrap {
+  background: #25d366;
+  color: white;
+}
+
+.channel-option.sms.selected .channel-icon-wrap {
+  background: #3b82f6;
+  color: white;
+}
+
+.channel-desc strong {
+  display: block;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.channel-desc span {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.channel-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #15803d;
+}
+
+.channel-option.sms .channel-check {
+  color: #2563eb;
+}
+
+/* PHONE INPUT GROUP */
+.label-with-badge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.operator-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+}
+
+.phone-input-group {
+  display: flex;
+  align-items: stretch;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.phone-input-group:focus-within {
+  border-color: #087f5b;
+  box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.12);
+}
+
+.country-prefix {
+  background: #f1f5f9;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  border-right: 1px solid #e2e8f0;
+  user-select: none;
+}
+
+.phone-field {
+  flex: 1;
+  border: none !important;
+  outline: none !important;
+  padding: 12px 14px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* STEP 2 : OTP VERIFICATION BOX */
+.otp-step-box {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 10px;
+}
+
+.otp-target-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.otp-back-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #087f5b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.otp-target-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.otp-target-info strong {
+  color: #0f172a;
+}
+
+.target-channel-badge {
+  background: #dcfce7;
+  color: #166534;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.otp-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.otp-digit-input {
+  width: 100%;
+  height: 58px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: 800;
+  text-align: center;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.otp-digit-input:focus {
+  border-color: #00875a;
+  box-shadow: 0 0 0 3px rgba(0, 135, 90, 0.15);
+  transform: translateY(-2px);
+}
+
+.otp-digit-input.filled {
+  border-color: #00875a;
+  background: #f0fdf4;
+}
+
+.otp-timer-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.timer-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.spinning {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.resend-otp-btn {
+  background: none;
+  border: none;
+  color: #087f5b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.resend-otp-btn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 /* ALERTS */
@@ -123,29 +616,20 @@
   background: #f0f4f2;
   border-radius: 12px;
   padding: 4px;
-  margin: 24px 0;
+  margin: 18px 0;
 }
 
 .auth-tab {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 10px 0;
+  padding: 9px 0;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #687386;
   cursor: pointer;
-  user-select: none;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.auth-tab:hover {
-  color: #087f5b;
-}
-
-.auth-tab:active {
-  transform: scale(0.96);
+  transition: all 0.2s ease;
 }
 
 .auth-tab.active {
@@ -158,7 +642,8 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
+  margin-top: 14px;
 }
 
 .form-group {
@@ -168,22 +653,9 @@
 }
 
 .form-group label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #172033;
-}
-
-.password-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.forgot-link {
-  font-size: 12px;
-  color: #087f5b;
-  text-decoration: none;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .input-wrapper {
@@ -196,24 +668,19 @@
   position: absolute;
   left: 14px;
   color: #8c97a8;
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.input-wrapper input:focus + .input-icon,
-.input-wrapper:focus-within .input-icon {
-  color: #087f5b;
-  transform: scale(1.15);
+  pointer-events: none;
 }
 
 .input-wrapper input,
 .input-wrapper select {
   width: 100%;
-  padding: 12px 14px 12px 42px;
-  border: 1px solid #e6ebe9;
+  padding: 11px 14px 11px 42px;
+  border: 1px solid #cbd5e1;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13.5px;
   color: #172033;
   outline: none;
+  background: #ffffff;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -233,16 +700,10 @@
   display: flex;
   align-items: center;
   padding: 4px;
-  transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.toggle-password:hover {
-  color: #087f5b;
-  transform: scale(1.15);
 }
 
 .auth-submit-btn {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -250,55 +711,60 @@
   background: #087f5b;
   color: white;
   border: none;
-  padding: 14px;
+  padding: 13px;
   border-radius: 12px;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
   cursor: pointer;
-  user-select: none;
-  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
   box-shadow: 0 4px 14px rgba(8, 127, 91, 0.25);
 }
 
 .auth-submit-btn:hover {
   background: #066649;
-  transform: translateY(-2px) scale(1.02);
+  transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(8, 127, 91, 0.35);
 }
 
-.auth-submit-btn:active {
-  transform: translateY(1px) scale(0.96) !important;
+.auth-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* FOOTER */
 .auth-footer {
-  margin-top: 24px;
+  margin-top: 22px;
   text-align: center;
   border-top: 1px solid #edf0ef;
-  padding-top: 20px;
-}
-
-.auth-footer p {
-  margin: 0 0 12px;
-  font-size: 13px;
-  color: #687386;
-}
-
-.switch-mode-btn {
-  background: none;
-  border: none;
-  color: #087f5b;
-  font-weight: 700;
-  cursor: pointer;
-  margin-left: 5px;
+  padding-top: 16px;
 }
 
 .back-home-link {
   font-size: 13px;
   color: #8c97a8;
   text-decoration: none;
+  font-weight: 600;
 }
 
 .back-home-link:hover {
   color: #172033;
+}
+
+@media (max-width: 600px) {
+  .incoming-message-toast {
+    position: static;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  .otp-inputs-grid {
+    gap: 4px;
+  }
+  .otp-digit-input {
+    height: 48px;
+    font-size: 20px;
+  }
+  .form-row-2 {
+    grid-template-columns: 1fr;
+  }
 }

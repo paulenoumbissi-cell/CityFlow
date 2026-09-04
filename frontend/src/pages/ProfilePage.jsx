@@ -6,6 +6,9 @@ import {
   Clock,
   Settings,
   Mail,
+  Phone,
+  MessageSquare,
+  Smartphone,
   CalendarDays,
   ChevronRight,
   LogOut,
@@ -29,6 +32,7 @@ function ProfilePage() {
 
   const [editData, setEditData] = useState({
     name: user?.name || "",
+    phone: user?.phone || "+237 699 00 11 22",
     city: user?.city || "Yaoundé",
     role: user?.role || "citizen",
     vehicleType: user?.vehicleType || "Voiture particulière",
@@ -179,6 +183,17 @@ function ProfilePage() {
               </div>
 
               <div>
+                <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "6px" }}>Numéro de téléphone</label>
+                <input
+                  type="text"
+                  value={editData.phone}
+                  onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                  placeholder="+237 699 00 11 22"
+                />
+              </div>
+
+              <div>
                 <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "6px" }}>Rôle / Fonction</label>
                 <select
                   value={editData.role}
@@ -254,9 +269,17 @@ function ProfilePage() {
                 <span style={{ fontSize: "12px", color: "#64748b" }}>• Transport : <strong>{user.vehicleType || "Voiture"}</strong></span>
               </div>
 
-              <div className="profile-location">
-                <MapPin size={15} />
-                {user.city || "Yaoundé"}, Cameroun
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "13px", color: "#475569", marginTop: "4px" }}>
+                <div className="profile-location" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <MapPin size={15} color="#087f5b" />
+                  {user.city || "Yaoundé"}, Cameroun
+                </div>
+                {user.phone && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <Phone size={15} color="#087f5b" />
+                    <strong>{user.phone}</strong>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -306,10 +329,23 @@ function ProfilePage() {
 
             <div className="profile-info-list">
               <div className="info-row">
+                <Phone size={16} color="#087f5b" />
+                <div>
+                  <small>Numéro de mobile vérifié</small>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <strong>{user.phone || "+237 699 00 11 22"}</strong>
+                    <span style={{ fontSize: "11px", fontWeight: "700", background: user.authChannel === "whatsapp" ? "#dcfce7" : "#eff6ff", color: user.authChannel === "whatsapp" ? "#15803d" : "#1d4ed8", padding: "2px 8px", borderRadius: "10px" }}>
+                      {user.authChannel === "whatsapp" ? "💬 Vérifié WhatsApp" : "📱 Vérifié SMS"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="info-row">
                 <Mail size={16} />
                 <div>
                   <small>Adresse e-mail</small>
-                  <strong>{user.email}</strong>
+                  <strong>{user.email || `${(user.phone || "user").replace(/[^0-9]/g, "")}@cityflow.cm`}</strong>
                 </div>
               </div>
 

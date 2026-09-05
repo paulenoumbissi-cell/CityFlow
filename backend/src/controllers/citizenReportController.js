@@ -3,52 +3,95 @@ import dbService from "../services/dbService.js";
 
 // Contrôleur de signalement citoyen collaboratif & système de récompenses / gamification avec persistance
 
-// Catalogue de récompenses partenaires
-const REWARDS_CATALOG = [
+// Formules d'abonnement CityFlow Premium
+export const SUBSCRIPTION_PLANS = [
   {
-    id: "reward_parking_1h",
-    title: "1 Heure de Stationnement Offerte",
-    partner: "Vinci & Parkings Municipaux",
-    category: "parking",
-    costPoints: 150,
-    icon: "🅿️",
-    description: "Valable dans tous les parkings souterrains et en voirie partenaires.",
+    id: "plan_monthly",
+    name: "Pass Mensuel CityFlow Premium",
+    priceFcfa: 2500,
+    period: "par mois",
+    features: [
+      "Guidage vocal intelligent sans coupure",
+      "Alertes d'anticipation météo & bouchons +1h",
+      "Calcul multi-destinations & éco-trajets illimités",
+      "Statut prioritaire de signalement certifié",
+    ],
   },
   {
-    id: "reward_bike_pass",
-    title: "Pass 24h Vélo / Trottinette Libre-service",
-    partner: "CityBike Express",
-    category: "micromobility",
-    costPoints: 200,
-    icon: "🚲",
-    description: "Trajets illimités de 30 min pendant 24h sur toute la flotte urbaine.",
+    id: "plan_quarterly",
+    name: "Pass Trimestriel Urbain (3 Mois)",
+    priceFcfa: 6500,
+    period: "par trimestre",
+    features: [
+      "Tous les avantages Premium inclus",
+      "Économie directe de 1 000 FCFA",
+      "Rapports personnalisés d'émissions CO₂",
+    ],
   },
   {
-    id: "reward_ev_charge",
-    title: "Recharge Borne Électrique -20%",
-    partner: "EcoCharge Cameroon",
-    category: "energy",
-    costPoints: 250,
-    icon: "⚡",
-    description: "Réduction immédiate sur votre prochaine session de recharge rapide.",
+    id: "plan_annual",
+    name: "Pass Annuel Mobilité Totale (12 Mois)",
+    priceFcfa: 22000,
+    period: "par an",
+    features: [
+      "Tous les avantages Premium en illimité",
+      "Accès prioritaire aux nouvelles fonctionnalités IA",
+      "Badge spécial Citoyen d'Or sur le réseau",
+    ],
   },
+];
+
+// Catalogue des Réductions d'Abonnement déblocables par Points Citoyens
+export const REWARDS_CATALOG = [
   {
-    id: "reward_coffee_break",
-    title: "Café & Pause Détente Offerts",
-    partner: "Station TotalEnergies / Café Urbain",
-    category: "lifestyle",
+    id: "discount_10",
+    title: "Réduction 10% sur l'Abonnement",
+    discountPercent: 10,
     costPoints: 100,
-    icon: "☕",
-    description: "Un bon café chaud ou une boisson fraîche dans les stations partenaires.",
+    badge: "🌱 Débutant",
+    icon: "🥉",
+    description: "Bénéficiez de 10% de remise immédiate sur votre prochain abonnement CityFlow.",
+    savingsEstimate: "250 à 2 200 FCFA d'économie",
   },
   {
-    id: "reward_plant_tree",
-    title: "Planter un Arbre au Nom du Citoyen",
-    partner: "Initiative Forêt Urbaine",
-    category: "ecology",
-    costPoints: 500,
-    icon: "🌳",
-    description: "Un arbre sera planté pour végétaliser les axes routiers majeurs.",
+    id: "discount_25",
+    title: "Réduction 25% sur l'Abonnement",
+    discountPercent: 25,
+    costPoints: 250,
+    badge: "🛡️ Sentinelle",
+    icon: "🥈",
+    description: "25% de remise sur toute formule d'abonnement grâce à votre participation active.",
+    savingsEstimate: "625 à 5 500 FCFA d'économie",
+  },
+  {
+    id: "discount_50",
+    title: "Demi-Tarif — 50% sur l'Abonnement",
+    discountPercent: 50,
+    costPoints: 450,
+    badge: "🗺️ Guide Urbain",
+    icon: "🥇",
+    description: "Ne payez que la moitié de votre abonnement CityFlow pour vos signalements réguliers.",
+    savingsEstimate: "1 250 à 11 000 FCFA d'économie",
+  },
+  {
+    id: "discount_75",
+    title: "Super Réduction 75% sur l'Abonnement",
+    discountPercent: 75,
+    costPoints: 700,
+    badge: "💎 Pilier de la Cité",
+    icon: "⭐",
+    description: "75% de réduction exclusive sur votre abonnement pour votre fidélité exemplaire.",
+    savingsEstimate: "1 875 à 16 500 FCFA d'économie",
+  },
+  {
+    id: "discount_100",
+    title: "100% GRATUIT — 1 Mois Offert",
+    discountPercent: 100,
+    costPoints: 1000,
+    badge: "👑 Héros de la Mobilité",
+    icon: "🏆",
+    description: "Votre abonnement 100% gratuit, totalement financé par vos points de citoyenneté !",
+    savingsEstimate: "2 500 FCFA offerts",
   },
 ];
 
@@ -292,7 +335,7 @@ export const getCitizenProfile = async (req, res) => {
   }
 };
 
-// 5. Obtenir le catalogue des récompenses
+// 5. Obtenir le catalogue des réductions d'abonnement et formules
 export const getRewardsCatalog = async (req, res) => {
   try {
     const profile = await dbService.getProfile();
@@ -300,6 +343,7 @@ export const getRewardsCatalog = async (req, res) => {
     res.json({
       count: REWARDS_CATALOG.length,
       catalog: REWARDS_CATALOG,
+      plans: SUBSCRIPTION_PLANS,
       userPoints,
     });
   } catch (err) {
@@ -308,14 +352,14 @@ export const getRewardsCatalog = async (req, res) => {
   }
 };
 
-// 6. Échanger des points contre une récompense
+// 6. Échanger des points contre une réduction d'abonnement
 export const redeemReward = async (req, res) => {
   try {
     const { rewardId } = req.body;
     const reward = REWARDS_CATALOG.find((r) => r.id === rewardId);
 
     if (!reward) {
-      return res.status(404).json({ error: "Récompense introuvable dans le catalogue" });
+      return res.status(404).json({ error: "Palier de réduction introuvable dans le catalogue" });
     }
 
     const profile = await dbService.getProfile();
@@ -334,15 +378,17 @@ export const redeemReward = async (req, res) => {
     profile.points = currentScore;
     profile.level = computeLevel(currentScore);
 
-    const uniqueCode = `CITY-${reward.category.toUpperCase().slice(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const uniqueCode = `CITYFLOW-PROMO-${reward.discountPercent}PCT-${randomSuffix}`;
 
     const redemption = {
       id: `red_${Date.now()}`,
       catalogId: reward.id,
       title: reward.title,
-      partner: reward.partner,
+      discountPercent: reward.discountPercent,
       code: uniqueCode,
       costPoints: reward.costPoints,
+      savingsEstimate: reward.savingsEstimate,
       redeemedAt: new Date().toISOString(),
       status: "active",
     };
@@ -354,13 +400,14 @@ export const redeemReward = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Félicitations ! Vous avez débloqué "${reward.title}".`,
+      message: `Félicitations ! Vous avez débloqué "${reward.title}" (Code : ${uniqueCode}).`,
       redemption,
       remainingPoints: currentScore,
       level: profile.level,
     });
   } catch (err) {
     console.error("[redeemReward Error]", err);
-    res.status(500).json({ error: "Erreur échange récompense" });
+    res.status(500).json({ error: "Erreur échange réduction" });
   }
+};
 };

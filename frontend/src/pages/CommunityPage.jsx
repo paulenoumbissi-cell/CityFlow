@@ -19,6 +19,13 @@ import {
   Ticket,
   ChevronRight,
   TrendingUp,
+  Percent,
+  Check,
+  Copy,
+  Zap,
+  Tag,
+  Shield,
+  Crown,
   X,
 } from "lucide-react";
 import { useCity } from "../context/CityContext";
@@ -49,8 +56,13 @@ export default function CommunityPage() {
   const [reports, setReports] = useState([]);
   const [profile, setProfile] = useState(null);
   const [catalog, setCatalog] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState("all");
+
+  // Simulateur de prix d'abonnement
+  const [selectedPlanId, setSelectedPlanId] = useState("plan_monthly");
+  const [copiedCode, setCopiedCode] = useState(null);
 
   // Modal de nouveau signalement
   const [showModal, setShowModal] = useState(false);
@@ -63,7 +75,7 @@ export default function CommunityPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Modal de récompense débloquée
+  // Modal de réduction d'abonnement débloquée
   const [unlockedReward, setUnlockedReward] = useState(null);
   const [feedbackToast, setFeedbackToast] = useState(null);
 
@@ -95,6 +107,7 @@ export default function CommunityPage() {
       if (catalogRes && catalogRes.ok) {
         const cData = await catalogRes.json();
         setCatalog(cData.catalog || []);
+        if (cData.plans) setPlans(cData.plans);
       }
     } catch (err) {
       console.error("Erreur chargement données communautaires", err);
@@ -203,7 +216,7 @@ export default function CommunityPage() {
     }
   };
 
-  // Rédemption d'une récompense
+  // Rédemption d'une réduction d'abonnement
   const handleRedeem = async (rewardId) => {
     try {
       const res = await fetch(`${API_BASE}/rewards/redeem`, {
@@ -224,17 +237,50 @@ export default function CommunityPage() {
           }));
         }
       } else {
-        showToast(data.error || "Points insuffisants pour cette récompense.");
+        showToast(data.error || "Points insuffisants pour débloquer cette réduction.");
       }
     } catch (err) {
       showToast("Erreur lors de l'échange.");
     }
   };
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCode(text);
+    showToast(`📋 Code "${text}" copié dans le presse-papiers !`);
+    setTimeout(() => setCopiedCode(null), 3000);
+  };
+
   const filteredReports = reports.filter((r) => {
     if (filterCategory !== "all" && r.category !== filterCategory) return false;
     return true;
   });
+
+  const userPoints = profile?.reputationScore || 320;
+
+  // Calcul du taux de réduction maximal actuellement déblocable
+  const currentMaxDiscount = catalog.reduce((max, item) => {
+    if (userPoints >= item.costPoints && item.discountPercent > max) {
+      return item.discountPercent;
+    }
+    return max;
+  }, 0);
+
+  // Prochain palier
+  const nextTier = catalog.find((item) => userPoints < item.costPoints);
+  const pointsToNext = nextTier ? nextTier.costPoints - userPoints : 0;
+
+  // Formule active pour le simulateur
+  const currentPlan = plans.find((p) => p.id === selectedPlanId) || {
+    id: "plan_monthly",
+    name: "Pass Mensuel CityFlow Premium",
+    priceFcfa: 2500,
+    period: "par mois",
+  };
+
+  const simulatedDiscountPercent = currentMaxDiscount > 0 ? currentMaxDiscount : 10;
+  const simulatedSavings = Math.round((currentPlan.priceFcfa * simulatedDiscountPercent) / 100);
+  const simulatedFinalPrice = Math.max(0, currentPlan.priceFcfa - simulatedSavings);
 
   return (
     <main className="community-page">
@@ -251,13 +297,14 @@ export default function CommunityPage() {
         <div className="community-hero-content">
           <div className="hero-tag">
             <Users size={16} />
-            <span>Crowdsourcing Urbain & Mobilité Solidaire</span>
+            <span>Crowdsourcing Urbain & Éco-Mobilité</span>
           </div>
           <h1>
-            Communauté <span>CityFlow</span>
+            Communauté & <span>Récompenses d'Abonnement</span>
           </h1>
           <p>
-            Signalez les aléas de la route en direct, entraidez les autres usagers et débloquez des récompenses éco-mobilité.
+            Signalez les aléas de la route en direct, cumulez des points de citoyenneté et obtenez 
+            <strong> jusqu'à 100% de réduction sur votre abonnement CityFlow Premium</strong>.
           </p>
 
           {/* Quick Stats Bar */}
@@ -267,12 +314,12 @@ export default function CommunityPage() {
               <span className="pill-label">Signalements actifs</span>
             </div>
             <div className="stat-pill">
-              <span className="pill-number">{profile?.reputationScore || 0} pts</span>
+              <span className="pill-number">{userPoints} pts</span>
               <span className="pill-label">Mes Points Citoyens</span>
             </div>
-            <div className="stat-pill">
-              <span className="pill-number">{profile?.level?.title || "Sentinelle"}</span>
-              <span className="pill-label">Rang actuel</span>
+            <div className="stat-pill highlight-pill">
+              <span className="pill-number">-{currentMaxDiscount}%</span>
+              <span className="pill-label">Réduction accessible</span>
             </div>
           </div>
         </div>
@@ -300,9 +347,9 @@ export default function CommunityPage() {
             className={`tab-btn ${activeTab === "rewards" ? "active" : ""}`}
             onClick={() => setActiveTab("rewards")}
           >
-            <Award size={18} />
-            <span>Récompenses & Gamification</span>
-            {profile && <span className="tab-badge">{profile.reputationScore} pts</span>}
+            <Percent size={18} />
+            <span>Réductions sur l'Abonnement</span>
+            <span className="tab-badge">{userPoints} pts</span>
           </button>
         </div>
       </div>
@@ -349,72 +396,64 @@ export default function CommunityPage() {
               <p>La voie est libre ! Soyez le premier à avertir la communauté en cas d'imprévu.</p>
               <button className="btn-create-report mt-4" onClick={() => setShowModal(true)}>
                 <PlusCircle size={18} />
-                <span>Publier un signalement</span>
+                <span>Publier le premier signalement (+25 pts)</span>
               </button>
             </div>
           ) : (
             <div className="reports-grid">
               {filteredReports.map((report) => {
-                const cat = CATEGORY_CONFIG[report.category] || CATEGORY_CONFIG.accident;
-                const sev = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG.moderate;
-                const CatIcon = cat.icon;
+                const catCfg = CATEGORY_CONFIG[report.category] || CATEGORY_CONFIG.accident;
+                const IconComponent = catCfg.icon;
+                const sevCfg = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG.moderate;
 
                 return (
-                  <div key={report.id} className="report-card">
-                    {/* Header Card */}
-                    <div className="report-card-header">
-                      <div className="report-cat-badge" style={{ backgroundColor: `${cat.color}15`, color: cat.color }}>
-                        <CatIcon size={16} />
-                        <span>{cat.label}</span>
+                  <article key={report.id} className="report-card">
+                    <div className="report-card-top">
+                      <div className="category-pill" style={{ borderColor: catCfg.color }}>
+                        <IconComponent size={16} style={{ color: catCfg.color }} />
+                        <span>{catCfg.label}</span>
                       </div>
-                      <span className={`severity-badge ${sev.class}`}>{sev.label}</span>
+                      <span className={`severity-tag ${sevCfg.class}`}>{sevCfg.label}</span>
                     </div>
 
-                    {/* Title & Description */}
                     <h3 className="report-title">{report.title}</h3>
+
                     <div className="report-location">
-                      <MapPin size={15} className="location-icon" />
-                      <span>{report.locationDescription} • <strong>{report.city}</strong></span>
+                      <MapPin size={15} />
+                      <span>{report.locationDescription}</span>
                     </div>
 
-                    {/* Meta Bar */}
                     <div className="report-meta">
-                      <div className="author-info">
-                        <span className="author-name">Par {report.author}</span>
-                        <span className="report-time">
-                          <Clock size={12} />
-                          {new Date(report.reportedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
+                      <div className="meta-author">
+                        <span className="author-dot"></span>
+                        <span>{report.author || "Citoyen CityFlow"} ({report.city})</span>
                       </div>
-                      {report.isVerified && (
-                        <div className="verified-badge">
-                          <ShieldCheck size={14} />
-                          <span>Vérifié par la communauté</span>
-                        </div>
-                      )}
+                      <div className="meta-time">
+                        <Clock size={13} />
+                        <span>{new Date(report.reportedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
                     </div>
 
-                    {/* Actions & Votes */}
                     <div className="report-actions">
                       <button
                         className="btn-vote confirm"
                         onClick={() => handleVote(report.id, "confirm")}
-                        title="Confirmer que l'incident est toujours présent (+5 pts)"
+                        title="Confirmer la présence de cet incident"
                       >
                         <ThumbsUp size={15} />
-                        <span>Toujours présent ({report.confirmationsCount})</span>
+                        <span>Confirmer ({report.confirmationsCount || 0})</span>
                       </button>
 
                       <button
                         className="btn-vote resolve"
                         onClick={() => handleVote(report.id, "resolved")}
-                        title="Signaler que la voie a été dégagée"
+                        title="Signaler que la voie est désormais dégagée"
                       >
                         <CheckCircle size={15} />
-                        <span>Résolu / Dégagé</span>
+                        <span>Voie dégagée</span>
                       </button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
@@ -422,104 +461,194 @@ export default function CommunityPage() {
         </section>
       )}
 
-      {/* CONTENU ONGLET 2 : RÉCOMPENSES & GAMIFICATION */}
+      {/* CONTENU ONGLET 2 : RÉDUCTIONS SUR L'ABONNEMENT */}
       {activeTab === "rewards" && profile && (
         <section className="rewards-section">
-          {/* User Gamification Card */}
-          <div className="profile-gamification-card">
-            <div className="profile-header-info">
-              <div className="profile-badge-avatar">
-                <span className="avatar-emoji">{profile.level?.badgeIcon || "🛡️"}</span>
-              </div>
-              <div className="profile-text">
-                <div className="profile-level-tag">
-                  Niveau {profile.level?.number} • {profile.level?.title}
+          {/* BANDEAU GAUGE DES POINTS & REMISE */}
+          <div className="gamification-header-card">
+            <div className="gamification-summary">
+              <div className="points-display-box">
+                <span className="points-title">Mes Points de Citoyenneté</span>
+                <div className="points-val">
+                  <strong>{userPoints}</strong>
+                  <span>pts</span>
                 </div>
-                <h2>{profile.userName}</h2>
-                <p className="profile-sub">Contributeur actif de la communauté CityFlow</p>
+                <div className="active-discount-badge">
+                  <Percent size={14} />
+                  <span>Réduction max débloquée : <strong>-{currentMaxDiscount}%</strong></span>
+                </div>
               </div>
-              <div className="profile-points-box">
-                <span className="points-number">{profile.reputationScore}</span>
-                <span className="points-label">Points Disponibles</span>
-              </div>
-            </div>
 
-            {/* Level Progress */}
-            <div className="level-progress-bar-container">
-              <div className="progress-info">
-                <span>Progression vers le niveau suivant</span>
-                <span className="progress-percent">{profile.level?.progressPercentage}%</span>
-              </div>
-              <div className="progress-track">
-                <div
-                  className="progress-fill"
-                  style={{ width: `${profile.level?.progressPercentage}%` }}
-                ></div>
-              </div>
-              <div className="progress-limits">
-                <span>{profile.level?.minPoints} pts</span>
-                <span>{profile.level?.maxPoints} pts</span>
-              </div>
-            </div>
-
-            {/* Badges Shelf */}
-            <div className="badges-shelf">
-              <h3>🏆 Badges & Trophées Citoyens</h3>
-              <div className="badges-grid">
-                {profile.badges.map((badge) => {
-                  const isUnlocked = !!badge.unlockedAt;
-                  return (
-                    <div
-                      key={badge.id}
-                      className={`badge-card ${isUnlocked ? "unlocked" : "locked"}`}
-                    >
-                      <span className="badge-card-icon">{badge.icon}</span>
-                      <h4 className="badge-card-title">{badge.title}</h4>
-                      <p className="badge-card-desc">{badge.description}</p>
-                      <span className="badge-card-status">
-                        {isUnlocked ? "✅ Débloqué" : "🔒 À débloquer"}
-                      </span>
+              <div className="gamification-progress-col">
+                <div className="rank-info-row">
+                  <div className="rank-title-box">
+                    <span className="rank-badge-icon">{profile.level?.badgeIcon || "🛡️"}</span>
+                    <div>
+                      <h4>{profile.level?.title || "Sentinelle Urbaine"}</h4>
+                      <small>Niveau {profile.level?.number || 2}</small>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {nextTier && (
+                    <span className="next-tier-hint">
+                      Encore <strong>{pointsToNext} pts</strong> pour débloquer <strong>-{nextTier.discountPercent}%</strong>
+                    </span>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                <div className="points-progress-bar">
+                  <div
+                    className="points-progress-fill"
+                    style={{ width: `${Math.min(100, Math.max(10, (userPoints / 1000) * 100))}%` }}
+                  ></div>
+                </div>
+
+                <div className="points-scale-markers">
+                  <span>0 pt (0%)</span>
+                  <span>100 pts (-10%)</span>
+                  <span>250 pts (-25%)</span>
+                  <span>450 pts (-50%)</span>
+                  <span>700 pts (-75%)</span>
+                  <span>1000 pts (100% GRATUIT)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* RÈGLES D'ACQUISITION DE POINTS */}
+            <div className="points-earning-guide">
+              <div className="earn-rule-item">
+                <div className="earn-icon plus-icon"><PlusCircle size={18} /></div>
+                <div>
+                  <strong>+25 points</strong>
+                  <span>Par signalement d'incident vérifié</span>
+                </div>
+              </div>
+
+              <div className="earn-rule-item">
+                <div className="earn-icon vote-icon"><ThumbsUp size={18} /></div>
+                <div>
+                  <strong>+5 points</strong>
+                  <span>Par confirmation ou résolution d'alerte</span>
+                </div>
+              </div>
+
+              <div className="earn-rule-item">
+                <div className="earn-icon eco-icon"><Zap size={18} /></div>
+                <div>
+                  <strong>+10 points</strong>
+                  <span>Par trajet optimisé éco-mobilité</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Catalog of Rewards */}
-          <div className="rewards-catalog-wrapper">
-            <div className="catalog-header">
-              <Gift size={22} className="catalog-icon" />
+          {/* SIMULATEUR DE PRIX AVEC RÉDUCTION */}
+          <div className="subscription-simulator-card">
+            <div className="simulator-header">
+              <Tag size={22} color="#00875A" />
               <div>
-                <h3>Catalogue des Avantages & Récompenses Partenaires</h3>
-                <p>Échangez vos points d'éco-conduite et de signalement contre des services exclusifs.</p>
+                <h3>Simulateur de Réduction sur votre Abonnement CityFlow</h3>
+                <p>Voyez immédiatement le prix réduit de votre abonnement en appliquant vos points de citoyenneté.</p>
               </div>
             </div>
 
-            <div className="rewards-grid">
-              {catalog.map((item) => {
-                const canAfford = profile.reputationScore >= item.costPoints;
+            <div className="simulator-body">
+              <div className="plans-selector-group">
+                <label>Choisissez votre formule :</label>
+                <div className="plans-pills-grid">
+                  {(plans.length > 0 ? plans : [
+                    { id: "plan_monthly", name: "Pass Mensuel (1 Mois)", priceFcfa: 2500, period: "par mois" },
+                    { id: "plan_quarterly", name: "Pass Trimestriel (3 Mois)", priceFcfa: 6500, period: "par trimestre" },
+                    { id: "plan_annual", name: "Pass Annuel (12 Mois)", priceFcfa: 22000, period: "par an" },
+                  ]).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`plan-pill-btn ${selectedPlanId === p.id ? "selected" : ""}`}
+                      onClick={() => setSelectedPlanId(p.id)}
+                    >
+                      <strong>{p.name}</strong>
+                      <span>{p.priceFcfa.toLocaleString()} FCFA</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* RÉSULTAT DU CALCUL */}
+              <div className="simulator-result-box">
+                <div className="sim-stat">
+                  <span>Prix standard :</span>
+                  <strong className="strikethrough">{currentPlan.priceFcfa.toLocaleString()} FCFA</strong>
+                </div>
+
+                <div className="sim-stat highlight">
+                  <span>Remise accordée ({simulatedDiscountPercent}%) :</span>
+                  <strong className="savings-badge">-{simulatedSavings.toLocaleString()} FCFA</strong>
+                </div>
+
+                <div className="sim-divider"></div>
+
+                <div className="sim-stat final-price">
+                  <span>Votre Prix avec Points :</span>
+                  <strong className="final-amount">
+                    {simulatedFinalPrice === 0 ? "100% GRATUIT 🎉" : `${simulatedFinalPrice.toLocaleString()} FCFA`}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* PALIERS DE RÉDUCTION DÉBLOCABLES */}
+          <div className="rewards-catalog-wrapper">
+            <div className="catalog-header">
+              <div>
+                <h3>Paliers de Réduction Déblocables</h3>
+                <p>Échangez vos points contre un coupon de réduction officiel applicable sur l'application.</p>
+              </div>
+            </div>
+
+            <div className="discount-tiers-grid">
+              {catalog.map((tier) => {
+                const canAfford = userPoints >= tier.costPoints;
+                const pointsMissing = tier.costPoints - userPoints;
+
                 return (
-                  <div key={item.id} className={`catalog-card ${canAfford ? "affordable" : "unaffordable"}`}>
-                    <div className="catalog-card-icon">{item.icon}</div>
-                    <div className="catalog-card-content">
-                      <span className="catalog-partner">{item.partner}</span>
-                      <h4 className="catalog-title">{item.title}</h4>
-                      <p className="catalog-desc">{item.description}</p>
-                      
-                      <div className="catalog-bottom">
-                        <span className="cost-tag">
-                          <Sparkles size={14} />
-                          {item.costPoints} points
-                        </span>
-                        <button
-                          className={`btn-redeem ${canAfford ? "active" : "disabled"}`}
-                          disabled={!canAfford}
-                          onClick={() => handleRedeem(item.id)}
-                        >
-                          {canAfford ? "Échanger" : "Points manquants"}
-                        </button>
+                  <div key={tier.id} className={`discount-tier-card ${canAfford ? "unlocked" : "locked"}`}>
+                    <div className="tier-badge-row">
+                      <span className="tier-icon">{tier.icon}</span>
+                      <span className="tier-rank-badge">{tier.badge}</span>
+                      <span className="tier-percent-tag">-{tier.discountPercent}%</span>
+                    </div>
+
+                    <h4 className="tier-title">{tier.title}</h4>
+                    <p className="tier-desc">{tier.description}</p>
+                    
+                    <div className="tier-savings-hint">
+                      <Sparkles size={14} color="#00875A" />
+                      <span>{tier.savingsEstimate}</span>
+                    </div>
+
+                    <div className="tier-bottom-action">
+                      <div className="tier-cost">
+                        <strong>{tier.costPoints}</strong>
+                        <span>points requis</span>
                       </div>
+
+                      <button
+                        className={`btn-redeem-tier ${canAfford ? "active" : "disabled"}`}
+                        disabled={!canAfford}
+                        onClick={() => handleRedeem(tier.id)}
+                      >
+                        {canAfford ? (
+                          <>
+                            <Gift size={16} />
+                            <span>Débloquer mon coupon</span>
+                          </>
+                        ) : (
+                          <span>+{pointsMissing} pts restants</span>
+                        )}
+                      </button>
                     </div>
                   </div>
                 );
@@ -527,23 +656,38 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          {/* Redeemed coupons history */}
+          {/* HISTORIQUE DES COUPONS ÉCHANGÉS */}
           {profile.redeemedRewards && profile.redeemedRewards.length > 0 && (
             <div className="redeemed-history-wrapper">
-              <h3>🎟️ Mes Coupons & Avantages Échangés</h3>
+              <h3>🎟️ Mes Coupons de Réduction Débloqués</h3>
               <div className="coupons-grid">
                 {profile.redeemedRewards.map((c) => (
                   <div key={c.id} className="coupon-card">
                     <div className="coupon-left">
-                      <Ticket size={24} />
+                      <div className="coupon-icon-box">
+                        <Percent size={22} />
+                      </div>
                       <div>
                         <h4>{c.title}</h4>
-                        <span className="coupon-date">Obtenu le {new Date(c.redeemedAt).toLocaleDateString()}</span>
+                        <span className="coupon-date">
+                          Débloqué le {new Date(c.redeemedAt).toLocaleDateString()} pour {c.costPoints} points
+                        </span>
                       </div>
                     </div>
+
                     <div className="coupon-code-box">
-                      <span className="coupon-label">Code avantage :</span>
-                      <span className="coupon-code">{c.code}</span>
+                      <span className="coupon-label">Code réduction :</span>
+                      <div className="coupon-code-display">
+                        <span className="coupon-code-text">{c.code}</span>
+                        <button
+                          type="button"
+                          className="copy-coupon-btn"
+                          onClick={() => copyToClipboard(c.code)}
+                          title="Copier le code"
+                        >
+                          {copiedCode === c.code ? <Check size={16} color="#15803d" /> : <Copy size={16} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -696,19 +840,28 @@ export default function CommunityPage() {
         </div>
       )}
 
-      {/* MODAL : RÉCOMPENSE DÉBLOQUÉE */}
+      {/* MODAL : RÉDUCTION D'ABONNEMENT DÉBLOQUÉE */}
       {unlockedReward && (
         <div className="modal-backdrop" onClick={() => setUnlockedReward(null)}>
           <div className="modal-card reward-success-modal" onClick={(e) => e.stopPropagation()}>
             <div className="success-confetti">🎉</div>
             <h3>Félicitations !</h3>
-            <p className="success-sub">Vous avez échangé vos points contre :</p>
+            <p className="success-sub">Vous avez débloqué avec vos points :</p>
             <h2 className="success-reward-title">{unlockedReward.title}</h2>
-            <p className="partner-name">Offert par {unlockedReward.partner}</p>
+            <p className="partner-name">Applicable immédiatement sur CityFlow Premium</p>
 
             <div className="generated-coupon-box">
-              <span className="coupon-hint">Présentez ce code lors de votre passage :</span>
-              <span className="coupon-code-big">{unlockedReward.code}</span>
+              <span className="coupon-hint">Votre code promo exclusif :</span>
+              <div className="coupon-modal-copy-row">
+                <span className="coupon-code-big">{unlockedReward.code}</span>
+                <button
+                  type="button"
+                  className="modal-copy-btn"
+                  onClick={() => copyToClipboard(unlockedReward.code)}
+                >
+                  <Copy size={18} /> Copier
+                </button>
+              </div>
             </div>
 
             <button className="btn-submit w-full mt-4" onClick={() => setUnlockedReward(null)}>

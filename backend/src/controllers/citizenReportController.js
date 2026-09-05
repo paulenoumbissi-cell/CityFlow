@@ -346,79 +346,64 @@ export const getCitizenProfile = async (req, res) => {
   }
 };
 
-// 5. Obtenir le catalogue des réductions d'abonnement et formules
+// 5. Obtenir les formules d'abonnement et la réduction directe calculée
 export const getRewardsCatalog = async (req, res) => {
   try {
     const profile = await dbService.getProfile();
     const userPoints = profile.reputationScore || profile.points || 320;
+    // Réduction directe continue : 1 point = 0.1% de réduction (max 100% à 1 000 points)
+    const directDiscountPercent = Math.min(100, Math.round((userPoints / 1000) * 100));
+
     res.json({
-      count: REWARDS_CATALOG.length,
-      catalog: REWARDS_CATALOG,
       plans: SUBSCRIPTION_PLANS,
       userPoints,
+      directDiscountPercent,
     });
   } catch (err) {
     console.error("[getRewardsCatalog Error]", err);
-    res.status(500).json({ error: "Erreur catalogue" });
+    res.status(500).json({ error: "Erreur catalogue abonnements" });
   }
 };
 
-// 6. Échanger des points contre une réduction d'abonnement
-export const redeemReward = async (req, res) => {
+// 6. Souscription directe avec réduction citoyenne
+export const subscribeWithDiscount = async (req, res) => {
   try {
-    const { rewardId } = req.body;
-    const reward = REWARDS_CATALOG.find((r) => r.id === rewardId);
-
-    if (!reward) {
-      return res.status(404).json({ error: "Palier de réduction introuvable dans le catalogue" });
-    }
+    const { planId, paymentMethod } = req.body;
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId) || SUBSCRIPTION_PLANS[0];
 
     const profile = await dbService.getProfile();
-    let currentScore = profile.reputationScore || profile.points || 320;
+    const userPoints = profile.reputationScore || profile.points || 320;
+    const discountPercent = Math.min(100, Math.round((userPoints / 1000) * 100));
+    const discountAmount = Math.round((plan.priceFcfa * discountPercent) / 100);
+    const finalPrice = Math.max(0, plan.priceFcfa - discountAmount);
 
-    if (currentScore < reward.costPoints) {
-      return res.status(400).json({
-        error: "Points insuffisants",
-        required: reward.costPoints,
-        available: currentScore,
-      });
-    }
-
-    currentScore -= reward.costPoints;
-    profile.reputationScore = currentScore;
-    profile.points = currentScore;
-    profile.level = computeLevel(currentScore);
-
-    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const uniqueCode = `CITYFLOW-PROMO-${reward.discountPercent}PCT-${randomSuffix}`;
-
-    const redemption = {
-      id: `red_${Date.now()}`,
-      catalogId: reward.id,
-      title: reward.title,
-      discountPercent: reward.discountPercent,
-      code: uniqueCode,
-      costPoints: reward.costPoints,
-      savingsEstimate: reward.savingsEstimate,
-      redeemedAt: new Date().toISOString(),
+    const subscription = {
+      id: `sub_${Date.now()}`,
+      planId: plan.id,
+      planName: plan.name,
+      category: plan.category,
+      basePrice: plan.priceFcfa,
+      discountPercent,
+      discountAmount,
+      finalPrice,
+      paymentMethod: paymentMethod || "MTN Mobile Money",
       status: "active",
+      subscribedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
-    if (!profile.redeemedRewards) profile.redeemedRewards = [];
-    profile.redeemedRewards.unshift(redemption);
-
+    if (!profile.subscriptions) profile.subscriptions = [];
+    profile.subscriptions.unshift(subscription);
     await dbService.saveProfile(profile);
 
     res.json({
       success: true,
-      message: `Félicitations ! Vous avez débloqué "${reward.title}" (Code : ${uniqueCode}).`,
-      redemption,
-      remainingPoints: currentScore,
-      level: profile.level,
+      message: `Souscription réussie à "${plan.name}" ! Prix réglé : ${finalPrice.toLocaleString()} FCFA (${discountPercent}% de réduction citoyenne appliquée).`,
+      subscription,
     });
   } catch (err) {
-    console.error("[redeemReward Error]", err);
-    res.status(500).json({ error: "Erreur échange réduction" });
+    console.error("[subscribeWithDiscount Error]", err);
+    res.status(500).json({ error: "Erreur lors de la souscription" });
   }
 };
-};
+

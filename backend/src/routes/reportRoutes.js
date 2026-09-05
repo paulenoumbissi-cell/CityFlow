@@ -5,7 +5,7 @@ import {
   voteCitizenReport,
   getCitizenProfile,
   getRewardsCatalog,
-  redeemReward,
+  subscribeWithDiscount,
 } from "../controllers/citizenReportController.js";
 
 const router = Router();
@@ -15,9 +15,10 @@ router.get("/reports", getCitizenReports);
 router.post("/reports", createCitizenReport);
 router.post("/reports/:id/vote", voteCitizenReport);
 
-// Routes des récompenses & gamification
+// Routes des abonnements & réductions citoyennes directes
 router.get("/rewards/profile", getCitizenProfile);
 router.get("/rewards/catalog", getRewardsCatalog);
-router.post("/rewards/redeem", redeemReward);
+router.post("/rewards/subscribe", subscribeWithDiscount);
 
 export default router;
+

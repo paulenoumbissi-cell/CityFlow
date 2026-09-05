@@ -37,6 +37,7 @@ import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
 import wsService from "../services/websocketService";
 import apiService from "../services/api";
+import EmergencyAlertOverlay from "../components/EmergencyAlertOverlay";
 import "./EmergencyPage.css";
 
 const VEHICLE_TYPES = [
@@ -1209,7 +1210,10 @@ export default function EmergencyPage() {
               </div>
             </div>
 
-            <div className="leaflet-emergency-wrapper">
+            <div className="leaflet-emergency-wrapper" style={{ position: "relative" }}>
+              {/* POP-UP D'ALERTE CONDUCTEUR / DIFFUSION EN DIRECT */}
+              <EmergencyAlertOverlay onFocusVehicle={() => { setCameraFollow(true); }} />
+
               <MapContainer
                 center={mapCenter}
                 zoom={13.5}

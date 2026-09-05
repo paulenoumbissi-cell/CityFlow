@@ -52,6 +52,9 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
 import { CITY_LANDMARKS } from "../data/cityData";
+import EmergencyAlertOverlay from "../components/EmergencyAlertOverlay";
+import wsService from "../services/websocketService";
+import apiService from "../services/api";
 import "./RoutesPage.css";
 
 const API_BASE = "http://localhost:3000/api";
@@ -140,8 +143,32 @@ export default function RoutesPage() {
   const [isAutoSimulating, setIsAutoSimulating] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(42);
 
-  const dropdownRef = useRef(null);
-  const autoSimTimerRef = useRef(null);
+  const [emergencyMission, setEmergencyMission] = useState(null);
+
+  // Abonnement aux missions d'urgence pour avertir le conducteur
+  useEffect(() => {
+    let isMounted = true;
+    apiService.getEmergencyStatus(selectedCity).then((res) => {
+      if (isMounted && res?.active && res?.mission) {
+        setEmergencyMission(res.mission);
+      } else if (isMounted) {
+        setEmergencyMission(null);
+      }
+    });
+
+    const unsubEmUpdate = wsService.on("EMERGENCY_MISSION_UPDATE", (data) => {
+      if (isMounted && data?.mission) setEmergencyMission(data.mission);
+    });
+    const unsubEmCancel = wsService.on("EMERGENCY_MISSION_CANCELLED", () => {
+      if (isMounted) setEmergencyMission(null);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubEmUpdate();
+      unsubEmCancel();
+    };
+  }, [selectedCity]);
 
   // Fermer le dropdown si on clique à l'extérieur
   useEffect(() => {
@@ -761,6 +788,9 @@ export default function RoutesPage() {
         {/* COLONNE DROITE : CARTE LEAFLET TACTIQUE */}
         <div className="routes-map-col">
           <div className="routes-map-wrapper" style={{ position: "relative" }}>
+            {/* POP-UP D'ALERTE CONDUCTEUR / VÉHICULE EN APPROCHE */}
+            <EmergencyAlertOverlay currentRouteCoords={selectedRoute?.coordinates} />
+
             <MapContainer
               center={selectedRoute?.coordinates?.[0] || [3.848, 11.502]}
               zoom={13}
@@ -774,6 +804,28 @@ export default function RoutesPage() {
 
               <RouteMapClickHandler onMapClick={handleMapClick} />
               {selectedRoute?.coordinates && <FitRouteBounds coords={selectedRoute.coordinates} />}
+
+              {/* CORRIDOR D'URGENCE ACTIF AVEC ONDE VERTE */}
+              {emergencyMission && emergencyMission.coordinates && (
+                <>
+                  <Polyline
+                    positions={emergencyMission.coordinates}
+                    pathOptions={{ color: "#22c55e", weight: 7, opacity: 0.95 }}
+                  />
+                  <CircleMarker
+                    center={emergencyMission.coordinates[emergencyMission.currentStepIndex || 0] || emergencyMission.coordinates[0]}
+                    radius={14}
+                    pathOptions={{ fillColor: emergencyMission.color || "#ef4444", color: "#ffffff", weight: 3, fillOpacity: 1 }}
+                  >
+                    <Popup>
+                      <div style={{ padding: "6px", fontSize: "12px" }}>
+                        <strong>🚨 {emergencyMission.vehicleName}</strong>
+                        <p style={{ margin: "2px 0 0", color: "#64748b" }}>Couloir d'urgence prioritaire</p>
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                </>
+              )}
 
               {/* TRACÉS SECONDAIRES NON SÉLECTIONNÉS AVEC PASTILLES CLIQUABLES */}
               {routes

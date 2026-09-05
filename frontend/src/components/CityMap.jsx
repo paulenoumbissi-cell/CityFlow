@@ -16,12 +16,14 @@ import { apiService } from "../services/api";
 import { useCity } from "../context/CityContext";
 import { useTheme } from "../context/ThemeContext";
 import wsService from "../services/websocketService";
+import EmergencyAlertOverlay from "./EmergencyAlertOverlay";
 import {
   Navigation,
   Crosshair,
   MapPin,
   Radio,
   AlertCircle,
+  Siren,
   Search,
   Layers,
   Hospital,
@@ -183,6 +185,33 @@ export default function CityMap({
     setClickedPoint(null);
     setClickedAddress(null);
     setMapCenterOverride(null);
+  }, [selectedCity]);
+
+  const [emergencyMission, setEmergencyMission] = useState(null);
+
+  // Abonnement aux missions d'urgence en direct
+  useEffect(() => {
+    let isMounted = true;
+    apiService.getEmergencyStatus(selectedCity).then((res) => {
+      if (isMounted && res?.active && res?.mission) {
+        setEmergencyMission(res.mission);
+      } else if (isMounted) {
+        setEmergencyMission(null);
+      }
+    });
+
+    const unsubEmUpdate = wsService.on("EMERGENCY_MISSION_UPDATE", (data) => {
+      if (isMounted && data?.mission) setEmergencyMission(data.mission);
+    });
+    const unsubEmCancel = wsService.on("EMERGENCY_MISSION_CANCELLED", () => {
+      if (isMounted) setEmergencyMission(null);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubEmUpdate();
+      unsubEmCancel();
+    };
   }, [selectedCity]);
 
   // 1. Abonnement direct aux flux WebSocket temps réel (TRAFFIC_PULSE)
@@ -719,6 +748,15 @@ export default function CityMap({
           boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
         }}
       >
+        {/* POP-UP D'ALERTE CONDUCTEUR / VÉHICULE EN APPROCHE */}
+        <EmergencyAlertOverlay
+          onFocusVehicle={() => {
+            if (emergencyMission?.coordinates?.[0]) {
+              setMapCenterOverride(emergencyMission.coordinates[emergencyMission.currentStepIndex || 0] || emergencyMission.coordinates[0]);
+            }
+          }}
+        />
+
         <MapContainer
           center={activeCenter}
           zoom={currentCityConfig.zoom}
@@ -727,6 +765,28 @@ export default function CityMap({
         >
           <ChangeMapView center={activeCenter} zoom={selectedPlace ? 15 : currentCityConfig.zoom} />
           {allowClickToSelect && <MapClickHandler onMapClick={handleMapClick} />}
+
+          {/* CORRIDOR D'URGENCE & VÉHICULE EN APPROCHE */}
+          {emergencyMission && emergencyMission.coordinates && (
+            <>
+              <Polyline
+                positions={emergencyMission.coordinates}
+                pathOptions={{ color: "#22c55e", weight: 7, opacity: 0.95 }}
+              />
+              <CircleMarker
+                center={emergencyMission.coordinates[emergencyMission.currentStepIndex || 0] || emergencyMission.coordinates[0]}
+                radius={14}
+                pathOptions={{ fillColor: emergencyMission.color || "#ef4444", color: "#ffffff", weight: 3, fillOpacity: 1 }}
+              >
+                <Popup>
+                  <div style={{ padding: "6px", fontSize: "12px" }}>
+                    <strong>🚨 {emergencyMission.vehicleName}</strong>
+                    <p style={{ margin: "2px 0 0", color: "#64748b" }}>Couloir d'urgence prioritaire</p>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            </>
+          )}
 
           {/* CALQUE DE TUILES 100% GRATUIT ET SANS WATERMARK */}
           <TileLayer

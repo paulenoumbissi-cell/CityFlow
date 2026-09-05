@@ -9,12 +9,12 @@ export const getMapConfig = (req, res) => {
   const { city = "Yaoundé", theme = "light" } = req.query;
   const currentCityConfig = CITIES_CONFIG[city] || CITIES_CONFIG["Yaoundé"];
 
-  const defaultTile = theme === "dark" ? MAP_PROVIDERS.cartoDark : MAP_PROVIDERS.osmStandard;
+  const defaultTile = MAP_PROVIDERS.osmFrance || MAP_PROVIDERS.osmStandard || Object.values(MAP_PROVIDERS)[0];
 
   res.json({
     engine: "CityFlow Geospatial Map API",
     version: "2.0.0",
-    defaultProvider: defaultTile.id,
+    defaultProvider: defaultTile?.id || "osmFrance",
     activeCity: currentCityConfig,
     providers: Object.values(MAP_PROVIDERS),
     availableCities: Object.values(CITIES_CONFIG),

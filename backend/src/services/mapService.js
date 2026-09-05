@@ -1,16 +1,16 @@
-// Service de Cartographie CityFlow (OpenStreetMap, CARTO, Nominatim & Cache Local)
+// Service de Cartographie CityFlow (OpenStreetMap France, OSM Standard, Esri & Nominatim Cameroun)
 import { CITY_LANDMARKS } from "../controllers/routeController.js";
 
-// Configuration des fonds de carte (Tile Providers)
+// Configuration des fonds de carte 100% Gratuits et Sans Clé API
 export const MAP_PROVIDERS = {
-  cartoDark: {
-    id: "cartoDark",
-    name: "CARTO Dark Matter (Mode Nuit)",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: "abcd",
+  osmFrance: {
+    id: "osmFrance",
+    name: "OpenStreetMap France (Noms des rues & quartiers en Français)",
+    url: "https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> France & contributeurs',
+    subdomains: "abc",
     maxZoom: 19,
-    theme: "dark",
+    theme: "light",
   },
   osmStandard: {
     id: "osmStandard",
@@ -21,20 +21,19 @@ export const MAP_PROVIDERS = {
     maxZoom: 19,
     theme: "light",
   },
-  cartoPositron: {
-    id: "cartoPositron",
-    name: "CARTO Positron (Clair Moderne)",
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: "abcd",
+  esriStreet: {
+    id: "esriStreet",
+    name: "Esri Rues & Axes Routiers",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Sources: Esri, DeLorme, NAVTEQ, USGS",
     maxZoom: 19,
     theme: "light",
   },
   esriSatellite: {
     id: "esriSatellite",
-    name: "Esri Imagerie Satellite",
+    name: "Esri Imagerie Satellite Haute Résolution",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+    attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP",
     maxZoom: 18,
     theme: "satellite",
   },
@@ -42,7 +41,7 @@ export const MAP_PROVIDERS = {
     id: "openTopoMap",
     name: "Relief & Topographie (Collines)",
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Style: OpenTopoMap',
     subdomains: "abc",
     maxZoom: 17,
     theme: "topo",
@@ -59,8 +58,8 @@ export const CITIES_CONFIG = {
     minZoom: 11,
     maxZoom: 18,
     bounds: [
-      [3.70, 11.40], // Sud-Ouest
-      [4.02, 11.65], // Nord-Est
+      [3.70, 11.40],
+      [4.02, 11.65],
     ],
     description: "Capitale politique du Cameroun aux sept collines",
   },
@@ -72,8 +71,8 @@ export const CITIES_CONFIG = {
     minZoom: 11,
     maxZoom: 18,
     bounds: [
-      [3.95, 9.60], // Sud-Ouest
-      [4.18, 9.85], // Nord-Est
+      [3.95, 9.60],
+      [4.18, 9.85],
     ],
     description: "Capitale économique et portuaire du Cameroun",
   },
@@ -139,7 +138,6 @@ export async function searchPlaces(query, city = "Yaoundé") {
       for (const item of osmData) {
         const lat = parseFloat(item.lat);
         const lon = parseFloat(item.lon);
-        // Éviter les doublons exacts
         const isDuplicate = results.some((r) => Math.abs(r.lat - lat) < 0.001 && Math.abs(r.lng - lon) < 0.001);
         if (!isDuplicate) {
           results.push({
@@ -160,7 +158,6 @@ export async function searchPlaces(query, city = "Yaoundé") {
     console.info(`[MapService Search Nominatim] Mode hors-ligne / fallback local: ${err.message}`);
   }
 
-  // Stocker dans le cache mémoire (max 100 entrées)
   if (geocodeCache.size > 100) {
     const firstKey = geocodeCache.keys().next().value;
     geocodeCache.delete(firstKey);
@@ -186,7 +183,7 @@ export async function reverseGeocode(lat, lng, city = "Yaoundé") {
     return geocodeCache.get(cacheKey);
   }
 
-  // 1. Trouver le repère local le plus proche (rayon < 1 km)
+  // 1. Trouver le repère local le plus proche
   let nearestLandmark = null;
   let minDistance = Infinity;
 

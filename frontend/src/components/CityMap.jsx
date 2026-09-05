@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
   CircleMarker,
+  Marker,
   Popup,
   Polyline,
   useMap,
   useMapEvents,
 } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { CITIES, YAOUNDE_NODES, DOUALA_NODES, CongestionLevels } from "../data/cityData";
+import { CITIES, YAOUNDE_NODES, DOUALA_NODES, CongestionLevels, CITY_LANDMARKS } from "../data/cityData";
 import { apiService } from "../services/api";
 import { useCity } from "../context/CityContext";
 import { useTheme } from "../context/ThemeContext";
@@ -27,6 +29,9 @@ import {
   CheckCircle2,
   X,
   Compass,
+  Tag,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const trafficStyles = {
@@ -82,12 +87,37 @@ const trafficStyles = {
   },
 };
 
+// Création d'un badge DivIcon personnalisé pour afficher clairement le nom des zones
+function createZoneDivIcon(name, congestion = "fluid", speed = null) {
+  let statusClass = "fluid";
+  if (congestion === CongestionLevels.JAMMED || congestion === CongestionLevels.HEAVY || congestion === "dense" || congestion === "jammed") {
+    statusClass = "jammed";
+  } else if (congestion === CongestionLevels.MODERATE || congestion === "moderate") {
+    statusClass = "moderate";
+  }
+
+  const speedText = speed !== null ? `<span class="zone-district-speed">${speed} km/h</span>` : "";
+
+  return L.divIcon({
+    className: "zone-district-badge",
+    html: `
+      <div class="zone-district-pill">
+        <span class="zone-status-dot ${statusClass}"></span>
+        <span class="zone-district-name">${name}</span>
+        ${speedText}
+      </div>
+    `,
+    iconSize: [120, 26],
+    iconAnchor: [60, 13],
+  });
+}
+
 // Contrôleur de déplacement fluide de la caméra
 function ChangeMapView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
     if (center) {
-      map.flyTo(center, zoom || 14, { duration: 1.2 });
+      map.flyTo(center, zoom || 13.5, { duration: 1.2 });
     }
   }, [center, zoom, map]);
   return null;
@@ -107,7 +137,7 @@ function MapClickHandler({ onMapClick }) {
 
 export default function CityMap({
   customRoute,
-  height = "500px",
+  height = "520px",
   onPointSelect,
   allowClickToSelect = true,
 }) {
@@ -125,8 +155,11 @@ export default function CityMap({
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(new Date().toLocaleTimeString());
 
-  // Gestion des calques cartographiques (API Providers)
-  const [activeTileProvider, setActiveTileProvider] = useState(isDark ? "cartoDark" : "osmStandard");
+  // Affichage des noms des zones & quartiers
+  const [showZoneNames, setShowZoneNames] = useState(true);
+
+  // Gestion des calques cartographiques (100% Gratuits et Sans Watermark)
+  const [activeTileProvider, setActiveTileProvider] = useState(isDark ? "osmDark" : "osmFrance");
   const [showLayerMenu, setShowLayerMenu] = useState(false);
 
   // Recherche & Autocomplétion API
@@ -136,10 +169,10 @@ export default function CityMap({
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [mapCenterOverride, setMapCenterOverride] = useState(null);
 
-  // Synchroniser le fournisseur de tuiles quand le mode sombre change
+  // Synchroniser le fournisseur de tuiles quand le thème sombre change
   useEffect(() => {
-    if (activeTileProvider === "cartoDark" || activeTileProvider === "osmStandard" || activeTileProvider === "cartoPositron") {
-      setActiveTileProvider(isDark ? "cartoDark" : "cartoPositron");
+    if (activeTileProvider === "osmDark" || activeTileProvider === "osmFrance" || activeTileProvider === "osmStandard") {
+      setActiveTileProvider(isDark ? "osmDark" : "osmFrance");
     }
   }, [isDark]);
 
@@ -220,7 +253,6 @@ export default function CityMap({
     return () => clearTimeout(timer);
   }, [searchQuery, selectedCity]);
 
-  // Sélectionner un lieu trouvé dans la recherche
   const handleSelectSearchResult = (place) => {
     setSelectedPlace(place);
     setMapCenterOverride([place.lat, place.lng]);
@@ -280,6 +312,50 @@ export default function CityMap({
   const currentCityConfig = selectedCity === "Douala" ? CITIES.Douala : CITIES.Yaounde;
   const activeCenter = mapCenterOverride || userLocation || currentCityConfig.center;
 
+  // Liste consolidée des zones et quartiers majeurs pour la ville sélectionnée
+  const cityZoneList = useMemo(() => {
+    const list = [];
+    const knownNames = new Set();
+
+    // 1. Ajouter les nœuds de trafic principaux
+    nodes.forEach((n) => {
+      // Nettoyer le nom pour un affichage de zone compact (ex: "Carrefour Nlongkak" -> "Nlongkak")
+      const cleanName = n.name.replace(/^(Carrefour|Rond-point|Marché|Échangeur d'|Boulevard de la Liberté \(|\))/gi, "").replace(/\(.*?\)/g, "").trim();
+      list.push({
+        id: n.id,
+        name: cleanName || n.name,
+        fullName: n.name,
+        position: n.position,
+        congestion: n.currentCongestion,
+        speed: n.averageSpeedKmh,
+        delay: n.estimatedDelayMinutes,
+        isNode: true,
+      });
+      knownNames.add(cleanName.toLowerCase());
+    });
+
+    // 2. Ajouter les repères additionnels de la ville
+    const landmarks = CITY_LANDMARKS[selectedCity] || [];
+    landmarks.forEach((lm, idx) => {
+      const cleanName = lm.name.replace(/^(Carrefour|Rond-point|Marché|Hôpital|Université de Yaoundé I \(|\))/gi, "").replace(/\(.*?\)/g, "").trim();
+      if (!knownNames.has(cleanName.toLowerCase()) && lm.category === "landmark") {
+        list.push({
+          id: `lm_${idx}`,
+          name: cleanName || lm.name,
+          fullName: lm.name,
+          position: lm.pos,
+          congestion: "fluid",
+          speed: null,
+          delay: null,
+          isNode: false,
+        });
+        knownNames.add(cleanName.toLowerCase());
+      }
+    });
+
+    return list;
+  }, [nodes, selectedCity]);
+
   const filteredNodes = nodes.filter((node) => {
     if (activeFilter === "all") return true;
     if (activeFilter === "critical")
@@ -301,39 +377,50 @@ export default function CityMap({
     return true;
   });
 
-  // Détermination de l'URL du calque de tuiles
+  // Fonds de carte 100% Gratuits et Sans Clé API
   const tileProviders = {
-    cartoDark: {
-      url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      label: "🌙 Mode Nuit (CARTO Dark)",
+    osmDark: {
+      url: "https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> France (Mode Nuit Haute Définition)',
+      label: "🌙 Mode Nuit (OSM Dark)",
+      isDarkFilter: true,
     },
-    cartoPositron: {
-      url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      label: "☀️ Mode Clair (CARTO Positron)",
+    osmFrance: {
+      url: "https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> France (Noms des rues en Français)',
+      label: "🇫🇷 Rues & Quartiers (OSM France)",
+      isDarkFilter: false,
     },
     osmStandard: {
       url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributeurs',
       label: "🗺️ Standard (OpenStreetMap)",
+      isDarkFilter: false,
+    },
+    esriStreet: {
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      attribution: "Tiles &copy; Esri &mdash; Sources: DeLorme, NAVTEQ, USGS",
+      label: "🛣️ Esri Rues Urbaines",
+      isDarkFilter: false,
     },
     esriSatellite: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution: "Tiles &copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, IGN",
+      attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, IGN",
       label: "🛰️ Satellite (Esri Imagery)",
+      isDarkFilter: false,
     },
     openTopo: {
       url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       attribution: 'Map: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Style: OpenTopoMap',
       label: "⛰️ Relief & Collines (Topo)",
+      isDarkFilter: false,
     },
   };
 
-  const currentTile = tileProviders[activeTileProvider] || tileProviders.cartoDark;
+  const currentTile = tileProviders[activeTileProvider] || tileProviders.osmFrance;
 
   return (
-    <div className="city-map-wrapper">
+    <div className={`city-map-wrapper ${currentTile.isDarkFilter ? "cityflow-dark-tiles" : ""}`}>
       {/* BARRE SUPÉRIEURE DE CONTRÔLE & RECHERCHE */}
       <div
         className="map-topbar"
@@ -360,21 +447,21 @@ export default function CityMap({
             }}
           >
             <Compass size={13} />
-            API CARTOGRAPHIQUE GÉOSPATIALE & NOMINATIM
+            API CARTOGRAPHIQUE & SURVEILLANCE DES ZONES
           </span>
           <h2 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: "700" }}>
-            Trafic & Géolocalisation {selectedCity}
+            Quartiers & Trafic en Direct &bull; {selectedCity}
           </h2>
         </div>
 
         {/* RECHERCHE D'ADRESSE / CARREFOUR */}
-        <div style={{ position: "relative", minWidth: "260px", flex: "1", maxWidth: "340px" }}>
+        <div style={{ position: "relative", minWidth: "250px", flex: "1", maxWidth: "340px" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               background: isDark ? "#1e293b" : "#ffffff",
-              border: "1px solid #cbd5e1",
+              border: isDark ? "1px solid #334155" : "1px solid #cbd5e1",
               borderRadius: "10px",
               padding: "6px 10px",
               gap: "8px",
@@ -383,7 +470,7 @@ export default function CityMap({
             <Search size={15} color={isDark ? "#94a3b8" : "#64748b"} />
             <input
               type="text"
-              placeholder={`Rechercher à ${selectedCity} (ex: Bastos, Deido, Hôpital)...`}
+              placeholder={`Rechercher un quartier (Bastos, Deido, Mokolo)...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -427,7 +514,7 @@ export default function CityMap({
                 background: isDark ? "#1e293b" : "#ffffff",
                 border: isDark ? "1px solid #334155" : "1px solid #e2e8f0",
                 borderRadius: "10px",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
                 zIndex: 1000,
                 maxHeight: "240px",
                 overflowY: "auto",
@@ -452,7 +539,7 @@ export default function CityMap({
                     {res.name}
                   </div>
                   <div style={{ color: isDark ? "#94a3b8" : "#64748b", fontSize: "11px", marginTop: "2px" }}>
-                    {res.district} &bull; {res.source === "cityflow_core" ? "Repère local CityFlow" : "OpenStreetMap"}
+                    {res.district} &bull; {res.source === "cityflow_core" ? "Repère CityFlow" : "OpenStreetMap"}
                   </div>
                 </div>
               ))}
@@ -460,9 +547,32 @@ export default function CityMap({
           )}
         </div>
 
-        {/* BOUTONS D'ACTION (GPS, FOURNISSEUR TUILES, VILLE) */}
+        {/* BOUTONS D'ACTION (NOMS DES ZONES, GPS, CALQUES, VILLE) */}
         <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-          {/* MENU DES FONDS DE CARTE (API TILES) */}
+          {/* BOUTON BASCULE NOMS DES ZONES (QUARTIERS) */}
+          <button
+            onClick={() => setShowZoneNames(!showZoneNames)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "7px 11px",
+              background: showZoneNames ? (isDark ? "#1e3a8a" : "#eff6ff") : isDark ? "#1e293b" : "#f1f5f9",
+              border: `1.5px solid ${showZoneNames ? "#3b82f6" : isDark ? "#334155" : "#cbd5e1"}`,
+              borderRadius: "10px",
+              color: showZoneNames ? "#2563eb" : "inherit",
+              fontSize: "12px",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+            title="Afficher ou masquer les noms des zones et quartiers"
+          >
+            {showZoneNames ? <Eye size={14} /> : <EyeOff size={14} />}
+            <span>{showZoneNames ? "Noms des zones" : "Zones masquées"}</span>
+          </button>
+
+          {/* MENU DES FONDS DE CARTE SANS WATERMARK */}
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setShowLayerMenu(!showLayerMenu)}
@@ -479,7 +589,7 @@ export default function CityMap({
                 fontWeight: "600",
                 cursor: "pointer",
               }}
-              title="Changer le calque cartographique (Satellite, Nuit, Topo, Clair)"
+              title="Changer le calque cartographique (Rues, Nuit, Satellite, Topo)"
             >
               <Layers size={14} />
               <span>Calque</span>
@@ -497,7 +607,7 @@ export default function CityMap({
                   borderRadius: "10px",
                   boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
                   zIndex: 1000,
-                  minWidth: "210px",
+                  minWidth: "220px",
                   padding: "6px 0",
                 }}
               >
@@ -614,19 +724,62 @@ export default function CityMap({
           <ChangeMapView center={activeCenter} zoom={selectedPlace ? 15 : currentCityConfig.zoom} />
           {allowClickToSelect && <MapClickHandler onMapClick={handleMapClick} />}
 
-          {/* CALQUE DE TUILES CONFIGURABLE VIA /api/map */}
+          {/* CALQUE DE TUILES 100% GRATUIT ET SANS WATERMARK */}
           <TileLayer
-            key={activeTileProvider}
+            key={`${activeTileProvider}_${selectedCity}`}
             url={currentTile.url}
             attribution={currentTile.attribution}
             maxZoom={19}
           />
 
+          {/* ========================================================
+              BADGES PROMINENTS DES NOMS DES ZONES & QUARTIERS
+              ======================================================== */}
+          {showZoneNames &&
+            cityZoneList.map((zone) => (
+              <Marker
+                key={`zone_label_${zone.id}`}
+                position={zone.position}
+                icon={createZoneDivIcon(zone.name, zone.congestion, zone.speed)}
+                eventHandlers={{
+                  click: () => {
+                    setMapCenterOverride(zone.position);
+                    if (onPointSelect) {
+                      onPointSelect(zone.position, zone.fullName);
+                    }
+                  },
+                }}
+              >
+                <Popup>
+                  <div style={{ padding: "4px", minWidth: "180px", color: "#0a2540" }}>
+                    <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>
+                      📍 {zone.fullName}
+                    </h3>
+                    {zone.speed !== null && (
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
+                        <span>Vitesse actuelle :</span>
+                        <strong style={{ color: "#00875A" }}>{zone.speed} km/h</strong>
+                      </div>
+                    )}
+                    {zone.delay !== null && (
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                        <span>Retard estimé :</span>
+                        <strong>+{zone.delay} min</strong>
+                      </div>
+                    )}
+                    <div style={{ marginTop: "6px", fontSize: "11px", color: "#64748b" }}>
+                      Quartier de {selectedCity}, Cameroun
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
           {/* MARQUEUR DE RECHERCHE DE LIEU */}
           {selectedPlace && (
             <CircleMarker
               center={[selectedPlace.lat, selectedPlace.lng]}
-              radius={10}
+              radius={11}
               pathOptions={{
                 color: "#2563EB",
                 fillColor: "#3B82F6",

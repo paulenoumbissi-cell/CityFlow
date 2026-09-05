@@ -24,6 +24,10 @@ import {
   CreditCard,
   Building2,
   UserCheck,
+  Info,
+  ShieldAlert,
+  ShieldCheck,
+  RotateCcw,
   X,
 } from "lucide-react";
 import { useCity } from "../context/CityContext";
@@ -33,12 +37,13 @@ import "./CommunityPage.css";
 const API_BASE = "http://localhost:3000/api";
 
 const CATEGORY_CONFIG = {
-  accident: { label: "Accident de circulation", icon: AlertTriangle, color: "#EF4444" },
-  breakdown: { label: "Véhicule / Camion en panne", icon: Wrench, color: "#F59E0B" },
-  roadworks: { label: "Travaux sur la chaussée", icon: Construction, color: "#3B82F6" },
-  trafficBlock: { label: "Carrefour bloqué / Embouteillage", icon: Car, color: "#EC4899" },
-  hazard: { label: "Obstacle ou nid de poule", icon: AlertCircle, color: "#8B5CF6" },
-  flooding: { label: "Inondation / Chaussée submergée", icon: Droplets, color: "#06B6D4" },
+  trafficBlock: { label: "Embouteillage", points: 10, icon: Car, color: "#EC4899", desc: "Signaler un embouteillage confirmé (+10 pts)" },
+  accident: { label: "Accident de circulation", points: 15, icon: AlertTriangle, color: "#EF4444", desc: "Signaler un accident confirmé (+15 pts)" },
+  trafficLight: { label: "Feu de circulation en panne", points: 20, icon: AlertCircle, color: "#8B5CF6", desc: "Signaler un feu en panne confirmé (+20 pts)" },
+  roadworks: { label: "Route bloquée / Travaux", points: 15, icon: Construction, color: "#3B82F6", desc: "Signaler route bloquée confirmée (+15 pts)" },
+  hazard: { label: "Obstacle ou nid de poule", points: 15, icon: AlertTriangle, color: "#F59E0B", desc: "Signaler un obstacle confirmé (+15 pts)" },
+  breakdown: { label: "Véhicule en panne", points: 15, icon: Wrench, color: "#F97316", desc: "Signaler véhicule en panne (+15 pts)" },
+  flooding: { label: "Inondation de chaussée", points: 15, icon: Droplets, color: "#06B6D4", desc: "Signaler inondation confirmée (+15 pts)" },
 };
 
 const SEVERITY_CONFIG = {
@@ -48,16 +53,15 @@ const SEVERITY_CONFIG = {
   critical: { label: "Critique", class: "sev-critical" },
 };
 
-const DEFAULT_PLANS = [
+const SUBSCRIPTION_PLANS = [
   {
-    id: "plan_citizen_monthly",
+    id: "plan_citizen",
     category: "b2c",
-    name: "Pass Mensuel Citoyen",
-    subtitle: "Pour simples citoyens & conducteurs particuliers",
+    name: "Premium Citoyen",
+    subtitle: "Mobilité intelligente et guidage optimisé",
     priceFcfa: 2000,
     period: "par mois",
-    target: "1 Utilisateur",
-    badge: "Populaire Citoyen",
+    beneficiaries: "1 personne",
     features: [
       "Guidage vocal intelligent sans coupure",
       "Alertes d'anticipation météo & bouchons +1h",
@@ -66,36 +70,53 @@ const DEFAULT_PLANS = [
     ],
   },
   {
-    id: "plan_enterprise_fleet",
+    id: "plan_enterprise",
     category: "b2b",
-    name: "Pack Flotte Entreprise Pro (B2B)",
-    subtitle: "Pour entreprises, livreurs & gestionnaires de flottes",
+    name: "Premium Entreprise",
+    subtitle: "Flottes d'entreprises, livraisons & équipes",
     priceFcfa: 50000,
     period: "par mois",
-    target: "Jusqu'à 20 collaborateurs inclus",
-    badge: "Recommandé Entreprise",
+    beneficiaries: "30 personnes",
     features: [
-      "Comptes Premium inclus pour jusqu'à 20 chauffeurs / collaborateurs",
-      "Tableau de bord supervision de flotte en direct (Yaoundé & Douala)",
+      "Comptes Premium inclus pour 30 personnes (collaborateurs / chauffeurs)",
+      "Tableau de bord de supervision de flotte en temps réel (Yaoundé & Douala)",
       "Optimisation automatique des tournées de livraison",
-      "Rapports mensuels d'économies de carburant & bilan CO₂",
-      "Support technique dédié 24/7 & gestionnaire de compte",
+      "Rapports mensuels de carburant & bilan carbone CO₂",
+      "Support prioritaire dédié 24/7 & gestionnaire de compte",
     ],
   },
+];
+
+const DISCOUNT_REWARDS = [
   {
-    id: "plan_citizen_annual",
-    category: "b2c",
-    name: "Pass Annuel Citoyen (12 Mois)",
-    subtitle: "Mobilité illimitée avec 2 mois offerts",
-    priceFcfa: 20000,
-    period: "par an",
-    target: "1 Utilisateur",
-    badge: "2 Mois Offerts",
-    features: [
-      "Tous les avantages Citoyen Premium en illimité",
-      "Économie de 4 000 FCFA sur l'année",
-      "Badge Citoyen d'Or & Priorité support",
-    ],
+    id: "tier_100",
+    pointsRequired: 100,
+    discountPercent: 5,
+    isFreeMonth: false,
+    label: "5 % de réduction",
+    description: "Sur le prochain abonnement",
+    citizenPrice: 1900,
+    enterprisePrice: 47500,
+  },
+  {
+    id: "tier_300",
+    pointsRequired: 300,
+    discountPercent: 15,
+    isFreeMonth: false,
+    label: "15 % de réduction",
+    description: "Sur le prochain abonnement",
+    citizenPrice: 1700,
+    enterprisePrice: 42500,
+  },
+  {
+    id: "tier_600",
+    pointsRequired: 600,
+    discountPercent: 100,
+    isFreeMonth: true,
+    label: "1 mois gratuit",
+    description: "Sur l'abonnement Premium",
+    citizenPrice: 0,
+    enterprisePrice: 0,
   },
 ];
 
@@ -104,23 +125,26 @@ export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState("reports"); // 'reports' | 'rewards'
   const [reports, setReports] = useState([]);
   const [profile, setProfile] = useState(null);
-  const [plans, setPlans] = useState(DEFAULT_PLANS);
   const [isLoading, setIsLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState("all");
+
+  // Sélection du palier de réduction appliqué par formule
+  const [selectedRewardCitizen, setSelectedRewardCitizen] = useState(null); // null | 'tier_100' | 'tier_300' | 'tier_600'
+  const [selectedRewardEnterprise, setSelectedRewardEnterprise] = useState(null);
 
   // Modal de nouveau signalement
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     city: selectedCity === "all" ? "Yaoundé" : selectedCity,
-    category: "accident",
+    category: "trafficBlock",
     severity: "moderate",
     locationDescription: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Modal de souscription avec réduction
-  const [subscribePlan, setSubscribePlan] = useState(null);
+  // Modal de souscription avec paiement
+  const [subscribeModal, setSubscribeModal] = useState(null); // { plan, rewardTier }
   const [paymentMethod, setPaymentMethod] = useState("MTN Mobile Money");
   const [phoneNumber, setPhoneNumber] = useState("670000000");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -128,7 +152,7 @@ export default function CommunityPage() {
 
   const showToast = (msg) => {
     setFeedbackToast(msg);
-    setTimeout(() => setFeedbackToast(null), 4000);
+    setTimeout(() => setFeedbackToast(null), 4500);
   };
 
   const fetchData = async () => {
@@ -136,10 +160,9 @@ export default function CommunityPage() {
       setIsLoading(true);
       const cityQuery = selectedCity && selectedCity !== "all" ? `?city=${encodeURIComponent(selectedCity)}` : "";
       
-      const [reportsRes, profileRes, catalogRes] = await Promise.all([
+      const [reportsRes, profileRes] = await Promise.all([
         fetch(`${API_BASE}/reports${cityQuery}`).catch(() => null),
         fetch(`${API_BASE}/rewards/profile`).catch(() => null),
-        fetch(`${API_BASE}/rewards/catalog`).catch(() => null),
       ]);
 
       if (reportsRes && reportsRes.ok) {
@@ -149,10 +172,6 @@ export default function CommunityPage() {
       if (profileRes && profileRes.ok) {
         const pData = await profileRes.json();
         setProfile(pData);
-      }
-      if (catalogRes && catalogRes.ok) {
-        const cData = await catalogRes.json();
-        if (cData.plans && cData.plans.length > 0) setPlans(cData.plans);
       }
     } catch (err) {
       console.error("Erreur chargement données communautaires", err);
@@ -191,6 +210,7 @@ export default function CommunityPage() {
     };
   }, [selectedCity]);
 
+  // Vote sur un incident (Confirmation ou Voie dégagée)
   const handleVote = async (reportId, type) => {
     try {
       const res = await fetch(`${API_BASE}/reports/${reportId}/vote`, {
@@ -199,9 +219,9 @@ export default function CommunityPage() {
         body: JSON.stringify({ type, userId: "user_current" }),
       });
 
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        showToast(type === "confirm" ? "👍 Confirmation enregistrée (+5 pts) !" : "✅ Signalement de résolution enregistré !");
+        showToast(data.message || "Action enregistrée avec succès !");
         
         setReports((prev) =>
           prev.map((r) => (r.id === reportId ? data.report : r)).filter((r) => r.status === "active")
@@ -209,16 +229,20 @@ export default function CommunityPage() {
         if (data.profileUpdate && profile) {
           setProfile((p) => ({
             ...p,
-            reputationScore: data.profileUpdate.points,
-            level: data.profileUpdate.level,
+            points: data.profileUpdate.points,
+            trustScore: data.profileUpdate.trustScore,
+            trust: data.profileUpdate.trust,
           }));
         }
+      } else {
+        showToast(data.error || "Action impossible.");
       }
     } catch (err) {
       showToast("Erreur lors de la prise en compte du vote.");
     }
   };
 
+  // Envoi d'un nouveau signalement
   const handleSubmitReport = async (e) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.locationDescription.trim()) {
@@ -233,25 +257,25 @@ export default function CommunityPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          author: profile?.name || "Citoyen CityFlow",
+          author: profile?.userName || "Citoyen CityFlow",
           authorId: "user_current",
         }),
       });
 
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        showToast("🎉 Signalement partagé ! +25 points de réputation crédités.");
+        showToast(data.message || "Signalement partagé ! En attente de confirmation.");
         setShowModal(false);
         setFormData({
           title: "",
           city: selectedCity === "all" ? "Yaoundé" : selectedCity,
-          category: "accident",
+          category: "trafficBlock",
           severity: "moderate",
           locationDescription: "",
         });
         fetchData();
       } else {
-        showToast("Impossible d'enregistrer le signalement.");
+        showToast(data.error || "Impossible d'enregistrer le signalement.");
       }
     } catch (err) {
       showToast("Erreur réseau lors de l'envoi.");
@@ -260,15 +284,17 @@ export default function CommunityPage() {
     }
   };
 
+  // Souscription et utilisation des points
   const handleConfirmSubscription = async () => {
-    if (!subscribePlan) return;
+    if (!subscribeModal) return;
     try {
       setIsProcessingPayment(true);
       const res = await fetch(`${API_BASE}/rewards/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          planId: subscribePlan.id,
+          planId: subscribeModal.plan.id,
+          rewardTierId: subscribeModal.rewardTier?.id || null,
           paymentMethod,
           phoneNumber,
         }),
@@ -276,8 +302,8 @@ export default function CommunityPage() {
 
       const data = await res.json();
       if (res.ok) {
-        showToast(`🎉 ${data.message}`);
-        setSubscribePlan(null);
+        showToast(data.message);
+        setSubscribeModal(null);
         fetchData();
       } else {
         showToast(data.error || "Erreur lors de la souscription.");
@@ -294,11 +320,19 @@ export default function CommunityPage() {
     return true;
   });
 
-  const userPoints = profile?.reputationScore || profile?.points || 320;
-  const userDiscountPercent = Math.min(100, Math.round((userPoints / 1000) * 100));
+  const userPoints = profile?.points ?? profile?.reputationScore ?? 380;
+  const trustScore = profile?.trustScore ?? 85;
+  const trustInfo = profile?.trust || {
+    score: trustScore,
+    level: "Très fiable",
+    icon: "⭐",
+    color: "#00875A",
+    description: "Utilisateur très fiable",
+  };
 
   return (
     <main className="community-page">
+      {/* Toast Notification */}
       {feedbackToast && (
         <div className="community-toast animate-slide-in">
           <Sparkles size={18} className="toast-icon" />
@@ -306,32 +340,34 @@ export default function CommunityPage() {
         </div>
       )}
 
+      {/* HERO BANNER */}
       <section className="community-hero">
         <div className="community-hero-content">
           <div className="hero-tag">
             <Users size={16} />
-            <span>Crowdsourcing Urbain & Mobilité Intelligente</span>
+            <span>Crowdsourcing Urbain & Programme Citoyen</span>
           </div>
           <h1>
-            Communauté & <span>Abonnements avec Réduction Citoyenne</span>
+            Communauté & <span>Abonnements Premium CityFlow</span>
           </h1>
           <p>
-            Participez activement à l'information routière de votre ville. Chaque contribution crédite vos points 
-            qui s'appliquent <strong>automatiquement en réduction directe sur tous vos abonnements CityFlow</strong>.
+            Signalez et confirmez les aléas de la route. Cumulez des points de citoyenneté pour 
+            <strong> débloquer 5%, 15% ou 1 mois gratuit sur votre abonnement Premium</strong>.
           </p>
 
+          {/* Quick Stats Bar */}
           <div className="community-quick-stats">
             <div className="stat-pill">
               <span className="pill-number">{reports.length}</span>
               <span className="pill-label">Signalements actifs</span>
             </div>
-            <div className="stat-pill">
+            <div className="stat-pill highlight-points">
               <span className="pill-number">{userPoints} pts</span>
-              <span className="pill-label">Mes Points Citoyens</span>
+              <span className="pill-label">Solde de Points</span>
             </div>
-            <div className="stat-pill highlight-pill">
-              <span className="pill-number">-{userDiscountPercent}%</span>
-              <span className="pill-label">Ma Réduction Directe</span>
+            <div className="stat-pill highlight-trust">
+              <span className="pill-number">{trustInfo.icon} {trustScore}/100</span>
+              <span className="pill-label">Score de Confiance</span>
             </div>
           </div>
         </div>
@@ -347,10 +383,11 @@ export default function CommunityPage() {
           }}
         >
           <PlusCircle size={20} />
-          <span>Signaler un incident (+25 pts)</span>
+          <span>Signaler un incident</span>
         </button>
       </section>
 
+      {/* NAVIGATION ONGLETS */}
       <nav className="community-tabs-nav" aria-label="Navigation Communauté">
         <button
           className={`tab-btn ${activeTab === "reports" ? "active" : ""}`}
@@ -364,21 +401,25 @@ export default function CommunityPage() {
           className={`tab-btn ${activeTab === "rewards" ? "active" : ""}`}
           onClick={() => setActiveTab("rewards")}
         >
-          <Tag size={18} />
-          <span>Tarifs & Abonnements Réduits</span>
-          <span className="tab-discount-tag">-{userDiscountPercent}%</span>
+          <Award size={18} />
+          <span>Tarifs & Réductions par Points</span>
+          <span className="tab-discount-tag">{userPoints} pts dispo</span>
         </button>
       </nav>
 
+      {/* ===================================================================
+          CONTENU ONGLET 1 : SIGNALEMENTS EN DIRECT
+          =================================================================== */}
       {activeTab === "reports" && (
         <section className="reports-section">
+          {/* BARRE DE FILTRES */}
           <div className="reports-filter-bar">
             <div className="filter-chips">
               <button
                 className={`filter-chip ${filterCategory === "all" ? "active" : ""}`}
                 onClick={() => setFilterCategory("all")}
               >
-                Tous les signalements ({reports.length})
+                Tous ({reports.length})
               </button>
               {Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => {
                 const count = reports.filter((r) => r.category === key).length;
@@ -396,6 +437,7 @@ export default function CommunityPage() {
             </div>
           </div>
 
+          {/* LISTE DES SIGNALEMENTS */}
           {isLoading ? (
             <div className="community-loading-box">
               <div className="spinner"></div>
@@ -437,7 +479,7 @@ export default function CommunityPage() {
                     <div className="report-meta">
                       <div className="meta-author">
                         <span className="author-dot"></span>
-                        <span>{report.author || "Citoyen CityFlow"} ({report.city})</span>
+                        <span>{report.author || "Citoyen"} ({report.city})</span>
                       </div>
                       <div className="meta-time">
                         <Clock size={13} />
@@ -449,16 +491,19 @@ export default function CommunityPage() {
                       <button
                         className="btn-vote confirm"
                         onClick={() => handleVote(report.id, "confirm")}
+                        title="Confirmer ce signalement (+5 pts attribués)"
                       >
                         <ThumbsUp size={15} />
-                        <span>Confirmer ({report.confirmationsCount || 0})</span>
+                        <span>Confirmer ({report.confirmationsCount || 0}) <strong>+5 pts</strong></span>
                       </button>
+
                       <button
                         className="btn-vote resolve"
                         onClick={() => handleVote(report.id, "resolved")}
+                        title="Indiquer que la voie est dégagée (+5 pts)"
                       >
                         <CheckCircle size={15} />
-                        <span>Voie dégagée</span>
+                        <span>Voie dégagée <strong>+5 pts</strong></span>
                       </button>
                     </div>
                   </article>
@@ -469,134 +514,194 @@ export default function CommunityPage() {
         </section>
       )}
 
+      {/* ===================================================================
+          CONTENU ONGLET 2 : TARIFS & RÉDUCTIONS PAR POINTS DÉFINITIVES
+          =================================================================== */}
       {activeTab === "rewards" && profile && (
         <section className="rewards-section">
-          <div className="gamification-header-card">
-            <div className="gamification-summary">
-              <div className="points-display-box">
-                <span className="points-title">Mes Points de Citoyenneté</span>
-                <div className="points-val">
-                  <strong>{userPoints}</strong>
-                  <span>pts</span>
-                </div>
-                <div className="active-discount-badge">
-                  <Percent size={14} />
-                  <span>Réduction automatique directe : <strong>-{userDiscountPercent}%</strong></span>
+          {/* BANDEAU 1 : SCORE DE CONFIANCE (SUR 100) & SOLDE DE POINTS */}
+          <div className="trust-points-dashboard-card">
+            {/* Colonne Score de Confiance */}
+            <div className="trust-score-column">
+              <div className="trust-header-row">
+                <Shield size={22} color={trustInfo.color} />
+                <div>
+                  <h3>Score de Confiance : <strong>{trustScore}/100</strong></h3>
+                  <span className="trust-level-badge" style={{ color: trustInfo.color, background: `${trustInfo.color}15`, borderColor: `${trustInfo.color}40` }}>
+                    {trustInfo.icon} Niveau : {trustInfo.level} ({trustInfo.description})
+                  </span>
                 </div>
               </div>
 
-              <div className="gamification-progress-col">
-                <div className="rank-info-row">
-                  <div className="rank-title-box">
-                    <span className="rank-badge-icon">{profile.level?.badgeIcon || "🛡️"}</span>
-                    <div>
-                      <h4>{profile.level?.title || "Sentinelle Urbaine"}</h4>
-                      <small>Niveau {profile.level?.number || 2}</small>
-                    </div>
-                  </div>
+              <div className="trust-progress-bar">
+                <div
+                  className="trust-progress-fill"
+                  style={{ width: `${Math.min(100, Math.max(5, trustScore))}%`, background: trustInfo.color }}
+                ></div>
+              </div>
 
-                  <span className="next-tier-hint">
-                    {userPoints >= 1000 ? (
-                      <strong style={{ color: "#00875A" }}>🎉 Félicitations ! Votre abonnement Citoyen est 100% GRATUIT !</strong>
-                    ) : (
-                      <>
-                        Encore <strong>{1000 - userPoints} pts</strong> pour atteindre <strong>100% GRATUIT</strong>
-                      </>
-                    )}
-                  </span>
-                </div>
-
-                <div className="points-progress-bar">
-                  <div
-                    className="points-progress-fill"
-                    style={{ width: `${Math.min(100, Math.max(5, (userPoints / 1000) * 100))}%` }}
-                  ></div>
-                </div>
-
-                <div className="points-scale-markers">
-                  <span>0 pt (0%)</span>
-                  <span>250 pts (-25%)</span>
-                  <span>500 pts (-50% Demi-tarif)</span>
-                  <span>750 pts (-75%)</span>
-                  <span>1000 pts (100% GRATUIT)</span>
-                </div>
+              <div className="trust-scale-markers">
+                <span className="marker-low">🔴 0–30 (Faible)</span>
+                <span className="marker-mid">🟠 31–60 (À confirmer)</span>
+                <span className="marker-good">🟢 61–80 (Fiable)</span>
+                <span className="marker-star">⭐ 81–100 (Très fiable)</span>
               </div>
             </div>
 
-            <div className="points-earning-guide">
-              <div className="earn-rule-item">
-                <div className="earn-icon plus-icon"><PlusCircle size={18} /></div>
-                <div>
-                  <strong>+25 points</strong>
-                  <span>Par signalement d'incident vérifié</span>
-                </div>
+            {/* Colonne Solde de Points */}
+            <div className="points-balance-column">
+              <span className="points-col-title">Solde de Points Cumulés</span>
+              <div className="points-col-val">
+                <strong>{userPoints}</strong>
+                <span>points</span>
               </div>
-              <div className="earn-rule-item">
-                <div className="earn-icon vote-icon"><ThumbsUp size={18} /></div>
-                <div>
-                  <strong>+5 points</strong>
-                  <span>Par confirmation ou résolution d'alerte</span>
-                </div>
-              </div>
-              <div className="earn-rule-item">
-                <div className="earn-icon eco-icon"><Zap size={18} /></div>
+              <p className="points-note">
+                <Sparkles size={13} color="#00875A" />
+                Les points sont déduits lors de l'application d'une réduction d'abonnement.
+              </p>
+            </div>
+          </div>
+
+          {/* BANDEAU 2 : BARÈME OFFICIEL D'ACQUISITION DES POINTS */}
+          <div className="points-rules-guide-card">
+            <div className="rules-heading">
+              <h4>🎯 Barème des Points Gagnés</h4>
+              <p className="rule-warning">
+                <Info size={15} color="#00875A" />
+                <strong>Règle importante :</strong> Les points de signalement sont attribués <u>uniquement lorsque le signalement est confirmé</u> par d'autres utilisateurs.
+              </p>
+            </div>
+
+            <div className="rules-grid">
+              <div className="rule-box">
+                <span className="rule-icon">🚗</span>
                 <div>
                   <strong>+10 points</strong>
-                  <span>Par trajet éco-mobilité optimisé</span>
+                  <span>Signaler un embouteillage confirmé</span>
+                </div>
+              </div>
+
+              <div className="rule-box">
+                <span className="rule-icon">🚨</span>
+                <div>
+                  <strong>+15 points</strong>
+                  <span>Signaler un accident confirmé</span>
+                </div>
+              </div>
+
+              <div className="rule-box">
+                <span className="rule-icon">🚦</span>
+                <div>
+                  <strong>+20 points</strong>
+                  <span>Signaler un feu en panne confirmé</span>
+                </div>
+              </div>
+
+              <div className="rule-box">
+                <span className="rule-icon">🛣️</span>
+                <div>
+                  <strong>+15 points</strong>
+                  <span>Signaler route bloquée / obstacle</span>
+                </div>
+              </div>
+
+              <div className="rule-box highlight-rule">
+                <span className="rule-icon">✅</span>
+                <div>
+                  <strong>+5 points</strong>
+                  <span>Confirmer un signalement existant</span>
+                </div>
+              </div>
+
+              <div className="rule-box highlight-rule">
+                <span className="rule-icon">🔄</span>
+                <div>
+                  <strong>+5 points</strong>
+                  <span>Indiquer qu'un incident est terminé</span>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* BANDEAU 3 : LES 2 ABONNEMENTS PREMIUM & SÉLECTEUR DE RÉDUCTION */}
           <div className="subscription-plans-container">
             <div className="plans-heading">
-              <h2>Formules d'Abonnement CityFlow</h2>
-              <p>Votre remise citoyenne de <strong>-{userDiscountPercent}%</strong> est automatiquement déduite de tous les tarifs ci-dessous.</p>
+              <h2>💳 Les Abonnements Premium & Réductions Débloquées</h2>
+              <p>Sélectionnez une réduction disponible selon votre solde de points pour l'appliquer immédiatement sur l'abonnement.</p>
             </div>
 
             <div className="plans-cards-grid">
-              {plans.map((plan) => {
-                const discountAmount = Math.round((plan.priceFcfa * userDiscountPercent) / 100);
-                const finalPrice = Math.max(0, plan.priceFcfa - discountAmount);
+              {/* CARTE 1 : 👤 Premium Citoyen (2 000 FCFA / mois - 1 personne) */}
+              {(() => {
+                const plan = SUBSCRIPTION_PLANS[0];
+                const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardCitizen);
+                const discountPct = activeTier ? activeTier.discountPercent : 0;
+                const pointsCost = activeTier ? activeTier.pointsRequired : 0;
+                const finalPrice = activeTier ? activeTier.citizenPrice : plan.priceFcfa;
                 const isFree = finalPrice === 0;
-                const isB2B = plan.category === "b2b";
 
                 return (
-                  <div
-                    key={plan.id}
-                    className={`plan-pricing-card ${isB2B ? "b2b-card" : "b2c-card"} ${plan.badge ? "featured-plan" : ""}`}
-                  >
-                    {plan.badge && <div className="plan-floating-badge">{plan.badge}</div>}
+                  <div className="plan-pricing-card b2c-card featured-plan">
+                    <div className="plan-floating-badge">👤 Citoyen Particulier</div>
 
                     <div className="plan-card-header">
                       <div className="plan-category-indicator">
-                        {isB2B ? <Building2 size={18} /> : <UserCheck size={18} />}
-                        <span>{isB2B ? "🏢 Entreprise & Flotte" : "👤 Simple Citoyen"}</span>
+                        <UserCheck size={18} />
+                        <span>1 personne bénéficiaire</span>
                       </div>
                       <h3 className="plan-name">{plan.name}</h3>
                       <p className="plan-subtitle">{plan.subtitle}</p>
-                      <span className="plan-target-tag">{plan.target}</span>
                     </div>
 
+                    {/* SÉLECTEUR DE RÉDUCTIONS PAR POINTS */}
+                    <div className="discount-tier-selector-box">
+                      <label>Appliquer une réduction par points :</label>
+                      <div className="tier-pills-row">
+                        <button
+                          type="button"
+                          className={`tier-pill-btn ${selectedRewardCitizen === null ? "active" : ""}`}
+                          onClick={() => setSelectedRewardCitizen(null)}
+                        >
+                          Plein Tarif (0 pt)
+                        </button>
+                        {DISCOUNT_REWARDS.map((tier) => {
+                          const canAfford = userPoints >= tier.pointsRequired;
+                          return (
+                            <button
+                              key={tier.id}
+                              type="button"
+                              disabled={!canAfford}
+                              className={`tier-pill-btn ${selectedRewardCitizen === tier.id ? "active" : ""} ${!canAfford ? "disabled" : ""}`}
+                              onClick={() => setSelectedRewardCitizen(tier.id)}
+                            >
+                              <strong>{tier.pointsRequired} pts</strong>
+                              <span>({tier.label})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* BLOC DE PRIX CALCULÉ */}
                     <div className="plan-pricing-block">
-                      {userDiscountPercent > 0 && (
+                      {discountPct > 0 && (
                         <div className="price-discount-meta">
                           <span className="original-price">{plan.priceFcfa.toLocaleString()} FCFA</span>
-                          <span className="discount-tag">-{userDiscountPercent}% appliqué</span>
+                          <span className="discount-tag">-{discountPct}% ({pointsCost} pts déduits)</span>
                         </div>
                       )}
 
                       <div className="final-price-row">
                         <strong className="final-price-amount">
-                          {isFree ? "100% GRATUIT" : `${finalPrice.toLocaleString()} FCFA`}
+                          {isFree ? "1 MOIS GRATUIT" : `${finalPrice.toLocaleString()} FCFA`}
                         </strong>
-                        <span className="price-period">/ {plan.period.replace("par ", "")}</span>
+                        <span className="price-period">/ mois</span>
                       </div>
 
-                      {userDiscountPercent > 0 && !isFree && (
+                      {discountPct > 0 && !isFree && (
                         <div className="savings-inline-pill">
                           <Sparkles size={13} color="#00875A" />
-                          <span>Vous économisez <strong>{discountAmount.toLocaleString()} FCFA</strong> grâce à vos points</span>
+                          <span>Économie de <strong>{(plan.priceFcfa - finalPrice).toLocaleString()} FCFA</strong></span>
                         </div>
                       )}
                     </div>
@@ -612,98 +717,218 @@ export default function CommunityPage() {
 
                     <button
                       type="button"
-                      className={`btn-subscribe-plan ${isB2B ? "btn-b2b" : "btn-b2c"}`}
-                      onClick={() => setSubscribePlan(plan)}
+                      className="btn-subscribe-plan btn-b2c"
+                      onClick={() => setSubscribeModal({ plan, rewardTier: activeTier, finalPrice })}
                     >
                       <CreditCard size={18} />
                       <span>
-                        {isFree ? "Activer mon mois Gratuit" : `Souscrire (${finalPrice.toLocaleString()} FCFA)`}
+                        {isFree
+                          ? `Activer mon mois Gratuit (-${pointsCost} pts)`
+                          : `Souscrire (${finalPrice.toLocaleString()} FCFA ${pointsCost > 0 ? `• -${pointsCost} pts` : ""})`}
                       </span>
                     </button>
                   </div>
                 );
-              })}
+              })()}
+
+              {/* CARTE 2 : 🏢 Premium Entreprise (50 000 FCFA / mois - 30 personnes) */}
+              {(() => {
+                const plan = SUBSCRIPTION_PLANS[1];
+                const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardEnterprise);
+                const discountPct = activeTier ? activeTier.discountPercent : 0;
+                const pointsCost = activeTier ? activeTier.pointsRequired : 0;
+                const finalPrice = activeTier ? activeTier.enterprisePrice : plan.priceFcfa;
+                const isFree = finalPrice === 0;
+
+                return (
+                  <div className="plan-pricing-card b2b-card">
+                    <div className="plan-floating-badge b2b-badge">🏢 Entreprise (30 Personnes)</div>
+
+                    <div className="plan-card-header">
+                      <div className="plan-category-indicator">
+                        <Building2 size={18} />
+                        <span>30 personnes incluses</span>
+                      </div>
+                      <h3 className="plan-name">{plan.name}</h3>
+                      <p className="plan-subtitle">{plan.subtitle}</p>
+                    </div>
+
+                    {/* SÉLECTEUR DE RÉDUCTIONS PAR POINTS */}
+                    <div className="discount-tier-selector-box">
+                      <label>Appliquer une réduction par points :</label>
+                      <div className="tier-pills-row">
+                        <button
+                          type="button"
+                          className={`tier-pill-btn ${selectedRewardEnterprise === null ? "active" : ""}`}
+                          onClick={() => setSelectedRewardEnterprise(null)}
+                        >
+                          Plein Tarif (0 pt)
+                        </button>
+                        {DISCOUNT_REWARDS.map((tier) => {
+                          const canAfford = userPoints >= tier.pointsRequired;
+                          return (
+                            <button
+                              key={tier.id}
+                              type="button"
+                              disabled={!canAfford}
+                              className={`tier-pill-btn ${selectedRewardEnterprise === tier.id ? "active" : ""} ${!canAfford ? "disabled" : ""}`}
+                              onClick={() => setSelectedRewardEnterprise(tier.id)}
+                            >
+                              <strong>{tier.pointsRequired} pts</strong>
+                              <span>({tier.label})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* BLOC DE PRIX CALCULÉ */}
+                    <div className="plan-pricing-block">
+                      {discountPct > 0 && (
+                        <div className="price-discount-meta">
+                          <span className="original-price">{plan.priceFcfa.toLocaleString()} FCFA</span>
+                          <span className="discount-tag">-{discountPct}% ({pointsCost} pts déduits)</span>
+                        </div>
+                      )}
+
+                      <div className="final-price-row">
+                        <strong className="final-price-amount">
+                          {isFree ? "1 MOIS GRATUIT" : `${finalPrice.toLocaleString()} FCFA`}
+                        </strong>
+                        <span className="price-period">/ mois (pour 30 pers.)</span>
+                      </div>
+
+                      {discountPct > 0 && !isFree && (
+                        <div className="savings-inline-pill">
+                          <Sparkles size={13} color="#2563eb" />
+                          <span>Économie de <strong>{(plan.priceFcfa - finalPrice).toLocaleString()} FCFA</strong></span>
+                        </div>
+                      )}
+                    </div>
+
+                    <ul className="plan-features-list">
+                      {plan.features.map((feat, idx) => (
+                        <li key={idx}>
+                          <Check size={16} className="feature-check" />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button
+                      type="button"
+                      className="btn-subscribe-plan btn-b2b"
+                      onClick={() => setSubscribeModal({ plan, rewardTier: activeTier, finalPrice })}
+                    >
+                      <CreditCard size={18} />
+                      <span>
+                        {isFree
+                          ? `Activer le mois Gratuit Flotte (-${pointsCost} pts)`
+                          : `Souscrire (${finalPrice.toLocaleString()} FCFA ${pointsCost > 0 ? `• -${pointsCost} pts` : ""})`}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </section>
       )}
 
-      {subscribePlan && (
-        <div className="modal-backdrop" onClick={() => setSubscribePlan(null)}>
+      {/* ===================================================================
+          MODAL : SOUSCRIPTION & RÈGLEMENT SÉCURISÉ
+          =================================================================== */}
+      {subscribeModal && (
+        <div className="modal-backdrop" onClick={() => setSubscribeModal(null)}>
           <div className="modal-card payment-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-box">
                 <CreditCard size={22} className="text-emerald-500" />
                 <div>
                   <h3>Souscription & Règlement</h3>
-                  <small>{subscribePlan.name}</small>
+                  <small>{subscribeModal.plan.name} • {subscribeModal.plan.beneficiaries}</small>
                 </div>
               </div>
-              <button className="btn-close-modal" onClick={() => setSubscribePlan(null)}>
+              <button className="btn-close-modal" onClick={() => setSubscribeModal(null)}>
                 <X size={20} />
               </button>
             </div>
 
             <div className="payment-summary-box">
               <div className="pay-row">
-                <span>Formule :</span>
-                <strong>{subscribePlan.name}</strong>
+                <span>Formule choisie :</span>
+                <strong>{subscribeModal.plan.name} ({subscribeModal.plan.beneficiaries})</strong>
               </div>
               <div className="pay-row">
-                <span>Prix normal :</span>
-                <strong className={userDiscountPercent > 0 ? "line-through text-gray-400" : ""}>
-                  {subscribePlan.priceFcfa.toLocaleString()} FCFA
+                <span>Prix standard :</span>
+                <strong className={subscribeModal.rewardTier ? "line-through text-gray-400" : ""}>
+                  {subscribeModal.plan.priceFcfa.toLocaleString()} FCFA
                 </strong>
               </div>
-              {userDiscountPercent > 0 && (
-                <div className="pay-row text-emerald-600">
-                  <span>Réduction Citoyenne ({userDiscountPercent}%) :</span>
-                  <strong>-{Math.round((subscribePlan.priceFcfa * userDiscountPercent) / 100).toLocaleString()} FCFA</strong>
-                </div>
+              {subscribeModal.rewardTier && (
+                <>
+                  <div className="pay-row text-emerald-600">
+                    <span>Réduction appliquée :</span>
+                    <strong>{subscribeModal.rewardTier.label}</strong>
+                  </div>
+                  <div className="pay-row text-emerald-600">
+                    <span>Points déduits du solde :</span>
+                    <strong>-{subscribeModal.rewardTier.pointsRequired} points</strong>
+                  </div>
+                </>
               )}
               <div className="pay-row total-row">
                 <span>Montant Net à Régler :</span>
                 <strong className="total-amount">
-                  {Math.max(0, subscribePlan.priceFcfa - Math.round((subscribePlan.priceFcfa * userDiscountPercent) / 100)).toLocaleString()} FCFA
+                  {subscribeModal.finalPrice === 0 ? "0 FCFA (1 MOIS GRATUIT 🎉)" : `${subscribeModal.finalPrice.toLocaleString()} FCFA`}
                 </strong>
               </div>
             </div>
 
             <div className="payment-form">
-              <label className="payment-label">Moyen de paiement sécurisé (Cameroun) :</label>
-              <div className="payment-methods-grid">
-                {[
-                  { id: "MTN Mobile Money", label: "MTN MoMo", color: "#FACC15" },
-                  { id: "Orange Money", label: "Orange Money", color: "#FB923C" },
-                  { id: "Carte Bancaire", label: "Carte Bancaire / Visa", color: "#38BDF8" },
-                ].map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className={`pay-method-btn ${paymentMethod === m.id ? "selected" : ""}`}
-                    onClick={() => setPaymentMethod(m.id)}
-                  >
-                    <span className="method-dot" style={{ background: m.color }}></span>
-                    <span>{m.label}</span>
-                  </button>
-                ))}
-              </div>
+              {subscribeModal.finalPrice > 0 ? (
+                <>
+                  <label className="payment-label">Moyen de paiement sécurisé (Cameroun) :</label>
+                  <div className="payment-methods-grid">
+                    {[
+                      { id: "MTN Mobile Money", label: "MTN MoMo", color: "#FACC15" },
+                      { id: "Orange Money", label: "Orange Money", color: "#FB923C" },
+                      { id: "Carte Bancaire", label: "Carte Bancaire / Visa", color: "#38BDF8" },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`pay-method-btn ${paymentMethod === m.id ? "selected" : ""}`}
+                        onClick={() => setPaymentMethod(m.id)}
+                      >
+                        <span className="method-dot" style={{ background: m.color }}></span>
+                        <span>{m.label}</span>
+                      </button>
+                    ))}
+                  </div>
 
-              {paymentMethod.includes("Money") && (
-                <div className="form-group mt-3">
-                  <label>Numéro de téléphone ({paymentMethod}) :</label>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="6XXXXXXXX"
-                    required
-                  />
+                  {paymentMethod.includes("Money") && (
+                    <div className="form-group mt-3">
+                      <label>Numéro de téléphone ({paymentMethod}) :</label>
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="6XXXXXXXX"
+                        required
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="free-month-notice">
+                  <Sparkles size={20} color="#00875A" />
+                  <p>Aucun paiement requis. Votre récompense de <strong>1 mois gratuit</strong> sera activée immédiatement et <strong>600 points</strong> seront déduits de votre solde.</p>
                 </div>
               )}
 
               <div className="modal-actions mt-4">
-                <button type="button" className="btn-cancel" onClick={() => setSubscribePlan(null)}>
+                <button type="button" className="btn-cancel" onClick={() => setSubscribeModal(null)}>
                   Annuler
                 </button>
                 <button
@@ -712,7 +937,7 @@ export default function CommunityPage() {
                   disabled={isProcessingPayment}
                   onClick={handleConfirmSubscription}
                 >
-                  {isProcessingPayment ? "Traitement sécurisé..." : "Confirmer et Activer"}
+                  {isProcessingPayment ? "Traitement en cours..." : "Confirmer et Activer"}
                 </button>
               </div>
             </div>
@@ -720,6 +945,9 @@ export default function CommunityPage() {
         </div>
       )}
 
+      {/* ===================================================================
+          MODAL : NOUVEAU SIGNALEMENT
+          =================================================================== */}
       {showModal && (
         <div className="modal-backdrop" onClick={() => setShowModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -734,6 +962,7 @@ export default function CommunityPage() {
             </div>
 
             <form onSubmit={handleSubmitReport} className="modal-form">
+              {/* Ville */}
               <div className="form-group">
                 <label>Ville concernée</label>
                 <select
@@ -745,22 +974,24 @@ export default function CommunityPage() {
                 </select>
               </div>
 
+              {/* Type d'incident & Points prévisionnels */}
               <div className="form-group">
-                <label>Type d'incident</label>
+                <label>Type d'incident (Points crédités après confirmation)</label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
                   {Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => (
                     <option key={key} value={key}>
-                      {cfg.label}
+                      {cfg.label} (+{cfg.points} pts une fois confirmé)
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Sévérité */}
               <div className="form-group">
-                <label>Niveau de blocage / Urgence</label>
+                <label>Niveau de blocage</label>
                 <div className="severity-selector">
                   {Object.entries(SEVERITY_CONFIG).map(([key, cfg]) => (
                     <button
@@ -775,11 +1006,12 @@ export default function CommunityPage() {
                 </div>
               </div>
 
+              {/* Titre */}
               <div className="form-group">
                 <label>Titre bref du signalement *</label>
                 <input
                   type="text"
-                  placeholder="Ex: Camion arrêté, circulation bloquée"
+                  placeholder="Ex: Carrefour bloqué, circulation dense"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
@@ -797,9 +1029,12 @@ export default function CommunityPage() {
                 />
               </div>
 
+              {/* Règle Anti-Abus Reminder */}
               <div className="gamification-prompt">
-                <Sparkles size={16} className="text-yellow-500" />
-                <span>Ce signalement attribuera <strong>+25 points de réputation</strong> à votre profil.</span>
+                <ShieldCheck size={18} color="#00875A" />
+                <span>
+                  Ce signalement vous rapportera <strong>+{CATEGORY_CONFIG[formData.category]?.points || 15} points</strong> dès qu'il sera confirmé par d'autres citoyens.
+                </span>
               </div>
 
               <div className="modal-actions">
@@ -817,3 +1052,4 @@ export default function CommunityPage() {
     </main>
   );
 }
+

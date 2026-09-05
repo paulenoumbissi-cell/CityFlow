@@ -1,18 +1,18 @@
 import { broadcastNewReport, broadcastReportVote } from "../services/websocketServer.js";
 import dbService from "../services/dbService.js";
 
-// Contrôleur de signalement citoyen collaboratif & système de récompenses / gamification avec persistance
-
-// Formules d'abonnement CityFlow (Citoyens Particuliers & Entreprises B2B)
+// ==========================================================================
+// 1. LES ABONNEMENTS PREMIUM (Barème Définitif)
+// ==========================================================================
 export const SUBSCRIPTION_PLANS = [
   {
-    id: "plan_citizen_monthly",
+    id: "plan_citizen",
     category: "b2c",
-    name: "Pass Mensuel Citoyen Premium",
-    subtitle: "Pour simples citoyens & conducteurs particuliers",
+    name: "Premium Citoyen",
+    subtitle: "Mobilité intelligente et guidage optimisé",
     priceFcfa: 2000,
     period: "par mois",
-    target: "1 Utilisateur",
+    beneficiaries: "1 personne",
     features: [
       "Guidage vocal intelligent sans coupure",
       "Alertes d'anticipation météo & bouchons +1h",
@@ -21,129 +21,85 @@ export const SUBSCRIPTION_PLANS = [
     ],
   },
   {
-    id: "plan_citizen_annual",
-    category: "b2c",
-    name: "Pass Annuel Citoyen (12 Mois)",
-    subtitle: "Mobilité illimitée avec 2 mois offerts",
-    priceFcfa: 20000,
-    period: "par an",
-    target: "1 Utilisateur",
-    features: [
-      "Tous les avantages Premium en illimité",
-      "Économie de 4 000 FCFA sur l'année",
-      "Badge Citoyen d'Or & Priorité support",
-    ],
-  },
-  {
-    id: "plan_enterprise_fleet",
+    id: "plan_enterprise",
     category: "b2b",
-    name: "Pack Flotte Entreprise Pro (B2B)",
-    subtitle: "Pour entreprises, livreurs & flottes de véhicules",
+    name: "Premium Entreprise",
+    subtitle: "Flottes d'entreprises, livraisons & équipes",
     priceFcfa: 50000,
     period: "par mois",
-    target: "Jusqu'à 20 collaborateurs inclus",
+    beneficiaries: "30 personnes",
     features: [
-      "Comptes Premium inclus pour jusqu'à 20 chauffeurs / employés",
-      "Tableau de bord supervision de flotte en temps réel (Yaoundé & Douala)",
+      "Comptes Premium inclus pour 30 personnes (collaborateurs / chauffeurs)",
+      "Tableau de bord de supervision de flotte en temps réel (Yaoundé & Douala)",
       "Optimisation automatique des tournées de livraison",
-      "Rapports mensuels d'économies de carburant & CO₂",
-      "Support technique dédié & gestionnaire de compte",
+      "Rapports mensuels de carburant & bilan carbone CO₂",
+      "Support prioritaire dédié 24/7",
     ],
   },
 ];
 
-// Catalogue des Réductions d'Abonnement déblocables par Points Citoyens
-export const REWARDS_CATALOG = [
+// ==========================================================================
+// 2. LE BARÈME DÉFINITIF DES RÉDUCTIONS
+// ==========================================================================
+export const DISCOUNT_REWARDS = [
   {
-    id: "discount_10",
-    title: "Réduction 10% sur l'Abonnement",
-    discountPercent: 10,
-    costPoints: 100,
-    badge: "🌱 Débutant",
-    icon: "🥉",
-    description: "Bénéficiez de 10% de remise immédiate sur votre prochain abonnement CityFlow.",
-    savingsEstimate: "200 à 5 000 FCFA d'économie",
+    id: "tier_100",
+    pointsRequired: 100,
+    discountPercent: 5,
+    isFreeMonth: false,
+    label: "5 % de réduction",
+    description: "Sur le prochain abonnement",
+    citizenPrice: 1900,
+    enterprisePrice: 47500,
   },
   {
-    id: "discount_25",
-    title: "Réduction 25% sur l'Abonnement",
-    discountPercent: 25,
-    costPoints: 250,
-    badge: "🛡️ Sentinelle",
-    icon: "🥈",
-    description: "25% de remise sur toute formule d'abonnement grâce à votre participation active.",
-    savingsEstimate: "500 à 12 500 FCFA d'économie",
+    id: "tier_300",
+    pointsRequired: 300,
+    discountPercent: 15,
+    isFreeMonth: false,
+    label: "15 % de réduction",
+    description: "Sur le prochain abonnement",
+    citizenPrice: 1700,
+    enterprisePrice: 42500,
   },
   {
-    id: "discount_50",
-    title: "Demi-Tarif — 50% sur l'Abonnement",
-    discountPercent: 50,
-    costPoints: 450,
-    badge: "🗺️ Guide Urbain",
-    icon: "🥇",
-    description: "Ne payez que la moitié de votre abonnement CityFlow pour vos signalements réguliers.",
-    savingsEstimate: "1 000 à 25 000 FCFA d'économie",
-  },
-  {
-    id: "discount_75",
-    title: "Super Réduction 75% sur l'Abonnement",
-    discountPercent: 75,
-    costPoints: 700,
-    badge: "💎 Pilier de la Cité",
-    icon: "⭐",
-    description: "75% de réduction exclusive sur votre abonnement pour votre fidélité exemplaire.",
-    savingsEstimate: "1 500 à 37 500 FCFA d'économie",
-  },
-  {
-    id: "discount_100",
-    title: "100% GRATUIT — 1 Mois Citoyen Offert",
+    id: "tier_600",
+    pointsRequired: 600,
     discountPercent: 100,
-    costPoints: 1000,
-    badge: "👑 Héros de la Mobilité",
-    icon: "🏆",
-    description: "Votre abonnement Citoyen 100% gratuit, totalement financé par vos points de citoyenneté !",
-    savingsEstimate: "2 000 FCFA offerts",
+    isFreeMonth: true,
+    label: "1 mois gratuit",
+    description: "Sur l'abonnement Premium",
+    citizenPrice: 0,
+    enterprisePrice: 0,
   },
 ];
 
-// Helper pour calculer le niveau
-function computeLevel(points) {
-  if (points >= 701) {
-    return {
-      number: 4,
-      title: "Héros de la Mobilité",
-      badgeIcon: "👑",
-      minPoints: 701,
-      maxPoints: 1500,
-      progressPercentage: Math.min(100, Math.round(((points - 701) / 799) * 100)),
-    };
-  } else if (points >= 301) {
-    return {
-      number: 3,
-      title: "Guide de la Cité",
-      badgeIcon: "🗺️",
-      minPoints: 301,
-      maxPoints: 700,
-      progressPercentage: Math.min(100, Math.round(((points - 301) / 399) * 100)),
-    };
-  } else if (points >= 101) {
-    return {
-      number: 2,
-      title: "Sentinelle Urbaine",
-      badgeIcon: "🛡️",
-      minPoints: 101,
-      maxPoints: 300,
-      progressPercentage: Math.min(100, Math.round(((points - 101) / 199) * 100)),
-    };
+// ==========================================================================
+// 3. BARÈME DES POINTS PAR TYPE D'INCIDENT (Attribués après confirmation)
+// ==========================================================================
+export const REPORT_POINTS_CONFIG = {
+  trafficBlock: { points: 10, label: "Embouteillage", icon: "🚗" },
+  accident: { points: 15, label: "Accident de circulation", icon: "🚨" },
+  trafficLight: { points: 20, label: "Feu de circulation en panne", icon: "🚦" },
+  roadworks: { points: 15, label: "Route bloquée / Travaux", icon: "🛣️" },
+  hazard: { points: 15, label: "Obstacle ou nid de poule", icon: "⚠️" },
+  breakdown: { points: 15, label: "Véhicule en panne", icon: "🔧" },
+  flooding: { points: 15, label: "Inondation de chaussée", icon: "💧" },
+};
+
+// ==========================================================================
+// 4. SYSTÈME DE CONFIANCE (Score sur 100)
+// ==========================================================================
+export function getTrustLevel(score) {
+  const s = Math.max(0, Math.min(100, score ?? 75));
+  if (s >= 81) {
+    return { score: s, level: "Très fiable", icon: "⭐", color: "#00875A", badgeClass: "trust-star", description: "Utilisateur très fiable" };
+  } else if (s >= 61) {
+    return { score: s, level: "Fiable", icon: "🟢", color: "#10B981", badgeClass: "trust-good", description: "Utilisateur généralement fiable" };
+  } else if (s >= 31) {
+    return { score: s, level: "À confirmer", icon: "🟠", color: "#F59E0B", badgeClass: "trust-check", description: "Signalements nécessitant des vérifications" };
   } else {
-    return {
-      number: 1,
-      title: "Éclaireur Débutant",
-      badgeIcon: "🌱",
-      minPoints: 0,
-      maxPoints: 100,
-      progressPercentage: Math.min(100, Math.round((points / 100) * 100)),
-    };
+    return { score: s, level: "Faible", icon: "🔴", color: "#EF4444", badgeClass: "trust-low", description: "Signalements peu fiables" };
   }
 }
 
@@ -182,7 +138,7 @@ export const getCitizenReports = async (req, res) => {
   }
 };
 
-// 2. Créer un nouveau signalement (persistant + push WS)
+// 2. Créer un nouveau signalement (Règle : 0 point immédiat tant que non confirmé)
 export const createCitizenReport = async (req, res) => {
   try {
     const {
@@ -193,6 +149,7 @@ export const createCitizenReport = async (req, res) => {
       severity,
       category,
       author,
+      authorId = "user_current",
     } = req.body;
 
     if (!title || !city || !locationDescription) {
@@ -202,60 +159,47 @@ export const createCitizenReport = async (req, res) => {
     const reports = await dbService.getReports();
     const profile = await dbService.getProfile();
 
+    const catKey = category || "accident";
+    const expectedPoints = REPORT_POINTS_CONFIG[catKey]?.points || 15;
+
     const newReport = {
       id: `rep_${Date.now()}`,
       author: author || profile.userName || "Citoyen CityFlow",
+      authorId,
       city: city || "Yaoundé",
-      category: category || "accident",
+      category: catKey,
       title,
       locationDescription,
       position: position || (city.toLowerCase().includes("douala") ? [4.0511, 9.7679] : [3.848, 11.5021]),
       severity: severity || "moderate",
       reportedAt: new Date().toISOString(),
-      confirmationsCount: 1,
+      confirmationsCount: 0, // En attente de confirmation
       resolutionsCount: 0,
       isVerified: false,
       status: "active",
-      upvotedBy: ["user_current"],
+      upvotedBy: [],
       downvotedBy: [],
+      pointsAwardedToAuthor: false,
+      expectedPoints,
     };
 
     reports.unshift(newReport);
     await dbService.saveReports(reports);
 
-    // Gamification : +25 points pour l'auteur
-    const currentScore = (profile.reputationScore || profile.points || 320) + 25;
-    profile.reputationScore = currentScore;
-    profile.points = currentScore;
+    // Mettre à jour le compteur de signalements de l'auteur sans créditer de points tant qu'il n'y a pas eu confirmation
     profile.reportsCount = (profile.reportsCount || 0) + 1;
-    profile.level = computeLevel(currentScore);
-
-    if (category === "accident" && profile.badges) {
-      const angelBadge = profile.badges.find((b) => b.id === "guardian_angel");
-      if (angelBadge && !angelBadge.unlockedAt) {
-        angelBadge.unlockedAt = new Date().toISOString();
-      }
-    }
-
-    if (currentScore >= 700 && profile.badges) {
-      const heroBadge = profile.badges.find((b) => b.id === "hero_50" || b.id === "city_hero");
-      if (heroBadge && !heroBadge.unlockedAt) {
-        heroBadge.unlockedAt = new Date().toISOString();
-      }
-    }
-
     await dbService.saveProfile(profile);
 
-    // Diffusion push en direct via WebSockets
+    // Diffusion push WebSockets
     broadcastNewReport(newReport);
 
     res.status(201).json({
       success: true,
-      message: "Signalement citoyen enregistré avec succès (+25 points attribués) !",
+      message: `Signalement publié ! Les +${expectedPoints} points seront crédités dès confirmation par un autre citoyen.`,
       report: newReport,
-      profileUpdate: {
-        points: profile.reputationScore,
-        level: profile.level,
+      profile: {
+        points: profile.points || profile.reputationScore || 0,
+        trust: getTrustLevel(profile.trustScore),
       },
     });
   } catch (err) {
@@ -264,7 +208,7 @@ export const createCitizenReport = async (req, res) => {
   }
 };
 
-// 3. Voter sur un signalement
+// 3. Confirmer ou Résoudre un signalement
 export const voteCitizenReport = async (req, res) => {
   try {
     const { id } = req.params;
@@ -280,34 +224,64 @@ export const voteCitizenReport = async (req, res) => {
     const report = reports[reportIndex];
     const profile = await dbService.getProfile();
 
+    let feedbackMsg = "";
+    let pointsEarned = 0;
+
     if (type === "confirm") {
-      if (!report.upvotedBy.includes(userId)) {
-        report.upvotedBy.push(userId);
-        report.confirmationsCount += 1;
+      // Règle anti-abus 1 : Un utilisateur ne peut pas confirmer son propre signalement
+      if (report.authorId === userId) {
+        return res.status(400).json({ error: "Vous ne pouvez pas confirmer votre propre signalement." });
+      }
 
-        const currentScore = (profile.reputationScore || profile.points || 320) + 5;
-        profile.reputationScore = currentScore;
-        profile.points = currentScore;
-        profile.confirmationsGiven = (profile.confirmationsGiven || 0) + 1;
-        profile.level = computeLevel(currentScore);
+      // Règle anti-abus 2 : Une seule confirmation par utilisateur
+      if (report.upvotedBy.includes(userId)) {
+        return res.status(400).json({ error: "Vous avez déjà confirmé ce signalement." });
+      }
 
-        if (report.confirmationsCount >= 3) {
-          report.isVerified = true;
+      report.upvotedBy.push(userId);
+      report.confirmationsCount += 1;
+
+      // Attribution de +5 points au votant qui confirme
+      const voterPoints = (profile.points || profile.reputationScore || 0) + 5;
+      profile.points = voterPoints;
+      profile.reputationScore = voterPoints;
+      profile.confirmationsGiven = (profile.confirmationsGiven || 0) + 1;
+      pointsEarned = 5;
+      feedbackMsg = "👍 Confirmation enregistrée (+5 points attribués) !";
+
+      // Le votant augmente son score de confiance (+1 pt)
+      profile.trustScore = Math.min(100, (profile.trustScore ?? 75) + 1);
+
+      // Si c'est la 1ère confirmation et que l'auteur n'a pas encore reçu ses points :
+      if (!report.pointsAwardedToAuthor && report.confirmationsCount >= 1) {
+        report.pointsAwardedToAuthor = true;
+        report.isVerified = true;
+
+        // Si l'auteur est l'utilisateur courant, on lui crédite ses points (+10, +15 ou +20)
+        if (report.authorId === profile.userId) {
+          const authorBonus = report.expectedPoints || 15;
+          profile.points = (profile.points || 0) + authorBonus;
+          profile.reputationScore = profile.points;
+          profile.confirmedReportsCount = (profile.confirmedReportsCount || 0) + 1;
+          profile.trustScore = Math.min(100, (profile.trustScore ?? 75) + 3);
         }
       }
     } else if (type === "resolved") {
+      // Règle : Mettre à jour un signalement en indiquant que l'incident est terminé (+5 points)
       if (!report.downvotedBy.includes(userId)) {
         report.downvotedBy.push(userId);
         report.resolutionsCount += 1;
 
-        if (report.resolutionsCount >= 2) {
+        if (report.resolutionsCount >= 1) {
           report.status = "resolved";
         }
 
-        const currentScore = (profile.reputationScore || profile.points || 320) + 5;
-        profile.reputationScore = currentScore;
-        profile.points = currentScore;
-        profile.level = computeLevel(currentScore);
+        const voterPoints = (profile.points || profile.reputationScore || 0) + 5;
+        profile.points = voterPoints;
+        profile.reputationScore = voterPoints;
+        profile.resolvedReportsCount = (profile.resolvedReportsCount || 0) + 1;
+        pointsEarned = 5;
+        feedbackMsg = "🔄 Signalement mis à jour : Voie dégagée (+5 points attribués) !";
       }
     }
 
@@ -315,16 +289,18 @@ export const voteCitizenReport = async (req, res) => {
     await dbService.saveReports(reports);
     await dbService.saveProfile(profile);
 
-    // Diffusion push de la mise à jour du vote
+    // Diffusion push du vote
     broadcastReportVote(report);
 
     res.json({
       success: true,
-      message: type === "confirm" ? "Confirmation enregistrée (+5 points) !" : "Signalement de résolution enregistré !",
+      message: feedbackMsg,
+      pointsEarned,
       report,
       profileUpdate: {
-        points: profile.reputationScore,
-        level: profile.level,
+        points: profile.points,
+        trustScore: profile.trustScore,
+        trust: getTrustLevel(profile.trustScore),
       },
     });
   } catch (err) {
@@ -333,31 +309,37 @@ export const voteCitizenReport = async (req, res) => {
   }
 };
 
-// 4. Obtenir le profil citoyen et les points
+// 4. Obtenir le profil citoyen, solde de points et score de confiance
 export const getCitizenProfile = async (req, res) => {
   try {
     const profile = await dbService.getProfile();
-    const currentScore = profile.reputationScore || profile.points || 320;
-    profile.level = computeLevel(currentScore);
-    res.json(profile);
+    const userPoints = profile.points ?? profile.reputationScore ?? 380;
+    const trustScore = profile.trustScore ?? 85;
+
+    res.json({
+      ...profile,
+      points: userPoints,
+      trustScore,
+      trust: getTrustLevel(trustScore),
+    });
   } catch (err) {
     console.error("[getCitizenProfile Error]", err);
-    res.status(500).json({ error: "Erreur profil" });
+    res.status(500).json({ error: "Erreur profil citoyen" });
   }
 };
 
-// 5. Obtenir les formules d'abonnement et la réduction directe calculée
+// 5. Obtenir les offres, le barème des réductions et le solde de points
 export const getRewardsCatalog = async (req, res) => {
   try {
     const profile = await dbService.getProfile();
-    const userPoints = profile.reputationScore || profile.points || 320;
-    // Réduction directe continue : 1 point = 0.1% de réduction (max 100% à 1 000 points)
-    const directDiscountPercent = Math.min(100, Math.round((userPoints / 1000) * 100));
+    const userPoints = profile.points ?? profile.reputationScore ?? 380;
+    const trustScore = profile.trustScore ?? 85;
 
     res.json({
       plans: SUBSCRIPTION_PLANS,
+      rewards: DISCOUNT_REWARDS,
       userPoints,
-      directDiscountPercent,
+      trust: getTrustLevel(trustScore),
     });
   } catch (err) {
     console.error("[getRewardsCatalog Error]", err);
@@ -365,15 +347,43 @@ export const getRewardsCatalog = async (req, res) => {
   }
 };
 
-// 6. Souscription directe avec réduction citoyenne
+// 6. Souscription avec application d'une récompense & déduction des points du solde
 export const subscribeWithDiscount = async (req, res) => {
   try {
-    const { planId, paymentMethod } = req.body;
+    const { planId, rewardTierId, paymentMethod, phoneNumber } = req.body;
     const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId) || SUBSCRIPTION_PLANS[0];
 
     const profile = await dbService.getProfile();
-    const userPoints = profile.reputationScore || profile.points || 320;
-    const discountPercent = Math.min(100, Math.round((userPoints / 1000) * 100));
+    let currentPoints = profile.points ?? profile.reputationScore ?? 380;
+
+    let discountPercent = 0;
+    let pointsDeducted = 0;
+    let isFreeMonth = false;
+    let rewardAppliedLabel = "Plein Tarif (Aucun point utilisé)";
+
+    if (rewardTierId) {
+      const rewardTier = DISCOUNT_REWARDS.find((r) => r.id === rewardTierId);
+      if (!rewardTier) {
+        return res.status(404).json({ error: "Palier de réduction introuvable." });
+      }
+
+      if (currentPoints < rewardTier.pointsRequired) {
+        return res.status(400).json({
+          error: `Points insuffisants. Vous disposez de ${currentPoints} points, mais ${rewardTier.pointsRequired} points sont requis pour ${rewardTier.label}.`,
+        });
+      }
+
+      discountPercent = rewardTier.discountPercent;
+      pointsDeducted = rewardTier.pointsRequired;
+      isFreeMonth = rewardTier.isFreeMonth;
+      rewardAppliedLabel = rewardTier.label;
+
+      // Déduction des points du solde
+      currentPoints -= pointsDeducted;
+      profile.points = currentPoints;
+      profile.reputationScore = currentPoints;
+    }
+
     const discountAmount = Math.round((plan.priceFcfa * discountPercent) / 100);
     const finalPrice = Math.max(0, plan.priceFcfa - discountAmount);
 
@@ -383,10 +393,15 @@ export const subscribeWithDiscount = async (req, res) => {
       planName: plan.name,
       category: plan.category,
       basePrice: plan.priceFcfa,
+      beneficiaries: plan.beneficiaries,
       discountPercent,
       discountAmount,
+      pointsDeducted,
       finalPrice,
+      isFreeMonth,
+      rewardApplied: rewardAppliedLabel,
       paymentMethod: paymentMethod || "MTN Mobile Money",
+      phoneNumber: phoneNumber || "670000000",
       status: "active",
       subscribedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -396,10 +411,16 @@ export const subscribeWithDiscount = async (req, res) => {
     profile.subscriptions.unshift(subscription);
     await dbService.saveProfile(profile);
 
+    const successMsg = isFreeMonth
+      ? `🎉 Félicitations ! Votre mois gratuit pour "${plan.name}" (${plan.beneficiaries}) a été activé avec succès (-${pointsDeducted} pts déduits du solde).`
+      : `🎉 Souscription réussie à "${plan.name}" (${plan.beneficiaries}) ! Montant réglé : ${finalPrice.toLocaleString()} FCFA (${discountPercent}% de réduction, -${pointsDeducted} pts déduits).`;
+
     res.json({
       success: true,
-      message: `Souscription réussie à "${plan.name}" ! Prix réglé : ${finalPrice.toLocaleString()} FCFA (${discountPercent}% de réduction citoyenne appliquée).`,
+      message: successMsg,
       subscription,
+      remainingPoints: currentPoints,
+      trust: getTrustLevel(profile.trustScore),
     });
   } catch (err) {
     console.error("[subscribeWithDiscount Error]", err);

@@ -84,20 +84,22 @@ const INITIAL_PROFILE = {
   userId: "user_current",
   userName: "Paul Enoumbissi",
   userEmail: "paul.enoumbissi@cityflow.cm",
-  points: 485,
-  level: "Sentinelle Urbaine",
-  levelBadge: "🛡️ Sentinelle",
-  reportsCount: 14,
-  votesCount: 38,
-  resolvedCount: 9,
-  streakDays: 5,
+  points: 380, // Solde de points cumulés pour récompenses
+  trustScore: 85, // Score de confiance sur 100 (⭐ Très fiable)
+  confirmedReportsCount: 12,
+  confirmationsGiven: 26,
+  resolvedReportsCount: 8,
+  invalidReportsCount: 0,
+  streakDays: 6,
+  subscriptions: [],
   badges: [
     { id: "first_report", title: "Premier Signalement", icon: "📍", unlocked: true, unlockedAt: "2026-08-10" },
     { id: "verifier_10", title: "Vérificateur Actif", icon: "🔍", unlocked: true, unlockedAt: "2026-08-22" },
     { id: "eco_driver", title: "Éco-Conducteur", icon: "🌱", unlocked: true, unlockedAt: "2026-08-28" },
-    { id: "hero_50", title: "Héros des Carrefours", icon: "🦸‍♂️", unlocked: false, progress: 14, maxProgress: 50 },
+    { id: "hero_50", title: "Sentinelle d'Élite", icon: "⭐", unlocked: true, unlockedAt: "2026-09-01" },
   ],
 };
+
 
 class DbService {
   constructor() {

@@ -497,126 +497,285 @@
   gap: 10px;
 }
 
-.rank-title-box {
+/* BANDEAU 1 : SCORE DE CONFIANCE (SUR 100) & SOLDE DE POINTS */
+.trust-points-dashboard-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 1.8rem 2rem;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  margin-bottom: 1.5rem;
+}
+
+.trust-score-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trust-header-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.rank-badge-icon {
-  font-size: 2rem;
-}
-
-.rank-title-box h4 {
-  margin: 0;
-  font-size: 1.2rem;
+.trust-header-row h3 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #0f172a;
 }
 
-.rank-title-box small {
+.trust-level-badge {
+  display: inline-block;
   font-size: 0.8rem;
-  font-weight: 700;
-  color: #00875A;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px solid;
 }
 
-.next-tier-hint {
-  font-size: 0.88rem;
-  color: #475569;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 6px 12px;
-  border-radius: 10px;
-}
-
-.next-tier-hint strong {
-  color: #00875A;
-}
-
-.points-progress-bar {
-  height: 14px;
-  background: #e2e8f0;
+.trust-progress-bar {
+  height: 12px;
+  background: #f1f5f9;
   border-radius: 10px;
   overflow: hidden;
   position: relative;
 }
 
-.points-progress-fill {
+.trust-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00875A 0%, #10B981 100%);
   border-radius: 10px;
-  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px rgba(0, 135, 90, 0.4);
 }
 
-.points-scale-markers {
+.trust-scale-markers {
   display: flex;
   justify-content: space-between;
   font-size: 0.72rem;
   font-weight: 700;
-  color: #94a3b8;
+  color: #64748b;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-/* RÈGLES D'ACQUISITION */
-.points-earning-guide {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 1.2rem;
+.points-balance-column {
+  background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
+  border: 1.5px solid #a7f3d0;
+  border-radius: 16px;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.earn-rule-item {
+.points-col-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #065f46;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.points-col-val {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+
+.points-col-val strong {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #00875A;
+  line-height: 1;
+}
+
+.points-col-val span {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #065f46;
+}
+
+.points-note {
+  font-size: 0.75rem;
+  color: #047857;
+  line-height: 1.4;
+  margin: 0;
   display: flex;
   align-items: center;
+  gap: 4px;
+}
+
+/* BANDEAU 2 : BARÈME D'ACQUISITION DES POINTS */
+.points-rules-guide-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 1.6rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.rules-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 1.2rem;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rules-heading h4 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.rule-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e8f5e9;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.rule-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: #f8fafc;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid #f1f5f9;
 }
 
-.earn-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.rule-box.highlight-rule {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
 }
 
-.earn-icon.plus-icon {
-  background: #dcfce7;
-  color: #15803d;
+.rule-icon {
+  font-size: 1.4rem;
 }
 
-.earn-icon.vote-icon {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.earn-icon.eco-icon {
-  background: #fef3c7;
-  color: #b45309;
-}
-
-.earn-rule-item strong {
+.rule-box strong {
   display: block;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  font-weight: 800;
   color: #0f172a;
 }
 
-.earn-rule-item span {
-  font-size: 0.75rem;
+.rule-box span {
+  font-size: 0.72rem;
   color: #64748b;
 }
 
-/* ==========================================================================
-   GRILLE DES FORMULES D'ABONNEMENT AVEC RÉDUCTION CITOYENNE DIRECTE
-   ========================================================================== */
+/* SÉLECTEUR DE PALIERS DE RÉDUCTION */
+.discount-tier-selector-box {
+  margin-bottom: 1.2rem;
+}
+
+.discount-tier-selector-box label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.tier-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tier-pill-btn {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.tier-pill-btn:hover:not(.disabled) {
+  border-color: #00875A;
+  background: #f0fdf4;
+}
+
+.tier-pill-btn.active {
+  border-color: #00875A;
+  background: #00875A;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 135, 90, 0.25);
+}
+
+.tier-pill-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #f1f5f9;
+}
+
+.free-month-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 12px;
+  padding: 14px;
+  color: #15803d;
+  font-size: 0.88rem;
+  margin-top: 10px;
+}
+
+.free-month-notice p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.stat-pill.highlight-points {
+  background: rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.stat-pill.highlight-points .pill-number {
+  color: #a7f3d0;
+}
+
+.stat-pill.highlight-trust {
+  background: rgba(250, 204, 21, 0.2);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+}
+
+.stat-pill.highlight-trust .pill-number {
+  color: #fde047;
+}
 
 .subscription-plans-container {
   margin-top: 1rem;
@@ -626,6 +785,7 @@
   text-align: center;
   margin-bottom: 2.5rem;
 }
+
 
 .plans-heading h2 {
   font-size: 2rem;

@@ -1,106 +1,131 @@
 /* ==========================================================================
-   PAGE COULOIRS D'URGENCE & ONDE VERTE PRIORITAIRE
+   PAGE COULOIRS D'URGENCE & CENTRE DE DISPATCH TACTIQUE (CITYFLOW)
    ========================================================================== */
 
 .emergency-page {
   padding: 1.5rem 1.5rem 4rem;
-  max-width: 1350px;
+  max-width: 1440px;
   margin: 0 auto;
   min-height: calc(100vh - 80px);
 }
 
-/* BANNIÈRE D'URGENCE ACTIVE */
-.emergency-active-banner {
-  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
-  border-radius: 18px;
-  padding: 1.2rem 1.8rem;
+/* ==========================================================================
+   1. LIVE TELEMETRY BANNER (MISSION EN COURS)
+   ========================================================================== */
+.emergency-live-telemetry-banner {
+  background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 50%, #450a0a 100%);
+  border-radius: 20px;
+  padding: 1.5rem 1.8rem;
   color: #ffffff;
+  margin-bottom: 1.8rem;
+  box-shadow: 0 12px 36px rgba(185, 28, 28, 0.45);
+  border: 2px solid #ef4444;
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-strobe-border {
+  animation: strobeBorder 1.5s infinite alternate;
+}
+
+@keyframes strobeBorder {
+  0% { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+  100% { border-color: #3b82f6; box-shadow: 0 0 25px rgba(59, 130, 246, 0.7); }
+}
+
+.banner-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 10px 30px rgba(185, 28, 28, 0.4);
-  border: 2px solid #f87171;
+  gap: 1.5rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
 }
 
-.banner-left {
+.banner-badge-group {
   display: flex;
   align-items: center;
   gap: 1.2rem;
 }
 
-.siren-spinning-box {
-  width: 52px;
-  height: 52px;
+.siren-pulse-box {
+  width: 56px;
+  height: 56px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 14px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: pulseSiren 1s infinite alternate;
+  flex-shrink: 0;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+  animation: pulseSirenBox 1.2s infinite alternate ease-in-out;
 }
 
-@keyframes pulseSiren {
-  from { transform: scale(1); background: rgba(255, 255, 255, 0.2); }
-  to { transform: scale(1.1); background: rgba(255, 255, 255, 0.35); }
+@keyframes pulseSirenBox {
+  from { transform: scale(0.95); background: rgba(255, 255, 255, 0.18); }
+  to { transform: scale(1.08); background: rgba(255, 255, 255, 0.35); }
 }
 
-.badge-live-mission {
-  display: inline-block;
+.live-priority-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: #ffffff;
   color: #b91c1c;
   font-size: 0.75rem;
   font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 3px 10px;
+  border-radius: 8px;
   letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
-.banner-mission-title {
-  font-size: 1.35rem;
+.live-pulsing-dot {
+  width: 8px;
+  height: 8px;
+  background: #dc2626;
+  border-radius: 50%;
+  animation: pulseDot 0.8s infinite alternate;
+}
+
+@keyframes pulseDot {
+  from { transform: scale(0.8); opacity: 0.6; }
+  to { transform: scale(1.3); opacity: 1; }
+}
+
+.banner-active-title {
+  font-size: 1.4rem;
   font-weight: 800;
   margin: 0;
+  line-height: 1.2;
 }
 
-.banner-mission-title span {
-  color: #fecaca;
-  font-weight: 600;
+.banner-active-title span {
+  color: #fef08a;
+  text-decoration: underline;
 }
 
-.banner-sub {
+.banner-origin-sub {
   font-size: 0.85rem;
   color: #fca5a5;
-  margin: 2px 0 0;
+  margin: 3px 0 0;
 }
 
-.banner-right {
+.banner-quick-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.timer-badge {
-  background: rgba(0, 0, 0, 0.3);
+.btn-siren-toggle {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 8px 14px;
   border-radius: 10px;
-  font-family: monospace;
-  font-size: 1rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.btn-cancel-mission {
-  background: #ffffff;
-  color: #b91c1c;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.85rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -108,22 +133,195 @@
   transition: all 0.2s;
 }
 
-.btn-cancel-mission:hover {
+.btn-siren-toggle.active {
+  background: #22c55e;
+  border-color: #86efac;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+}
+
+.btn-pause-sim {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-pause-sim.paused {
+  background: #f59e0b;
+  border-color: #fcd34d;
+  color: #000;
+}
+
+.btn-finish-mission-danger {
+  background: #ffffff;
+  color: #b91c1c;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-finish-mission-danger:hover {
   background: #fee2e2;
   transform: translateY(-1px);
 }
 
-/* HERO */
-.emergency-hero {
+/* GAUGES GRID */
+.telemetry-gauges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 1.2rem;
+}
+
+.telemetry-gauge-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gauge-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gauge-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.gauge-label {
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.gauge-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  font-family: monospace;
+}
+
+.gauge-value small {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.speed-pills-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.speed-pill {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.speed-pill.active {
+  background: #a855f7;
+  border-color: #c084fc;
+}
+
+/* PROGRESS BAR */
+.mission-progress-container {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+}
+
+.progress-pct-badge {
+  background: #22c55e;
+  color: #ffffff;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 6px;
+}
+
+/* ==========================================================================
+   2. HERO HEADER & TACTICAL TABS
+   ========================================================================= */
+.emergency-hero-tactical {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border-radius: 18px;
-  padding: 1.8rem 2rem;
+  border-radius: 20px;
+  padding: 1.8rem 2rem 1.2rem;
   color: #ffffff;
   margin-bottom: 1.8rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
-.hero-tag-emergency {
+.hero-flex-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.hero-tag-live {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -137,24 +335,93 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.emergency-hero h1 {
-  font-size: 2rem;
+.emergency-hero-tactical h1 {
+  font-size: 1.95rem;
   font-weight: 800;
-  margin-bottom: 6px;
+  margin: 0 0 6px 0;
 }
 
-.emergency-hero h1 span {
+.emergency-hero-tactical h1 span {
   color: #ef4444;
 }
 
-.emergency-hero p {
+.emergency-hero-tactical p {
   color: #94a3b8;
-  font-size: 0.95rem;
-  max-width: 750px;
+  font-size: 0.92rem;
+  max-width: 780px;
   margin: 0;
+  line-height: 1.5;
 }
 
-/* MAIN GRID LAYOUT */
+.hero-right-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.stat-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 16px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 95px;
+}
+
+.stat-num {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.stat-desc {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* TABS BAR */
+.emergency-tabs-bar {
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1.2rem;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.tab-btn.active {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #f87171;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+}
+
+/* ==========================================================================
+   3. MAIN TACTICAL GRID
+   ========================================================================= */
 .emergency-main-grid {
   display: grid;
   grid-template-columns: 480px 1fr;
@@ -185,10 +452,6 @@
   margin-bottom: 1.2rem;
 }
 
-.heading-icon {
-  flex-shrink: 0;
-}
-
 /* VEHICLE SELECTOR */
 .vehicle-selector-grid {
   display: grid;
@@ -199,7 +462,7 @@
 .vehicle-card {
   border: 2px solid #e2e8f0;
   border-radius: 12px;
-  padding: 12px;
+  padding: 10px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -236,7 +499,7 @@
 }
 
 .vehicle-badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   display: block;
 }
@@ -274,7 +537,7 @@
 }
 
 .corridor-card-header h4 {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #0f172a;
   margin: 0;
@@ -283,7 +546,7 @@
 .time-gain-tag {
   background: #dcfce7;
   color: #15803d;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
   padding: 2px 8px;
   border-radius: 6px;
@@ -301,13 +564,13 @@
 .corridor-metrics {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: #64748b;
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   padding-top: 6px;
 }
 
-/* DISPATCH BUTTON */
+/* DISPATCH BUTTONS */
 .btn-dispatch-emergency {
   width: 100%;
   background: linear-gradient(135deg, #dc2626, #b91c1c);
@@ -315,7 +578,7 @@
   border: none;
   padding: 14px;
   border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -331,10 +594,403 @@
 }
 
 .pulse-red {
-  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 4px 18px rgba(220, 38, 38, 0.45);
 }
 
-/* TIMELINE DES FEUX ASSERVIS */
+/* ==========================================================================
+   TAB 2 : CUSTOM DISPATCH & HOSPITALS
+   ========================================================================== */
+.form-group-custom {
+  margin-bottom: 1.2rem;
+}
+
+.input-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.input-with-action {
+  display: flex;
+  gap: 8px;
+}
+
+.input-custom-text {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 0.88rem;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.input-custom-text:focus {
+  outline: none;
+  border-color: #ef4444;
+}
+
+.btn-geoloc {
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-geoloc:hover {
+  background: #e2e8f0;
+}
+
+.hospitals-selector-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.hospital-select-card {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #ffffff;
+}
+
+.hospital-select-card:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.hospital-select-card.selected {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.hosp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.hosp-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hosp-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.hosp-beds-badge {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.hosp-badge-text {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin: 0 0 6px 0;
+}
+
+.hosp-occupancy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.occupancy-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.occupancy-bar-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 4px;
+}
+
+.occupancy-pct {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.btn-calculate-route {
+  width: 100%;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-calculate-route:hover {
+  background: #0369a1;
+}
+
+.custom-preview-box {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.preview-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #166534;
+}
+
+.preview-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.preview-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-recalculate {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-dispatch-custom-now {
+  flex: 1;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ==========================================================================
+   TAB 3 : HOTLINES
+   ========================================================================== */
+.hotlines-intro {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0 0 1rem 0;
+}
+
+.hotlines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hotline-card {
+  border: 1.5px solid;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hotline-main-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hotline-number-box {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hotline-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin: 0 0 2px 0;
+  color: #0f172a;
+}
+
+.hotline-service {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  margin: 0 0 2px 0;
+}
+
+.hotline-desc {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.btn-call-hotline {
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-call-hotline:hover {
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   TAB 4 : HISTORY & STATS
+   ========================================================================== */
+.history-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 1.2rem;
+}
+
+.stat-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+
+.stat-val {
+  font-size: 1.2rem;
+  font-weight: 800;
+  display: block;
+}
+
+.stat-lbl {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.history-missions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.history-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.history-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.history-veh-badge {
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.history-time-tag {
+  color: #15803d;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.history-route-row {
+  font-size: 0.82rem;
+  color: #334155;
+  margin-bottom: 4px;
+}
+
+.history-footer-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+/* ==========================================================================
+   INTERSECTIONS TIMELINE
+   ========================================================================== */
 .card-header-flex {
   display: flex;
   justify-content: space-between;
@@ -355,7 +1011,7 @@
 .intersections-timeline {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 1.2rem;
 }
 
@@ -375,7 +1031,7 @@
 
 .timeline-step.cleared {
   background: #f8fafc;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .step-indicator {
@@ -390,50 +1046,6 @@
 
 .step-status {
   font-size: 0.78rem;
-}
-
-.mission-controls-grid {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 1.2rem;
-}
-
-.btn-step-action {
-  flex: 1;
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.btn-auto-sim {
-  flex: 1;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.btn-auto-sim.active {
-  background: #dcfce7;
-  color: #15803d;
-  border-color: #86efac;
 }
 
 /* BROADCAST BOX */
@@ -469,7 +1081,9 @@
   color: #be123c;
 }
 
-/* MAP COLUMN */
+/* ==========================================================================
+   4. MAP COLUMN & CUSTOM LEAFLET STYLES
+   ========================================================================== */
 .emergency-map-col {
   height: 100%;
 }
@@ -480,9 +1094,10 @@
   border: 1px solid #e2e8f0;
   padding: 1.2rem;
   height: calc(100vh - 250px);
-  min-height: 520px;
+  min-height: 560px;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
 }
 
 .map-card-header {
@@ -490,6 +1105,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .map-title-box {
@@ -501,23 +1118,55 @@
   color: #0f172a;
 }
 
+.live-camera-tag {
+  color: #22c55e;
+  font-weight: 800;
+}
+
+.map-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-camera-lock {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.btn-camera-lock.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
 .map-legend-items {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #64748b;
   font-weight: 500;
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
 }
 
@@ -537,6 +1186,75 @@
   height: 100%;
 }
 
+/* CUSTOM VEHICLE MARKER */
+.emergency-vehicle-custom-marker {
+  position: relative;
+}
+
+.vehicle-pulsing-aura {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2.5px solid;
+  animation: vehiclePulseRing 1s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes vehiclePulseRing {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.vehicle-inner-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  border: 2.5px solid #ffffff;
+}
+
+/* CUSTOM HOSPITAL PIN */
+.emergency-hospital-custom-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hospital-marker-pin {
+  width: 28px;
+  height: 28px;
+  background: #ffffff;
+  border: 2.5px solid #ef4444;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.4);
+}
+
+.hospital-marker-pin.target-hospital {
+  background: #ef4444;
+  transform: scale(1.2);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
+}
+
+.hospital-marker-pin.target-hospital .cross-icon {
+  color: #ffffff;
+}
+
+.cross-icon {
+  color: #ef4444;
+  font-weight: 900;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* POPUPS */
 .popup-emergency strong {
   font-size: 0.9rem;
   color: #0f172a;
@@ -545,58 +1263,142 @@
 .popup-emergency p {
   font-size: 0.8rem;
   color: #475569;
-  margin: 2px 0 0;
+  margin: 3px 0 0;
 }
 
+.hosp-popup-badge {
+  background: #dcfce7;
+  padding: 3px 6px;
+  border-radius: 6px;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #166534;
+  font-weight: 700;
+}
+
+.hosp-call-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
 @media (max-width: 1024px) {
   .emergency-main-grid {
     grid-template-columns: 1fr;
   }
   .emergency-map-card {
-    height: 450px;
+    height: 480px;
   }
 }
 
 /* ==========================================================================
-   EMERGENCY PAGE - DARK MODE
+   5. EMERGENCY PAGE - DARK MODE COMPATIBILITY
    ========================================================================== */
 [data-theme="dark"] .emergency-page,
 body.dark .emergency-page {
   background: #0b0f19;
 }
 
-[data-theme="dark"] .emergency-mission-card,
+[data-theme="dark"] .emergency-card,
 [data-theme="dark"] .emergency-map-card,
-body.dark .emergency-mission-card,
+body.dark .emergency-card,
 body.dark .emergency-map-card {
   background: #131b2e;
   border-color: #1e293b;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-[data-theme="dark"] .mission-header h2,
-[data-theme="dark"] .map-card-header h3,
-body.dark .mission-header h2,
-body.dark .map-card-header h3 {
-  color: #f8fafc;
-}
-
+[data-theme="dark"] .card-heading,
+[data-theme="dark"] .map-title-box,
+[data-theme="dark"] .vehicle-info h4,
+[data-theme="dark"] .corridor-card-header h4,
+[data-theme="dark"] .hosp-name,
+[data-theme="dark"] .hotline-name,
 [data-theme="dark"] .step-name,
+body.dark .card-heading,
+body.dark .map-title-box,
+body.dark .vehicle-info h4,
+body.dark .corridor-card-header h4,
+body.dark .hosp-name,
+body.dark .hotline-name,
 body.dark .step-name {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .mission-step-item,
-body.dark .mission-step-item {
+[data-theme="dark"] .vehicle-card,
+[data-theme="dark"] .corridor-card,
+[data-theme="dark"] .hospital-select-card,
+[data-theme="dark"] .history-item,
+[data-theme="dark"] .stat-card,
+body.dark .vehicle-card,
+body.dark .corridor-card,
+body.dark .hospital-select-card,
+body.dark .history-item,
+body.dark .stat-card {
   background: #1a233a;
-  border-color: #1e293b;
+  border-color: #243048;
 }
 
-[data-theme="dark"] .btn-auto-sim,
-body.dark .btn-auto-sim {
-  background: #1e293b;
-  color: #cbd5e1;
+[data-theme="dark"] .vehicle-card:hover,
+[data-theme="dark"] .corridor-card:hover,
+[data-theme="dark"] .hospital-select-card:hover,
+body.dark .vehicle-card:hover,
+body.dark .corridor-card:hover,
+body.dark .hospital-select-card:hover {
+  background: #202b45;
+  border-color: #3b82f6;
+}
+
+[data-theme="dark"] .corridor-card.selected,
+[data-theme="dark"] .hospital-select-card.selected,
+body.dark .corridor-card.selected,
+body.dark .hospital-select-card.selected {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+}
+
+[data-theme="dark"] .input-custom-text,
+body.dark .input-custom-text {
+  background: #1a233a;
   border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .input-label,
+[data-theme="dark"] .hotlines-intro,
+body.dark .input-label,
+body.dark .hotlines-intro {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .timeline-step,
+body.dark .timeline-step {
+  background: #1a233a;
+  border-color: #243048;
+}
+
+[data-theme="dark"] .timeline-step.green_wave,
+body.dark .timeline-step.green_wave {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+}
+
+[data-theme="dark"] .timeline-step.cleared,
+body.dark .timeline-step.cleared {
+  background: #131b2e;
+  opacity: 0.7;
+}
+
+[data-theme="dark"] .broadcast-box,
+body.dark .broadcast-box {
+  background: #2a1520;
+  border-color: #881337;
 }
 
 [data-theme="dark"] .leaflet-emergency-wrapper,
@@ -612,4 +1414,15 @@ body.dark .popup-emergency strong {
 [data-theme="dark"] .popup-emergency p,
 body.dark .popup-emergency p {
   color: #94a3b8;
+}
+
+[data-theme="dark"] .btn-camera-lock,
+[data-theme="dark"] .btn-geoloc,
+[data-theme="dark"] .btn-recalculate,
+body.dark .btn-camera-lock,
+body.dark .btn-geoloc,
+body.dark .btn-recalculate {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
 }

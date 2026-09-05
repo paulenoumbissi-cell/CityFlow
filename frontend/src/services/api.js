@@ -351,6 +351,105 @@ class CityFlowApiService {
     });
   }
 
+  // === API MODE URGENCE & ONDE VERTE DYNAMIQUE ===
+  async getEmergencyStatus(city = "Yaoundé") {
+    return this.fetchWithFallback(`/emergency/active?city=${encodeURIComponent(city)}`, {
+      active: false,
+      mission: null,
+      corridorsAvailable: [],
+      hospitals: [],
+    });
+  }
+
+  async getEmergencyHospitals(city = "Yaoundé") {
+    return this.fetchWithFallback(`/emergency/hospitals?city=${encodeURIComponent(city)}`, {
+      city,
+      count: 0,
+      hospitals: [],
+    });
+  }
+
+  async calculateCustomEmergencyCorridor(params) {
+    try {
+      const res = await fetch(`${this.baseUrl}/emergency/calculate-custom`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) throw new Error("Erreur calcul corridor d'urgence");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Emergency API Calculate Error]", err.message);
+      return null;
+    }
+  }
+
+  async dispatchEmergencyMission(data) {
+    try {
+      const res = await fetch(`${this.baseUrl}/emergency/dispatch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Erreur dispatch mission urgence");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Emergency API Dispatch Error]", err.message);
+      return null;
+    }
+  }
+
+  async stepEmergencyMission() {
+    try {
+      const res = await fetch(`${this.baseUrl}/emergency/step`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Erreur avancement mission");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Emergency API Step Error]", err.message);
+      return null;
+    }
+  }
+
+  async cancelEmergencyMission() {
+    try {
+      const res = await fetch(`${this.baseUrl}/emergency/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Erreur annulation mission");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Emergency API Cancel Error]", err.message);
+      return null;
+    }
+  }
+
+  async getEmergencyMissionHistory() {
+    return this.fetchWithFallback(`/emergency/history`, {
+      count: 0,
+      stats: { totalMissions: 0, totalMinutesSaved: 0, totalKmCovered: 0, avgTimeSavedMinutes: 15 },
+      missions: [],
+    });
+  }
+
+  async interveneOnReport(reportId, vehicleType = "ambulance", city = "Yaoundé") {
+    try {
+      const res = await fetch(`${this.baseUrl}/emergency/intervene-report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId, vehicleType, city }),
+      });
+      if (!res.ok) throw new Error("Erreur intervention urgence sur signalement");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Emergency API Intervene Error]", err.message);
+      return null;
+    }
+  }
+
   login(email, password) {
     return loginUser(email, password);
   }

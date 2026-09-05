@@ -326,7 +326,7 @@ export default function CommunityPage() {
     score: trustScore,
     level: "Très fiable",
     icon: "⭐",
-    color: "#00875A",
+    color: "#2563EB",
     description: "Utilisateur très fiable",
   };
 
@@ -445,7 +445,7 @@ export default function CommunityPage() {
             </div>
           ) : filteredReports.length === 0 ? (
             <div className="empty-reports-card">
-              <ShieldCheck size={48} color="#00875A" />
+              <ShieldCheck size={48} color="#2563EB" />
               <h3>Voies fluides ! Aucun incident actif</h3>
               <p>Soyez le premier à avertir les autres conducteurs en cas de ralentissement.</p>
               <button className="btn-empty-action" onClick={() => setShowModal(true)}>
@@ -556,7 +556,7 @@ export default function CommunityPage() {
                 <span>points</span>
               </div>
               <p className="points-note">
-                <Sparkles size={13} color="#00875A" />
+                <Sparkles size={13} color="#2563EB" />
                 Les points sont déduits lors de l'application d'une réduction d'abonnement.
               </p>
             </div>
@@ -567,7 +567,7 @@ export default function CommunityPage() {
             <div className="rules-heading">
               <h4>🎯 Barème des Points Gagnés</h4>
               <p className="rule-warning">
-                <Info size={15} color="#00875A" />
+                <Info size={15} color="#2563EB" />
                 <strong>Règle importante :</strong> Les points de signalement sont attribués <u>uniquement lorsque le signalement est confirmé</u> par d'autres utilisateurs.
               </p>
             </div>
@@ -700,7 +700,7 @@ export default function CommunityPage() {
 
                       {discountPct > 0 && !isFree && (
                         <div className="savings-inline-pill">
-                          <Sparkles size={13} color="#00875A" />
+                          <Sparkles size={13} color="#2563eb" />
                           <span>Économie de <strong>{(plan.priceFcfa - finalPrice).toLocaleString()} FCFA</strong></span>
                         </div>
                       )}
@@ -843,7 +843,7 @@ export default function CommunityPage() {
           <div className="modal-card payment-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-box">
-                <CreditCard size={22} className="text-emerald-500" />
+                <CreditCard size={22} className="text-blue-600" />
                 <div>
                   <h3>Souscription & Règlement</h3>
                   <small>{subscribeModal.plan.name} • {subscribeModal.plan.beneficiaries}</small>
@@ -867,11 +867,11 @@ export default function CommunityPage() {
               </div>
               {subscribeModal.rewardTier && (
                 <>
-                  <div className="pay-row text-emerald-600">
+                  <div className="pay-row text-blue-600">
                     <span>Réduction appliquée :</span>
                     <strong>{subscribeModal.rewardTier.label}</strong>
                   </div>
-                  <div className="pay-row text-emerald-600">
+                  <div className="pay-row text-blue-600">
                     <span>Points déduits du solde :</span>
                     <strong>-{subscribeModal.rewardTier.pointsRequired} points</strong>
                   </div>
@@ -922,7 +922,7 @@ export default function CommunityPage() {
                 </>
               ) : (
                 <div className="free-month-notice">
-                  <Sparkles size={20} color="#00875A" />
+                  <Sparkles size={20} color="#2563EB" />
                   <p>Aucun paiement requis. Votre récompense de <strong>1 mois gratuit</strong> sera activée immédiatement et <strong>600 points</strong> seront déduits de votre solde.</p>
                 </div>
               )}
@@ -1031,7 +1031,7 @@ export default function CommunityPage() {
 
               {/* Règle Anti-Abus Reminder */}
               <div className="gamification-prompt">
-                <ShieldCheck size={18} color="#00875A" />
+                <ShieldCheck size={18} color="#2563EB" />
                 <span>
                   Ce signalement vous rapportera <strong>+{CATEGORY_CONFIG[formData.category]?.points || 15} points</strong> dès qu'il sera confirmé par d'autres citoyens.
                 </span>

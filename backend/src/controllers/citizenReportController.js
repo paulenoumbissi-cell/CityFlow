@@ -93,7 +93,7 @@ export const REPORT_POINTS_CONFIG = {
 export function getTrustLevel(score) {
   const s = Math.max(0, Math.min(100, score ?? 75));
   if (s >= 81) {
-    return { score: s, level: "Très fiable", icon: "⭐", color: "#00875A", badgeClass: "trust-star", description: "Utilisateur très fiable" };
+    return { score: s, level: "Très fiable", icon: "⭐", color: "#2563EB", badgeClass: "trust-star", description: "Utilisateur très fiable" };
   } else if (s >= 61) {
     return { score: s, level: "Fiable", icon: "🟢", color: "#10B981", badgeClass: "trust-good", description: "Utilisateur généralement fiable" };
   } else if (s >= 31) {

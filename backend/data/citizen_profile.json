@@ -2,7 +2,7 @@
   "userId": "user_current",
   "userName": "Paul Enoumbissi",
   "userEmail": "paul.enoumbissi@cityflow.cm",
-  "points": 410,
+  "points": 310,
   "level": {
     "number": 3,
     "title": "Guide de la Cité",
@@ -47,8 +47,27 @@
       "maxProgress": 50
     }
   ],
-  "reputationScore": 410,
+  "reputationScore": 310,
   "subscriptions": [
+    {
+      "id": "sub_1788612071272",
+      "planId": "plan_citizen",
+      "planName": "Premium Citoyen",
+      "category": "b2c",
+      "basePrice": 2000,
+      "beneficiaries": "1 personne",
+      "discountPercent": 5,
+      "discountAmount": 100,
+      "pointsDeducted": 100,
+      "finalPrice": 1900,
+      "isFreeMonth": false,
+      "rewardApplied": "5 % de réduction",
+      "paymentMethod": "MTN Mobile Money",
+      "phoneNumber": "677112233",
+      "status": "active",
+      "subscribedAt": "2026-09-05T12:41:11.272Z",
+      "expiresAt": "2026-10-05T12:41:11.272Z"
+    },
     {
       "id": "sub_1788611469477",
       "planId": "plan_citizen",

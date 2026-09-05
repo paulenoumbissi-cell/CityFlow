@@ -2760,15 +2760,15 @@ body.dark,
 }
 
 /* ==========================================================================
-   CITYFLOW MAP TILES & ZONE DISTRICT BADGES (NOMS DES ZONES)
+   CITYFLOW MAP TILES & ZONE DISTRICT BADGES (NOMS DES ZONES HAUTE LISIBILITÉ)
    ========================================================================== */
 
 /* Filtre Dark Mode Natif Haute Définition pour Tuiles OSM (0 Watermark) */
 .cityflow-dark-tiles .leaflet-tile-pane {
-  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.8);
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.85);
 }
 
-/* Style des Badges de Quartiers & Zones */
+/* Style des Badges de Quartiers & Zones - ULTRA LISIBLE */
 .zone-district-badge {
   background: transparent !important;
   border: none !important;
@@ -2777,76 +2777,138 @@ body.dark,
 .zone-district-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.94);
+  gap: 7px;
+  padding: 5px 12px;
+  background: #ffffff;
   color: #0f172a;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
+  border: 2px solid #334155;
+  border-radius: 24px;
+  font-size: 12px;
+  font-weight: 800;
   white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.8);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   transform: translate(-50%, -50%);
   user-select: none;
+  z-index: 500;
 }
 
 .zone-district-pill:hover {
-  transform: translate(-50%, -55%) scale(1.08);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
-  z-index: 1000 !important;
-  border-color: #3b82f6;
+  transform: translate(-50%, -55%) scale(1.12);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+  z-index: 10000 !important;
+  border-color: #2563eb;
+  background: #f8fafc;
 }
 
 [data-theme="dark"] .zone-district-pill,
 body.dark .zone-district-pill,
 .cityflow-dark-tiles .zone-district-pill {
-  background: rgba(19, 27, 46, 0.92);
-  color: #f8fafc;
-  border-color: #334155;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 10px rgba(56, 189, 248, 0.4) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .zone-status-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
+  border: 1.5px solid #ffffff;
+}
+
+[data-theme="dark"] .zone-status-dot,
+body.dark .zone-status-dot {
+  border-color: #0f172a;
 }
 
 .zone-status-dot.fluid {
   background: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.8);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
 }
 
 .zone-status-dot.moderate {
   background: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
 }
 
 .zone-status-dot.jammed,
 .zone-status-dot.heavy {
   background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.9);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 1);
   animation: pulseDot 1.4s infinite;
 }
 
 .zone-district-name {
   letter-spacing: -0.01em;
+  font-weight: 800;
+  color: inherit;
 }
 
 .zone-district-speed {
-  font-size: 10px;
-  color: #64748b;
-  font-weight: 600;
-  margin-left: 2px;
+  font-size: 11px;
+  color: #00875a;
+  font-weight: 800;
+  background: rgba(0, 135, 90, 0.12);
+  padding: 1px 6px;
+  border-radius: 10px;
 }
 
 [data-theme="dark"] .zone-district-speed,
-body.dark .zone-district-speed {
-  color: #94a3b8;
+body.dark .zone-district-speed,
+.cityflow-dark-tiles .zone-district-speed {
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.2) !important;
 }
+
+/* POPUPS HAUTE LISIBILITÉ */
+.map-popup-card {
+  padding: 6px;
+  min-width: 200px;
+  color: var(--cityflow-text);
+}
+
+.map-popup-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+[data-theme="dark"] .map-popup-title,
+body.dark .map-popup-title {
+  color: #f8fafc !important;
+}
+
+.map-popup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #475569;
+}
+
+[data-theme="dark"] .map-popup-row,
+body.dark .map-popup-row {
+  color: #cbd5e1 !important;
+}
+
+.map-popup-footer {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 6px;
+}
+
+[data-theme="dark"] .map-popup-footer,
+body.dark .map-popup-footer {
+  color: #94a3b8 !important;
+  border-top-color: #334155 !important;
+}
+
 

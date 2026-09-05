@@ -107,8 +107,7 @@ function createZoneDivIcon(name, congestion = "fluid", speed = null) {
         ${speedText}
       </div>
     `,
-    iconSize: [120, 26],
-    iconAnchor: [60, 13],
+    iconSize: null, // Ajustement automatique de la largeur selon le texte
   });
 }
 
@@ -155,7 +154,7 @@ export default function CityMap({
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(new Date().toLocaleTimeString());
 
-  // Affichage des noms des zones & quartiers
+  // Affichage des noms des zones & quartiers (Activé par défaut)
   const [showZoneNames, setShowZoneNames] = useState(true);
 
   // Gestion des calques cartographiques (100% Gratuits et Sans Watermark)
@@ -319,8 +318,10 @@ export default function CityMap({
 
     // 1. Ajouter les nœuds de trafic principaux
     nodes.forEach((n) => {
-      // Nettoyer le nom pour un affichage de zone compact (ex: "Carrefour Nlongkak" -> "Nlongkak")
-      const cleanName = n.name.replace(/^(Carrefour|Rond-point|Marché|Échangeur d'|Boulevard de la Liberté \(|\))/gi, "").replace(/\(.*?\)/g, "").trim();
+      const cleanName = n.name
+        .replace(/^(Carrefour|Rond-point|Marché|Échangeur d'|Boulevard de la Liberté \(|\))/gi, "")
+        .replace(/\(.*?\)/g, "")
+        .trim();
       list.push({
         id: n.id,
         name: cleanName || n.name,
@@ -337,7 +338,10 @@ export default function CityMap({
     // 2. Ajouter les repères additionnels de la ville
     const landmarks = CITY_LANDMARKS[selectedCity] || [];
     landmarks.forEach((lm, idx) => {
-      const cleanName = lm.name.replace(/^(Carrefour|Rond-point|Marché|Hôpital|Université de Yaoundé I \(|\))/gi, "").replace(/\(.*?\)/g, "").trim();
+      const cleanName = lm.name
+        .replace(/^(Carrefour|Rond-point|Marché|Hôpital|Université de Yaoundé I \(|Quartier |\))/gi, "")
+        .replace(/\(.*?\)/g, "")
+        .trim();
       if (!knownNames.has(cleanName.toLowerCase()) && lm.category === "landmark") {
         list.push({
           id: `lm_${idx}`,
@@ -751,24 +755,22 @@ export default function CityMap({
                 }}
               >
                 <Popup>
-                  <div style={{ padding: "4px", minWidth: "180px", color: "#0a2540" }}>
-                    <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>
-                      📍 {zone.fullName}
-                    </h3>
+                  <div className="map-popup-card">
+                    <h3 className="map-popup-title">📍 {zone.fullName}</h3>
                     {zone.speed !== null && (
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
+                      <div className="map-popup-row">
                         <span>Vitesse actuelle :</span>
                         <strong style={{ color: "#00875A" }}>{zone.speed} km/h</strong>
                       </div>
                     )}
                     {zone.delay !== null && (
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                      <div className="map-popup-row">
                         <span>Retard estimé :</span>
-                        <strong>+{zone.delay} min</strong>
+                        <strong style={{ color: "#EF4444" }}>+{zone.delay} min</strong>
                       </div>
                     )}
-                    <div style={{ marginTop: "6px", fontSize: "11px", color: "#64748b" }}>
-                      Quartier de {selectedCity}, Cameroun
+                    <div className="map-popup-footer">
+                      Quartier majeur de {selectedCity}, Cameroun
                     </div>
                   </div>
                 </Popup>
@@ -788,14 +790,15 @@ export default function CityMap({
               }}
             >
               <Popup>
-                <div style={{ padding: "4px", fontSize: "12px" }}>
-                  <strong style={{ color: "#2563EB" }}>📍 {selectedPlace.name}</strong>
-                  <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "11px" }}>
-                    {selectedPlace.address || selectedPlace.district}
-                  </p>
-                  <p style={{ margin: "2px 0 0", color: "#94a3b8", fontSize: "10px" }}>
-                    [{selectedPlace.lat.toFixed(4)}, {selectedPlace.lng.toFixed(4)}]
-                  </p>
+                <div className="map-popup-card">
+                  <h3 className="map-popup-title" style={{ color: "#2563EB" }}>📍 {selectedPlace.name}</h3>
+                  <div className="map-popup-row">
+                    <span>Quartier :</span>
+                    <strong>{selectedPlace.district}</strong>
+                  </div>
+                  <div className="map-popup-footer">
+                    {selectedPlace.address || `[${selectedPlace.lat.toFixed(4)}, ${selectedPlace.lng.toFixed(4)}]`}
+                  </div>
                 </div>
               </Popup>
             </CircleMarker>
@@ -826,10 +829,14 @@ export default function CityMap({
                 }}
               >
                 <Popup>
-                  <div style={{ padding: "4px", fontSize: "12px", color: "#1e293b" }}>
-                    <strong>📍 Votre position GPS en direct</strong>
-                    <div style={{ color: "#64748b", marginTop: "2px" }}>
-                      Lat: {userLocation[0].toFixed(4)}, Lng: {userLocation[1].toFixed(4)}
+                  <div className="map-popup-card">
+                    <h3 className="map-popup-title" style={{ color: "#2563EB" }}>📍 Votre position GPS</h3>
+                    <div className="map-popup-row">
+                      <span>Coordonnées :</span>
+                      <strong>{userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}</strong>
+                    </div>
+                    <div className="map-popup-footer">
+                      Précision GPS directe du navigateur
                     </div>
                   </div>
                 </Popup>
@@ -850,28 +857,26 @@ export default function CityMap({
               }}
             >
               <Popup>
-                <div style={{ padding: "4px", minWidth: "180px", fontSize: "12px" }}>
-                  <strong style={{ color: "#7C3AED" }}>Point sélectionné</strong>
+                <div className="map-popup-card">
+                  <h3 className="map-popup-title" style={{ color: "#7C3AED" }}>Point sélectionné</h3>
                   {isGeocoding ? (
-                    <p style={{ margin: "4px 0", color: "#64748b", fontSize: "11px" }}>
-                      ⏳ Géocodage de l'adresse en cours...
-                    </p>
+                    <p className="map-popup-row">⏳ Géocodage de l'adresse en cours...</p>
                   ) : clickedAddress ? (
-                    <div style={{ marginTop: "4px" }}>
-                      <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "12px" }}>
+                    <div>
+                      <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "4px" }}>
                         {clickedAddress.road || clickedAddress.district || "Voie urbaine"}
                       </div>
-                      <div style={{ color: "#64748b", fontSize: "11px", marginTop: "2px" }}>
+                      <div className="map-popup-row" style={{ fontSize: "11px" }}>
                         {clickedAddress.displayName}
                       </div>
                       {clickedAddress.nearestLandmark && (
-                        <div style={{ color: "#00875A", fontSize: "10px", marginTop: "3px", fontWeight: "600" }}>
+                        <div className="map-popup-footer" style={{ color: "#00875A", fontWeight: "700" }}>
                           📍 À {clickedAddress.nearestLandmark.distanceMeters}m de {clickedAddress.nearestLandmark.name}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <p style={{ margin: "4px 0", color: "#64748b" }}>
+                    <p className="map-popup-row">
                       [{clickedPoint[0]}, {clickedPoint[1]}]
                     </p>
                   )}
@@ -949,28 +954,27 @@ export default function CityMap({
                   }}
                 >
                   <Popup>
-                    <div style={{ padding: "4px", minWidth: "190px", color: "#0a2540" }}>
-                      <h3 style={{ margin: "0 0 6px", fontSize: "14px", fontWeight: "700" }}>{node.name}</h3>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
+                    <div className="map-popup-card">
+                      <h3 className="map-popup-title">{node.name}</h3>
+                      <div className="map-popup-row">
                         <span>Congestion :</span>
                         <strong>{node.congestionValue || node.value || 50}%</strong>
                       </div>
                       {node.averageSpeedKmh !== undefined && (
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}>
+                        <div className="map-popup-row">
                           <span>Vitesse moyenne :</span>
                           <strong style={{ color: "#00875A" }}>{node.averageSpeedKmh} km/h</strong>
                         </div>
                       )}
                       {node.estimatedDelayMinutes !== undefined && (
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px" }}>
+                        <div className="map-popup-row">
                           <span>Retard estimé :</span>
                           <strong style={{ color: style.color }}>+{node.estimatedDelayMinutes} min</strong>
                         </div>
                       )}
                       {node.vehicleCountPerHour !== undefined && (
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "11px", color: "#64748b" }}>
-                          <span>Débit :</span>
-                          <span>{node.vehicleCountPerHour} véh/h</span>
+                        <div className="map-popup-footer">
+                          <span>Débit : <strong>{node.vehicleCountPerHour} véh/h</strong></span>
                         </div>
                       )}
                     </div>

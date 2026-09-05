@@ -627,3 +627,85 @@
     font-size: 18px;
   }
 }
+
+/* ==========================================================================
+   AUTH PAGE - DARK MODE
+   ========================================================================== */
+[data-theme="dark"] .glass-auth-page,
+body.dark .glass-auth-page {
+  background: linear-gradient(135deg, #0b0f19 0%, #0f172a 100%);
+}
+
+[data-theme="dark"] .glass-auth-box,
+body.dark .glass-auth-box {
+  background: rgba(19, 27, 46, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .glass-title,
+body.dark .glass-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .glass-subtitle,
+body.dark .glass-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .glass-input-wrapper input,
+body.dark .glass-input-wrapper input {
+  background: #1a233a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .glass-input-wrapper input::placeholder,
+body.dark .glass-input-wrapper input::placeholder {
+  color: #64748b;
+}
+
+[data-theme="dark"] .glass-tabs,
+body.dark .glass-tabs {
+  background: #1a233a;
+}
+
+[data-theme="dark"] .glass-tab,
+body.dark .glass-tab {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .glass-tab.active,
+body.dark .glass-tab.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .glass-otp-digit,
+body.dark .glass-otp-digit {
+  background: #1a233a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .glass-slider-track,
+body.dark .glass-slider-track {
+  background: #1a233a;
+}
+
+[data-theme="dark"] .slider-hint-text,
+body.dark .slider-hint-text {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .glass-direct-click-btn,
+body.dark .glass-direct-click-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .glass-direct-click-btn:hover,
+body.dark .glass-direct-click-btn:hover {
+  background: #283548;
+}

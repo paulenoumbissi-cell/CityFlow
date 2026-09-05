@@ -2,6 +2,7 @@ import { useState } from "react";
 import { 
   Bell, 
   Moon, 
+  Sun,
   MapPin, 
   Shield, 
   Smartphone, 
@@ -10,13 +11,14 @@ import {
   ChevronRight 
 } from "lucide-react";
 import { useCity } from "../context/CityContext";
+import { useTheme } from "../context/ThemeContext";
 import "./SettingsPage.css";
 
 function SettingsPage() {
   const { selectedCity, setSelectedCity } = useCity();
+  const { theme, toggleTheme, isDark } = useTheme();
   const [trafficAlerts, setTrafficAlerts] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [autoReroute, setAutoReroute] = useState(true);
 
   return (
@@ -128,7 +130,7 @@ function SettingsPage() {
           <section className="settings-card">
             <div className="settings-card-header">
               <div className="settings-icon-box">
-                <Moon size={20} />
+                {isDark ? <Moon size={20} /> : <Sun size={20} />}
               </div>
               <div>
                 <h2>Affichage & Thème</h2>
@@ -139,14 +141,15 @@ function SettingsPage() {
             <div className="settings-list">
               <div className="settings-item">
                 <div>
-                  <strong>Mode sombre (bientôt disponible)</strong>
-                  <span>Adapter l'interface pour la conduite de nuit</span>
+                  <strong>Mode sombre (Thème Nuit)</strong>
+                  <span>{isDark ? "Thème sombre activé pour un confort de conduite de nuit" : "Adapter l'interface en mode sombre pour la conduite de nuit"}</span>
                 </div>
                 <label className="toggle-switch">
                   <input 
                     type="checkbox" 
-                    checked={darkMode} 
-                    onChange={(e) => setDarkMode(e.target.checked)} 
+                    checked={isDark} 
+                    onChange={toggleTheme} 
+                    aria-label="Basculer le mode sombre"
                   />
                   <span className="slider"></span>
                 </label>

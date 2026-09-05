@@ -782,3 +782,105 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   PROFILE PAGE - DARK MODE
+   ========================================================================== */
+[data-theme="dark"] .profile-page,
+body.dark .profile-page {
+  background: #0b0f19;
+}
+
+[data-theme="dark"] .profile-header h1,
+body.dark .profile-header h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .profile-header p,
+body.dark .profile-header p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .edit-profile-button,
+body.dark .edit-profile-button {
+  background: #131b2e;
+  border-color: #1e293b;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .profile-card,
+[data-theme="dark"] .profile-stat-box,
+[data-theme="dark"] .profile-section-card,
+body.dark .profile-card,
+body.dark .profile-stat-box,
+body.dark .profile-section-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .profile-user-info h2,
+body.dark .profile-user-info h2 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .profile-user-info p,
+body.dark .profile-user-info p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .profile-stat-value,
+body.dark .profile-stat-value {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .profile-stat-label,
+body.dark .profile-stat-label {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .profile-badge-card,
+body.dark .profile-badge-card {
+  background: #1a233a;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .profile-badge-card strong,
+body.dark .profile-badge-card strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .profile-badge-card span,
+body.dark .profile-badge-card span {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .history-item,
+body.dark .history-item {
+  background: #1a233a;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .trip-point strong,
+body.dark .trip-point strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .modal-overlay,
+body.dark .modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="dark"] .edit-modal-card,
+body.dark .edit-modal-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .form-group input,
+body.dark .form-group input {
+  background: #1a233a;
+  border-color: #334155;
+  color: #f8fafc;
+}

@@ -12,6 +12,7 @@ import "leaflet/dist/leaflet.css";
 import { CITIES, YAOUNDE_NODES, DOUALA_NODES, CongestionLevels } from "../data/cityData";
 import { apiService } from "../services/api";
 import { useCity } from "../context/CityContext";
+import { useTheme } from "../context/ThemeContext";
 import wsService from "../services/websocketService";
 import { Navigation, Crosshair, MapPin, Radio, AlertCircle, ArrowRight } from "lucide-react";
 
@@ -93,6 +94,7 @@ function MapClickHandler({ onMapClick }) {
 
 export default function CityMap({ customRoute, height = "480px", onPointSelect, allowClickToSelect = true }) {
   const { selectedCity, setSelectedCity } = useCity();
+  const { isDark } = useTheme();
   const [nodes, setNodes] = useState(selectedCity === "Douala" ? DOUALA_NODES : YAOUNDE_NODES);
   const [activeFilter, setActiveFilter] = useState("all");
   const [wsOnline, setWsOnline] = useState(false);
@@ -288,10 +290,19 @@ export default function CityMap({ customRoute, height = "480px", onPointSelect, 
           <ChangeCityView center={userLocation || currentCityConfig.center} zoom={currentCityConfig.zoom} />
           {allowClickToSelect && <MapClickHandler onMapClick={handleMapClick} />}
 
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          {isDark ? (
+            <TileLayer
+              key="dark-tile"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            />
+          ) : (
+            <TileLayer
+              key="light-tile"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          )}
 
           {/* MARQUEUR DE POSITION GPS RÉELLE */}
           {userLocation && (

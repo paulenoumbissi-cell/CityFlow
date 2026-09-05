@@ -782,3 +782,81 @@
   }
 
 }
+
+/* ==========================================================================
+   PREDICTION PAGE - DARK MODE
+   ========================================================================== */
+[data-theme="dark"] .prediction-page,
+body.dark .prediction-page {
+  background: #0b0f19;
+}
+
+[data-theme="dark"] .prediction-page-header h1,
+body.dark .prediction-page-header h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .prediction-page-header p,
+body.dark .prediction-page-header p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .prediction-main-card,
+body.dark .prediction-main-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .prediction-main-card strong,
+body.dark .prediction-main-card strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .prediction-main-card p,
+body.dark .prediction-main-card p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .prediction-page-card,
+body.dark .prediction-page-card {
+  background: #131b2e;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .prediction-page-card strong,
+body.dark .prediction-page-card strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .traffic-chart,
+body.dark .traffic-chart {
+  background: #131b2e;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .chart-values strong,
+body.dark .chart-values strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .prediction-zone-card,
+body.dark .prediction-zone-card {
+  background: #131b2e;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .zone-header h3,
+body.dark .zone-header h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .zone-values strong,
+body.dark .zone-values strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .zone-values span,
+body.dark .zone-values span {
+  color: #94a3b8;
+}

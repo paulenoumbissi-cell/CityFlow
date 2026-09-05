@@ -12,11 +12,14 @@ import {
   Route, 
   Sparkles, 
   Users, 
-  Info
+  Info,
+  Sun,
+  Moon
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import wsService from "../services/websocketService";
 import "../index.css";
 
@@ -24,6 +27,7 @@ function Navbar() {
   const location = useLocation();
   const { selectedCity, setSelectedCity } = useCity();
   const { user, isAuthenticated } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected");
@@ -238,6 +242,21 @@ function Navbar() {
             <option value="Douala">Douala</option>
           </select>
         </div>
+
+        {/* BOUTON MODE SOMBRE / CLAIR */}
+        <button
+          type="button"
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          aria-label={isDark ? "Activer le mode clair" : "Activer le mode sombre"}
+          title={isDark ? "Mode sombre activé (Cliquer pour passer en clair)" : "Mode clair activé (Cliquer pour passer en sombre)"}
+        >
+          {isDark ? (
+            <Sun size={20} className="theme-icon sun-icon" />
+          ) : (
+            <Moon size={20} className="theme-icon moon-icon" />
+          )}
+        </button>
 
         {/* NOTIFICATIONS (ICÔNE) */}
         <Link

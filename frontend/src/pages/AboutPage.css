@@ -203,7 +203,6 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* RESPONSIVE */
 @media (max-width: 800px) {
   .about-hero h1 {
     font-size: 30px;
@@ -224,4 +223,47 @@
     flex: 1;
     text-align: center;
   }
+}
+
+/* ==========================================================================
+   ABOUT PAGE - DARK MODE
+   ========================================================================== */
+[data-theme="dark"] .about-page,
+body.dark .about-page {
+  background: #0b0f19;
+}
+
+[data-theme="dark"] .about-hero h1,
+body.dark .about-hero h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .about-hero p,
+body.dark .about-hero p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .about-card,
+[data-theme="dark"] .team-card,
+body.dark .about-card,
+body.dark .team-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .about-card h3,
+[data-theme="dark"] .section-title h2,
+[data-theme="dark"] .team-info h3,
+body.dark .about-card h3,
+body.dark .section-title h2,
+body.dark .team-info h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .about-card p,
+[data-theme="dark"] .team-info p,
+body.dark .about-card p,
+body.dark .team-info p {
+  color: #94a3b8;
 }

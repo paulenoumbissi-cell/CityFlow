@@ -548,7 +548,6 @@
   margin: 2px 0 0;
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
   .emergency-main-grid {
     grid-template-columns: 1fr;
@@ -556,4 +555,61 @@
   .emergency-map-card {
     height: 450px;
   }
+}
+
+/* ==========================================================================
+   EMERGENCY PAGE - DARK MODE
+   ========================================================================== */
+[data-theme="dark"] .emergency-page,
+body.dark .emergency-page {
+  background: #0b0f19;
+}
+
+[data-theme="dark"] .emergency-mission-card,
+[data-theme="dark"] .emergency-map-card,
+body.dark .emergency-mission-card,
+body.dark .emergency-map-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .mission-header h2,
+[data-theme="dark"] .map-card-header h3,
+body.dark .mission-header h2,
+body.dark .map-card-header h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .step-name,
+body.dark .step-name {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .mission-step-item,
+body.dark .mission-step-item {
+  background: #1a233a;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .btn-auto-sim,
+body.dark .btn-auto-sim {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .leaflet-emergency-wrapper,
+body.dark .leaflet-emergency-wrapper {
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .popup-emergency strong,
+body.dark .popup-emergency strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .popup-emergency p,
+body.dark .popup-emergency p {
+  color: #94a3b8;
 }

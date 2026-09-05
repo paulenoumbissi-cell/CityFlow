@@ -271,11 +271,41 @@ export default function CommunityPage() {
   const pointsToNext = nextTier ? nextTier.costPoints - userPoints : 0;
 
   // Formule active pour le simulateur
-  const currentPlan = plans.find((p) => p.id === selectedPlanId) || {
-    id: "plan_monthly",
-    name: "Pass Mensuel CityFlow Premium",
-    priceFcfa: 2500,
+  const currentPlan = (plans.length > 0 ? plans : [
+    {
+      id: "plan_citizen_monthly",
+      category: "b2c",
+      name: "Pass Mensuel Citoyen Premium",
+      subtitle: "Pour simples citoyens & conducteurs particuliers",
+      priceFcfa: 2000,
+      period: "par mois",
+      target: "1 Utilisateur",
+    },
+    {
+      id: "plan_citizen_annual",
+      category: "b2c",
+      name: "Pass Annuel Citoyen (12 Mois)",
+      subtitle: "Mobilité illimitée avec 2 mois offerts",
+      priceFcfa: 20000,
+      period: "par an",
+      target: "1 Utilisateur",
+    },
+    {
+      id: "plan_enterprise_fleet",
+      category: "b2b",
+      name: "Pack Flotte Entreprise Pro (B2B)",
+      subtitle: "Pour entreprises & flottes jusqu'à 20 personnes",
+      priceFcfa: 50000,
+      period: "par mois",
+      target: "Jusqu'à 20 collaborateurs",
+    },
+  ]).find((p) => p.id === selectedPlanId) || {
+    id: "plan_citizen_monthly",
+    category: "b2c",
+    name: "Pass Mensuel Citoyen Premium",
+    priceFcfa: 2000,
     period: "par mois",
+    target: "1 Utilisateur",
   };
 
   const simulatedDiscountPercent = currentMaxDiscount > 0 ? currentMaxDiscount : 10;
@@ -555,12 +585,36 @@ export default function CommunityPage() {
 
             <div className="simulator-body">
               <div className="plans-selector-group">
-                <label>Choisissez votre formule :</label>
+                <label>Choisissez la formule à simuler :</label>
                 <div className="plans-pills-grid">
                   {(plans.length > 0 ? plans : [
-                    { id: "plan_monthly", name: "Pass Mensuel (1 Mois)", priceFcfa: 2500, period: "par mois" },
-                    { id: "plan_quarterly", name: "Pass Trimestriel (3 Mois)", priceFcfa: 6500, period: "par trimestre" },
-                    { id: "plan_annual", name: "Pass Annuel (12 Mois)", priceFcfa: 22000, period: "par an" },
+                    {
+                      id: "plan_citizen_monthly",
+                      category: "b2c",
+                      name: "Pass Mensuel Citoyen Premium",
+                      subtitle: "Pour simples citoyens & conducteurs",
+                      priceFcfa: 2000,
+                      period: "par mois",
+                      target: "1 Utilisateur",
+                    },
+                    {
+                      id: "plan_citizen_annual",
+                      category: "b2c",
+                      name: "Pass Annuel Citoyen (12 Mois)",
+                      subtitle: "Mobilité illimitée avec 2 mois offerts",
+                      priceFcfa: 20000,
+                      period: "par an",
+                      target: "1 Utilisateur",
+                    },
+                    {
+                      id: "plan_enterprise_fleet",
+                      category: "b2b",
+                      name: "Pack Flotte Entreprise Pro (B2B)",
+                      subtitle: "Pour entreprises & flottes jusqu'à 20 personnes",
+                      priceFcfa: 50000,
+                      period: "par mois",
+                      target: "Jusqu'à 20 collaborateurs",
+                    },
                   ]).map((p) => (
                     <button
                       key={p.id}
@@ -568,8 +622,19 @@ export default function CommunityPage() {
                       className={`plan-pill-btn ${selectedPlanId === p.id ? "selected" : ""}`}
                       onClick={() => setSelectedPlanId(p.id)}
                     >
-                      <strong>{p.name}</strong>
-                      <span>{p.priceFcfa.toLocaleString()} FCFA</span>
+                      <div className="plan-pill-info">
+                        <div className="plan-pill-title-row">
+                          <span className={`plan-category-badge ${p.category || "b2c"}`}>
+                            {p.category === "b2b" ? "🏢 B2B Entreprise" : "👤 B2C Citoyen"}
+                          </span>
+                          <strong>{p.name}</strong>
+                        </div>
+                        <small className="plan-pill-subtitle">{p.subtitle || p.target}</small>
+                      </div>
+                      <div className="plan-pill-price">
+                        <strong>{p.priceFcfa.toLocaleString()} FCFA</strong>
+                        <small>{p.period}</small>
+                      </div>
                     </button>
                   ))}
                 </div>

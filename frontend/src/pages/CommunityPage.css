@@ -667,7 +667,7 @@
 .plan-pill-btn {
   background: #f8fafc;
   border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 12px 18px;
   display: flex;
   justify-content: space-between;
@@ -675,6 +675,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
+  gap: 12px;
 }
 
 .plan-pill-btn:hover {
@@ -688,15 +689,67 @@
   box-shadow: 0 4px 12px rgba(0, 135, 90, 0.15);
 }
 
-.plan-pill-btn strong {
+.plan-pill-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-pill-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.plan-category-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+
+.plan-category-badge.b2c {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.plan-category-badge.b2b {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+.plan-pill-title-row strong {
   font-size: 0.95rem;
+  font-weight: 800;
   color: #0f172a;
 }
 
-.plan-pill-btn span {
-  font-size: 0.9rem;
-  font-weight: 700;
+.plan-pill-subtitle {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.plan-pill-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.plan-pill-price strong {
+  font-size: 1.05rem;
+  font-weight: 900;
   color: #00875A;
+}
+
+.plan-pill-price small {
+  font-size: 0.75rem;
+  color: #64748b;
 }
 
 .simulator-result-box {

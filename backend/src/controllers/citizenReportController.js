@@ -3,13 +3,16 @@ import dbService from "../services/dbService.js";
 
 // Contrôleur de signalement citoyen collaboratif & système de récompenses / gamification avec persistance
 
-// Formules d'abonnement CityFlow Premium
+// Formules d'abonnement CityFlow (Citoyens Particuliers & Entreprises B2B)
 export const SUBSCRIPTION_PLANS = [
   {
-    id: "plan_monthly",
-    name: "Pass Mensuel CityFlow Premium",
-    priceFcfa: 2500,
+    id: "plan_citizen_monthly",
+    category: "b2c",
+    name: "Pass Mensuel Citoyen Premium",
+    subtitle: "Pour simples citoyens & conducteurs particuliers",
+    priceFcfa: 2000,
     period: "par mois",
+    target: "1 Utilisateur",
     features: [
       "Guidage vocal intelligent sans coupure",
       "Alertes d'anticipation météo & bouchons +1h",
@@ -18,25 +21,33 @@ export const SUBSCRIPTION_PLANS = [
     ],
   },
   {
-    id: "plan_quarterly",
-    name: "Pass Trimestriel Urbain (3 Mois)",
-    priceFcfa: 6500,
-    period: "par trimestre",
+    id: "plan_citizen_annual",
+    category: "b2c",
+    name: "Pass Annuel Citoyen (12 Mois)",
+    subtitle: "Mobilité illimitée avec 2 mois offerts",
+    priceFcfa: 20000,
+    period: "par an",
+    target: "1 Utilisateur",
     features: [
-      "Tous les avantages Premium inclus",
-      "Économie directe de 1 000 FCFA",
-      "Rapports personnalisés d'émissions CO₂",
+      "Tous les avantages Premium en illimité",
+      "Économie de 4 000 FCFA sur l'année",
+      "Badge Citoyen d'Or & Priorité support",
     ],
   },
   {
-    id: "plan_annual",
-    name: "Pass Annuel Mobilité Totale (12 Mois)",
-    priceFcfa: 22000,
-    period: "par an",
+    id: "plan_enterprise_fleet",
+    category: "b2b",
+    name: "Pack Flotte Entreprise Pro (B2B)",
+    subtitle: "Pour entreprises, livreurs & flottes de véhicules",
+    priceFcfa: 50000,
+    period: "par mois",
+    target: "Jusqu'à 20 collaborateurs inclus",
     features: [
-      "Tous les avantages Premium en illimité",
-      "Accès prioritaire aux nouvelles fonctionnalités IA",
-      "Badge spécial Citoyen d'Or sur le réseau",
+      "Comptes Premium inclus pour jusqu'à 20 chauffeurs / employés",
+      "Tableau de bord supervision de flotte en temps réel (Yaoundé & Douala)",
+      "Optimisation automatique des tournées de livraison",
+      "Rapports mensuels d'économies de carburant & CO₂",
+      "Support technique dédié & gestionnaire de compte",
     ],
   },
 ];
@@ -51,7 +62,7 @@ export const REWARDS_CATALOG = [
     badge: "🌱 Débutant",
     icon: "🥉",
     description: "Bénéficiez de 10% de remise immédiate sur votre prochain abonnement CityFlow.",
-    savingsEstimate: "250 à 2 200 FCFA d'économie",
+    savingsEstimate: "200 à 5 000 FCFA d'économie",
   },
   {
     id: "discount_25",
@@ -61,7 +72,7 @@ export const REWARDS_CATALOG = [
     badge: "🛡️ Sentinelle",
     icon: "🥈",
     description: "25% de remise sur toute formule d'abonnement grâce à votre participation active.",
-    savingsEstimate: "625 à 5 500 FCFA d'économie",
+    savingsEstimate: "500 à 12 500 FCFA d'économie",
   },
   {
     id: "discount_50",
@@ -71,7 +82,7 @@ export const REWARDS_CATALOG = [
     badge: "🗺️ Guide Urbain",
     icon: "🥇",
     description: "Ne payez que la moitié de votre abonnement CityFlow pour vos signalements réguliers.",
-    savingsEstimate: "1 250 à 11 000 FCFA d'économie",
+    savingsEstimate: "1 000 à 25 000 FCFA d'économie",
   },
   {
     id: "discount_75",
@@ -81,17 +92,17 @@ export const REWARDS_CATALOG = [
     badge: "💎 Pilier de la Cité",
     icon: "⭐",
     description: "75% de réduction exclusive sur votre abonnement pour votre fidélité exemplaire.",
-    savingsEstimate: "1 875 à 16 500 FCFA d'économie",
+    savingsEstimate: "1 500 à 37 500 FCFA d'économie",
   },
   {
     id: "discount_100",
-    title: "100% GRATUIT — 1 Mois Offert",
+    title: "100% GRATUIT — 1 Mois Citoyen Offert",
     discountPercent: 100,
     costPoints: 1000,
     badge: "👑 Héros de la Mobilité",
     icon: "🏆",
-    description: "Votre abonnement 100% gratuit, totalement financé par vos points de citoyenneté !",
-    savingsEstimate: "2 500 FCFA offerts",
+    description: "Votre abonnement Citoyen 100% gratuit, totalement financé par vos points de citoyenneté !",
+    savingsEstimate: "2 000 FCFA offerts",
   },
 ];
 

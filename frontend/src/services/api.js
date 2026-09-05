@@ -301,6 +301,56 @@ class CityFlowApiService {
     }
   }
 
+  // === NOUVELLE API CARTOGRAPHIQUE DÉDIÉE (/api/map) ===
+  async getMapConfig(city = "Yaoundé", theme = "light") {
+    return this.fetchWithFallback(`/map/config?city=${encodeURIComponent(city)}&theme=${encodeURIComponent(theme)}`, {
+      engine: "CityFlow Map API",
+      providers: [
+        { id: "cartoDark", name: "CARTO Dark Matter", url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" },
+        { id: "osmStandard", name: "OpenStreetMap", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" },
+      ],
+    });
+  }
+
+  async searchMapPlaces(query, city = "Yaoundé") {
+    try {
+      const res = await fetch(`${this.baseUrl}/map/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`);
+      if (!res.ok) throw new Error("Erreur de recherche cartographique");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Map API Search Error]", err.message);
+      return { city, query, count: 0, results: [] };
+    }
+  }
+
+  async reverseGeocode(lat, lon, city = "Yaoundé") {
+    try {
+      const res = await fetch(`${this.baseUrl}/map/reverse?lat=${lat}&lon=${lon}&city=${encodeURIComponent(city)}`);
+      if (!res.ok) throw new Error("Erreur de géocodage inverse");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Map API Reverse Error]", err.message);
+      return { lat, lng: lon, displayName: `Position [${lat}, ${lon}]`, district: city };
+    }
+  }
+
+  async getMapLandmarks(city = "Yaoundé", category = "all") {
+    return this.fetchWithFallback(`/map/landmarks?city=${encodeURIComponent(city)}&category=${encodeURIComponent(category)}`, {
+      city,
+      count: 0,
+      landmarks: [],
+    });
+  }
+
+  async getMapLayers() {
+    return this.fetchWithFallback(`/map/layers`, {
+      layers: [
+        { id: "traffic_realtime", name: "Trafic en Direct", defaultVisible: true },
+        { id: "incidents_alerts", name: "Signalements Citoyens", defaultVisible: true },
+      ],
+    });
+  }
+
   login(email, password) {
     return loginUser(email, password);
   }

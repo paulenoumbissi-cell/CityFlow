@@ -10,6 +10,7 @@ import authRoutes from "./routes/authRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import emergencyRoutes from "./routes/emergencyRoutes.js";
+import mapRoutes from "./routes/mapRoutes.js";
 import { initWebSocketServer } from "./services/websocketServer.js";
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.use("/api/routes", routeRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/map", mapRoutes);
 app.use("/api", reportRoutes);
 app.use("/api/emergency", emergencyRoutes);
 

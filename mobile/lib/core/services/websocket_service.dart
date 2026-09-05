@@ -26,80 +26,85 @@ class CityFlowWebSocketService {
   Stream<Map<String, dynamic>> get messageStream => _messageController.stream;
   bool get isConnected => _status == WsConnectionStatus.connected;
 
+  static const List<String> _candidateWsUrls = [
+    'ws://127.0.0.1:3000/ws',
+    'ws://192.168.1.123:3000/ws',
+    'ws://10.0.2.2:3000/ws',
+    'ws://localhost:3000/ws',
+  ];
+
   static String get defaultWsUrl {
     if (kIsWeb) {
       return 'ws://localhost:3000/ws';
     }
-    if (Platform.isAndroid) {
-      return 'ws://10.0.2.2:3000/ws';
-    }
-    return 'ws://localhost:3000/ws';
+    return _candidateWsUrls.first;
   }
 
   void connect({String? customUrl}) {
-    final url = customUrl ?? defaultWsUrl;
     if (_socket != null && (_status == WsConnectionStatus.connected || _status == WsConnectionStatus.connecting)) {
       return;
     }
 
     _isManualDisconnect = false;
     _setStatus(WsConnectionStatus.connecting);
-
     _reconnectTimer?.cancel();
 
-    _connectInternal(url);
+    _tryConnectCandidates(customUrl != null ? [customUrl] : _candidateWsUrls);
   }
 
-  Future<void> _connectInternal(String url) async {
-    try {
-      debugPrint('⚡ [CityFlow Mobile WS] Connexion vers $url...');
-      _socket = await WebSocket.connect(url).timeout(const Duration(seconds: 4));
-      
-      _setStatus(WsConnectionStatus.connected);
-      debugPrint('✅ [CityFlow Mobile WS] Connecté au serveur temps réel !');
+  Future<void> _tryConnectCandidates(List<String> candidates) async {
+    for (final url in candidates) {
+      if (_isManualDisconnect) return;
+      try {
+        debugPrint('⚡ [CityFlow Mobile WS] Tentative vers $url...');
+        _socket = await WebSocket.connect(url).timeout(const Duration(seconds: 2));
+        _setStatus(WsConnectionStatus.connected);
+        debugPrint('✅ [CityFlow Mobile WS] Connecté au serveur temps réel ($url) !');
 
-      if (_subscribedCity != null) {
-        subscribeCity(_subscribedCity!);
-      }
+        if (_subscribedCity != null) {
+          subscribeCity(_subscribedCity!);
+        }
 
-      _socket!.listen(
-        (data) {
-          try {
-            if (data is String) {
-              final parsed = json.decode(data);
-              if (parsed is Map<String, dynamic>) {
-                _messageController.add(parsed);
+        _socket!.listen(
+          (data) {
+            try {
+              if (data is String) {
+                final parsed = json.decode(data);
+                if (parsed is Map<String, dynamic>) {
+                  _messageController.add(parsed);
+                }
               }
+            } catch (e) {
+              debugPrint('❌ [CityFlow Mobile WS] Erreur décodage JSON: $e');
             }
-          } catch (e) {
-            debugPrint('❌ [CityFlow Mobile WS] Erreur décodage JSON: $e');
-          }
-        },
-        onDone: () {
-          debugPrint('⚠️ [CityFlow Mobile WS] Connexion terminée.');
-          _setStatus(WsConnectionStatus.disconnected);
-          _scheduleReconnect(url);
-        },
-        onError: (error) {
-          debugPrint('❌ [CityFlow Mobile WS] Erreur socket: $error');
-          _setStatus(WsConnectionStatus.disconnected);
-          _scheduleReconnect(url);
-        },
-        cancelOnError: true,
-      );
-    } catch (e) {
-      debugPrint('⚠️ [CityFlow Mobile WS] Échec de connexion: $e');
-      _setStatus(WsConnectionStatus.disconnected);
-      _scheduleReconnect(url);
+          },
+          onDone: () {
+            debugPrint('⚠️ [CityFlow Mobile WS] Connexion terminée.');
+            _setStatus(WsConnectionStatus.disconnected);
+            _scheduleReconnect(url);
+          },
+          onError: (error) {
+            debugPrint('❌ [CityFlow Mobile WS] Erreur socket: $error');
+            _setStatus(WsConnectionStatus.disconnected);
+            _scheduleReconnect(url);
+          },
+          cancelOnError: true,
+        );
+        return;
+      } catch (_) {
+        // Tenter candidat suivant
+      }
     }
+    _setStatus(WsConnectionStatus.disconnected);
+    _scheduleReconnect(_candidateWsUrls.first);
   }
 
   void _scheduleReconnect(String url) {
     if (_isManualDisconnect) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 4), () {
+    _reconnectTimer = Timer(const Duration(seconds: 5), () {
       debugPrint('🔄 [CityFlow Mobile WS] Reconnexion automatique...');
-      _connectInternal(url);
+      _tryConnectCandidates(_candidateWsUrls);
     });
   }
 

@@ -8,7 +8,8 @@ import '../core/services/api_service.dart';
 import '../widgets/city_selector.dart';
 
 class TrafficPredictionScreen extends StatefulWidget {
-  const TrafficPredictionScreen({super.key});
+  final Function(int)? onNavigateTab;
+  const TrafficPredictionScreen({super.key, this.onNavigateTab});
 
   @override
   State<TrafficPredictionScreen> createState() => _TrafficPredictionScreenState();
@@ -67,18 +68,39 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
     final List recommendations = _aiForecastData?['recommendations'] ?? [];
     final List anomalies = _aiForecastData?['anomalies'] ?? [];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prédiction & IA Trafic'),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: CitySelector(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          widget.onNavigateTab?.call(0);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Retour à la carte',
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                widget.onNavigateTab?.call(0);
+              }
+            },
           ),
-        ],
-      ),
-      body: activeNode == null
-          ? const Center(child: Text('Aucune donnée disponible'))
+          title: const Text('Prédiction & IA Trafic'),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: CitySelector(),
+            ),
+          ],
+        ),
+        body: activeNode == null
+            ? const Center(child: Text('Aucune donnée disponible'))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -473,6 +495,7 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                 ],
               ],
             ),
+      ),
     );
   }
 }

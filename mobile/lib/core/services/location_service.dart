@@ -87,6 +87,40 @@ class LocationService {
     }
   }
 
+  /// Obtient la position GPS la plus précise actuelle
+  static Future<Position?> getCurrentPosition() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return null;
+      }
+      if (permission == LocationPermission.deniedForever) return null;
+
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Obtient un flux de positions GPS continues pour la navigation en temps réel
+  static Stream<Position> getPositionStream() {
+    return Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 2,
+      ),
+    );
+  }
+
   static LocationResult _fallbackResult({String? errorMessage}) {
     return LocationResult(
       position: CityData.yaoundeCenter,

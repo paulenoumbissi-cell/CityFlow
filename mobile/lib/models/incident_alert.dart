@@ -13,8 +13,10 @@ enum AlertSeverity {
 
 enum AlertCategory {
   accident('Accident de circulation', Icons.car_crash_rounded),
+  flood('Inondation / Chaussée submergée', Icons.water_drop_rounded),
   flooding('Inondation / Chaussée submergée', Icons.water_drop_rounded),
   breakdown('Camion / Véhicule en panne', Icons.build_rounded),
+  roadwork('Travaux sur la chaussée', Icons.construction_rounded),
   roadworks('Travaux sur la chaussée', Icons.construction_rounded),
   trafficBlock('Carrefour anarchique / Bloqué', Icons.traffic_rounded);
 
@@ -34,6 +36,7 @@ class IncidentAlert {
   final DateTime reportedAt;
   final int confirmationsCount;
   final bool isVerifiedByAuthority;
+  final bool isRead;
 
   const IncidentAlert({
     required this.id,
@@ -46,6 +49,7 @@ class IncidentAlert {
     required this.reportedAt,
     this.confirmationsCount = 1,
     this.isVerifiedByAuthority = false,
+    this.isRead = false,
   });
 
   IncidentAlert copyWith({
@@ -59,6 +63,7 @@ class IncidentAlert {
     DateTime? reportedAt,
     int? confirmationsCount,
     bool? isVerifiedByAuthority,
+    bool? isRead,
   }) {
     return IncidentAlert(
       id: id ?? this.id,
@@ -71,6 +76,7 @@ class IncidentAlert {
       reportedAt: reportedAt ?? this.reportedAt,
       confirmationsCount: confirmationsCount ?? this.confirmationsCount,
       isVerifiedByAuthority: isVerifiedByAuthority ?? this.isVerifiedByAuthority,
+      isRead: isRead ?? this.isRead,
     );
   }
 }

@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 enum CitizenReportCategory {
-  accident('Accident de circulation', Icons.car_crash_rounded, Color(0xFFEF4444)),
+  trafficJam('Embouteillage', Icons.traffic_rounded, Color(0xFFFF9800)),
+  police('Police & Radar', Icons.local_police_rounded, Color(0xFF2196F3)),
+  accident('Accident', Icons.car_crash_rounded, Color(0xFFEF4444)),
+  hazard('Danger & Obstacle', Icons.warning_amber_rounded, Color(0xFFFFC107)),
+  roadworks('Travaux', Icons.construction_rounded, Color(0xFFFF5722)),
+  closure('Route barrée', Icons.block_rounded, Color(0xFFDC2626)),
+  flooding('Inondation', Icons.water_drop_rounded, Color(0xFF0284C7)),
+  gasStation('Carburant', Icons.local_gas_station_rounded, Color(0xFF10B981)),
   breakdown('Véhicule en panne', Icons.build_rounded, Color(0xFFF59E0B)),
-  roadworks('Travaux sur la chaussée', Icons.construction_rounded, Color(0xFF3B82F6)),
-  trafficBlock('Embouteillage / Bloqué', Icons.traffic_rounded, Color(0xFFEC4899)),
-  hazard('Nid de poule / Obstacle', Icons.warning_amber_rounded, Color(0xFF8B5CF6)),
-  flooding('Inondation / Eau', Icons.water_drop_rounded, Color(0xFF06B6D4));
+  other('Info citoyenne', Icons.chat_bubble_rounded, Color(0xFF8B5CF6));
 
   final String label;
   final IconData icon;
@@ -16,16 +20,28 @@ enum CitizenReportCategory {
 
   static CitizenReportCategory fromString(String? val) {
     switch (val?.toLowerCase()) {
+      case 'police':
+        return CitizenReportCategory.police;
+      case 'trafficjam':
+      case 'trafficblock':
+        return CitizenReportCategory.trafficJam;
+      case 'roadworks':
+      case 'roadwork':
+        return CitizenReportCategory.roadworks;
+      case 'closure':
+        return CitizenReportCategory.closure;
+      case 'flooding':
+      case 'flood':
+        return CitizenReportCategory.flooding;
+      case 'gasstation':
+      case 'fuel':
+        return CitizenReportCategory.gasStation;
       case 'breakdown':
         return CitizenReportCategory.breakdown;
-      case 'roadworks':
-        return CitizenReportCategory.roadworks;
-      case 'trafficblock':
-        return CitizenReportCategory.trafficBlock;
       case 'hazard':
         return CitizenReportCategory.hazard;
-      case 'flooding':
-        return CitizenReportCategory.flooding;
+      case 'other':
+        return CitizenReportCategory.other;
       case 'accident':
       default:
         return CitizenReportCategory.accident;
@@ -73,6 +89,10 @@ class CitizenReport {
   final bool isVerified;
   final String status;
   final List<String> upvotedBy;
+
+  DateTime get createdAt => reportedAt;
+  int get upvotes => confirmationsCount;
+  int get downvotes => resolutionsCount;
 
   const CitizenReport({
     required this.id,

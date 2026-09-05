@@ -101,6 +101,9 @@ class CatalogRewardItem {
   final String icon;
   final String description;
 
+  int get pointsCost => costPoints;
+  String get partnerName => partner;
+
   const CatalogRewardItem({
     required this.id,
     required this.title,
@@ -145,10 +148,36 @@ class CitizenProfileData {
     required this.redeemedRewards,
   });
 
+  String get fullName => userName;
+  String get name => userName;
+  String get badgeTitle => level.title;
+
+  CitizenProfileData copyWith({
+    String? userId,
+    String? userName,
+    int? reputationScore,
+    int? reportsCount,
+    int? confirmationsGiven,
+    CitizenLevel? level,
+    List<CitizenBadge>? badges,
+    List<RewardCoupon>? redeemedRewards,
+  }) {
+    return CitizenProfileData(
+      userId: userId ?? this.userId,
+      userName: userName ?? this.userName,
+      reputationScore: reputationScore ?? this.reputationScore,
+      reportsCount: reportsCount ?? this.reportsCount,
+      confirmationsGiven: confirmationsGiven ?? this.confirmationsGiven,
+      level: level ?? this.level,
+      badges: badges ?? this.badges,
+      redeemedRewards: redeemedRewards ?? this.redeemedRewards,
+    );
+  }
+
   factory CitizenProfileData.fromJson(Map<String, dynamic> json) {
     return CitizenProfileData(
       userId: json['userId'] as String? ?? 'user_current',
-      userName: json['userName'] as String? ?? 'Paul Enoumbissi',
+      userName: json['userName'] as String? ?? json['fullName'] as String? ?? 'Paul Enoumbissi',
       reputationScore: json['reputationScore'] as int? ?? 320,
       reportsCount: json['reportsCount'] as int? ?? 8,
       confirmationsGiven: json['confirmationsGiven'] as int? ?? 14,

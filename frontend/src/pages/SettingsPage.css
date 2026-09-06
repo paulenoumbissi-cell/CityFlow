@@ -1,0 +1,334 @@
+.settings-page {
+  min-height: calc(100vh - 80px);
+  background: #f5f8f7;
+  padding: 45px 6%;
+}
+
+.settings-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.settings-header {
+  margin-bottom: 30px;
+}
+
+.settings-label {
+  color: #087f5b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.settings-header h1 {
+  margin: 8px 0;
+  color: #172033;
+  font-size: 36px;
+}
+
+.settings-header p {
+  margin: 0;
+  color: #687386;
+  font-size: 15px;
+}
+
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-card {
+  background: white;
+  border: 1px solid #e6ebe9;
+  border-radius: 18px;
+  padding: 24px 28px;
+  box-shadow: 0 5px 20px rgba(23, 32, 51, 0.03);
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #edf0ef;
+}
+
+.settings-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #e8f7f1;
+  color: #087f5b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-card-header h2 {
+  margin: 0 0 3px;
+  font-size: 18px;
+  color: #172033;
+}
+
+.settings-card-header span {
+  font-size: 13px;
+  color: #8c97a8;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #f2f4f3;
+  gap: 20px;
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+
+.settings-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-item strong {
+  font-size: 14px;
+  color: #172033;
+}
+
+.settings-item span {
+  font-size: 13px;
+  color: #7b8494;
+}
+
+.settings-select {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #dbe3e0;
+  background: #fdfdfd;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.badge-status {
+  background: #e8f7f1;
+  color: #087f5b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.btn-danger-outline {
+  background: transparent;
+  border: 1px solid #ff4d4f;
+  color: #ff4d4f;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-danger-outline:hover {
+  background: #fff1f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.2);
+}
+
+.btn-danger-outline:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+.chevron {
+  color: #a0abb8;
+  transition: transform 0.2s ease;
+}
+
+.settings-item:hover .chevron {
+  transform: translateX(3px);
+  color: #087f5b;
+}
+
+/* SWITCH TOGGLE */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
+  border-radius: 26px;
+}
+
+.toggle-switch:hover .slider {
+  box-shadow: 0 0 8px rgba(8, 127, 91, 0.25);
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+input:checked + .slider {
+  background-color: #087f5b;
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+@media (max-width: 600px) {
+  .settings-page {
+    padding: 25px 15px;
+  }
+  .settings-header h1 {
+    font-size: 28px;
+  }
+}
+
+/* ==========================================================================
+   SETTINGS PAGE - DARK MODE (COMPLETE HIGH-CONTRAST PALETTE)
+   ========================================================================== */
+[data-theme="dark"] .settings-page,
+body.dark .settings-page {
+  background: #0b0f19;
+}
+
+[data-theme="dark"] .settings-label,
+body.dark .settings-label {
+  color: #34d399;
+}
+
+[data-theme="dark"] .settings-header h1,
+body.dark .settings-header h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .settings-header p,
+body.dark .settings-header p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .settings-card,
+body.dark .settings-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .settings-card-header,
+body.dark .settings-card-header {
+  border-bottom-color: #1e293b;
+}
+
+[data-theme="dark"] .settings-card-header h2,
+body.dark .settings-card-header h2 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .settings-card-header span,
+body.dark .settings-card-header span {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .settings-icon-box,
+body.dark .settings-icon-box {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+[data-theme="dark"] .settings-item,
+body.dark .settings-item {
+  border-bottom-color: #1e293b;
+}
+
+[data-theme="dark"] .settings-item strong,
+body.dark .settings-item strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .settings-item span,
+body.dark .settings-item span {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .settings-select,
+body.dark .settings-select {
+  background: #1a233a;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .settings-select option,
+body.dark .settings-select option {
+  background: #131b2e;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .badge-status,
+body.dark .badge-status {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+[data-theme="dark"] .chevron,
+body.dark .chevron {
+  color: #64748b;
+}
+
+[data-theme="dark"] .settings-item:hover .chevron,
+body.dark .settings-item:hover .chevron {
+  color: #34d399;
+}
+
+[data-theme="dark"] .slider,
+body.dark .slider {
+  background-color: #334155;
+}
+
+[data-theme="dark"] input:checked + .slider,
+body.dark input:checked + .slider {
+  background-color: #10b981;
+}

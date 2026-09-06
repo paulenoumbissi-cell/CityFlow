@@ -1,0 +1,900 @@
+import { useState, useEffect, useRef } from "react";
+import {
+  User,
+  MapPin,
+  Route,
+  Clock,
+  Settings,
+  Mail,
+  Phone,
+  CalendarDays,
+  ChevronRight,
+  LogOut,
+  Sparkles,
+  ShieldCheck,
+  Car,
+  Siren,
+  Shield,
+  Save,
+  CheckCircle2,
+  Camera,
+  Upload,
+  Trash2,
+  AtSign,
+  FileText,
+  Lock,
+  X
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import "./ProfilePage.css";
+
+// Avatars prédéfinis avec styles graphiques variés
+const AVATAR_PRESETS = [
+  { id: "p1", name: "Citoyen Yaoundé", url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80" },
+  { id: "p2", name: "Citoyen Douala", url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=250&q=80" },
+  { id: "p3", name: "Chauffeur Taxi Jaune", url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=250&q=80" },
+  { id: "p4", name: "Conductrice Eco", url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=250&q=80" },
+  { id: "p5", name: "Secours / SAMU", url: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=250&q=80" },
+  { id: "p6", name: "Régulateur Urbain", url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=250&q=80" },
+];
+
+function ProfilePage() {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout, updateProfile, deleteAccount, isLoading, setUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const [editData, setEditData] = useState({
+    name: user?.name || "",
+    username: user?.username || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    password: "",
+    bio: user?.bio || "",
+    city: user?.city || "Yaoundé",
+    role: user?.role || "citizen",
+    vehicleType: user?.vehicleType || "Voiture particulière",
+    avatar: user?.avatar || null,
+  });
+
+  useEffect(() => {
+    if (user) {
+      setEditData({
+        name: user.name || "",
+        username: user.username || (user.name ? user.name.toLowerCase().replace(/\s+/g, "_") : "user"),
+        email: user.email || "",
+        phone: user.phone || "",
+        bio: user.bio || "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+        city: user.city || "Yaoundé",
+        role: user.role || "citizen",
+        vehicleType: user.vehicleType || "Voiture particulière",
+        avatar: user.avatar || null,
+      });
+    }
+  }, [user]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/connexion");
+  };
+
+  const handleLoadDemoUser = () => {
+    const demo = {
+      id: "usr_current",
+      name: "Paul Enoumbissi",
+      username: "paul_237",
+      email: "paul.enoumbissi@cityflow.cm",
+      phone: "+237699123456",
+      bio: "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+      avatar: null,
+      phoneVerified: true,
+      authChannel: "whatsapp",
+      role: "citizen",
+      roleLabel: "Conducteur / Citoyen",
+      city: "Yaoundé",
+      vehicleType: "Voiture particulière",
+      initials: "PE",
+      isAuthenticated: true,
+      tripsCount: 47,
+      timeSavedMin: 184,
+      co2SavedKg: 14.2,
+      points: 380,
+      trustScore: 85,
+      score: 85,
+      token: "jwt_cityflow_default",
+    };
+    setUser(demo);
+    localStorage.setItem("cityflow_user", JSON.stringify(demo));
+  };
+
+  const handleOpenEdit = () => {
+    setEditData({
+      name: user?.name || "Paul Enoumbissi",
+      username: user?.username || "paul_237",
+      email: user?.email || "paul.enoumbissi@cityflow.cm",
+      phone: user?.phone || "+237 699 12 34 56",
+      bio: user?.bio || "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+      city: user?.city || "Yaoundé",
+      role: user?.role || "citizen",
+      vehicleType: user?.vehicleType || "Voiture particulière",
+      avatar: user?.avatar || null,
+    });
+    setIsEditing(true);
+  };
+
+  // Traitement du téléversement d'image personnalisé
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        alert("L'image est trop volumineuse (max: 3 Mo).");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditData((prev) => ({ ...prev, avatar: reader.result }));
+        setShowAvatarModal(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSelectPreset = (url) => {
+    setEditData((prev) => ({ ...prev, avatar: url }));
+    setShowAvatarModal(false);
+  };
+
+  const handleRemoveAvatar = () => {
+    setEditData((prev) => ({ ...prev, avatar: null }));
+    setShowAvatarModal(false);
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    try {
+      await updateProfile(editData);
+      setIsEditing(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (err) {
+      alert("Erreur lors de la sauvegarde : " + err.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      setShowDeleteModal(false);
+      setIsDeleting(false);
+      navigate("/connexion");
+    } catch (err) {
+      alert("Erreur lors de la suppression du compte : " + (err.message || "Impossible de supprimer le compte."));
+      setIsDeleting(false);
+    }
+  };
+
+  if (!isAuthenticated || !user) {
+    return (
+      <main className="profile-page">
+        <div className="profile-container" style={{ textAlign: "center", padding: "60px 20px", maxWidth: "600px", margin: "0 auto" }}>
+          <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "#e8f5e9", color: "#00875a", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+            <User size={36} />
+          </div>
+          <h2 style={{ fontSize: "24px", fontWeight: "800", color: "var(--cityflow-text, #1e293b)", marginBottom: "10px" }}>
+            Espace Profil & Compte
+          </h2>
+          <p style={{ color: "#64748b", margin: "0 0 28px", fontSize: "15px", lineHeight: "1.6" }}>
+            Connectez-vous à votre compte CityFlow pour visualiser et personnaliser votre identité, vos préférences de circulation, vos trajets récents et vos points de fidélité.
+          </p>
+
+          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap", marginBottom: "20px" }}>
+            <Link
+              to="/connexion"
+              style={{
+                background: "#00875a",
+                color: "#ffffff",
+                padding: "12px 24px",
+                borderRadius: "24px",
+                fontWeight: "700",
+                fontSize: "14px",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                boxShadow: "0 4px 14px rgba(0, 135, 90, 0.25)",
+              }}
+            >
+              <User size={16} />
+              Se connecter
+            </Link>
+
+            <Link
+              to="/connexion"
+              style={{
+                background: "transparent",
+                color: "#00875a",
+                border: "2px solid #00875a",
+                padding: "10px 22px",
+                borderRadius: "24px",
+                fontWeight: "700",
+                fontSize: "14px",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              Créer un compte
+            </Link>
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--cityflow-border, #e2e8f0)", paddingTop: "20px", marginTop: "24px" }}>
+            <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "12px" }}>
+              Vous souhaitez tester immédiatement l'interface profil ?
+            </p>
+            <button
+              type="button"
+              onClick={handleLoadDemoUser}
+              style={{
+                background: "#f1f5f9",
+                color: "#334155",
+                border: "1px solid #cbd5e1",
+                padding: "8px 18px",
+                borderRadius: "18px",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              ✨ Activer le profil Démo (Paul Enoumbissi)
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const recentTrips = [
+    {
+      departure: user.city === "Douala" ? "Akwa" : "Bastos",
+      destination: user.city === "Douala" ? "Bonanjo" : "Centre-ville",
+      distance: "6,8 km",
+      duration: "22 min",
+      date: "Aujourd'hui, 10:32",
+    },
+    {
+      departure: user.city === "Douala" ? "Deido" : "Mvan",
+      destination: user.city === "Douala" ? "Bépanda" : "Nsam",
+      distance: "5,2 km",
+      duration: "19 min",
+      date: "Hier, 17:45",
+    },
+    {
+      departure: user.city === "Douala" ? "Bonamoussadi" : "Odza",
+      destination: user.city === "Douala" ? "Akwa" : "Bastos",
+      distance: "9,4 km",
+      duration: "31 min",
+      date: "28 août, 08:15",
+    },
+  ];
+
+  const getRoleIcon = () => {
+    if (user.role === "emergency") return <Siren size={18} color="#dc2626" />;
+    if (user.role === "traffic_manager") return <Shield size={18} color="#2563eb" />;
+    return <Car size={18} color="#00875a" />;
+  };
+
+  const getRoleBadgeStyle = () => {
+    if (user.role === "emergency") return { background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" };
+    if (user.role === "traffic_manager") return { background: "#dbeafe", color: "#2563eb", border: "1px solid #bfdbfe" };
+    return { background: "#e8f5e9", color: "#00875a", border: "1px solid #bbf7d0" };
+  };
+
+  return (
+    <main className="profile-page">
+      <div className="profile-container">
+        {/* HEADER */}
+        <div className="profile-header">
+          <div>
+            <span className="profile-label">ESPACE PERSONNEL CITYFLOW</span>
+            <h1>Mon Compte & Profil</h1>
+            <p>
+              Personnalisez votre identité, votre photo de profil, votre pseudo et vos préférences de mobilité.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="edit-profile-button"
+              onClick={() => {
+                if (isEditing) {
+                  setIsEditing(false);
+                } else {
+                  handleOpenEdit();
+                }
+              }}
+              style={{
+                background: isEditing ? "#e8f5e9" : "#00875A",
+                color: isEditing ? "#00875A" : "#ffffff",
+                border: isEditing ? "1px solid #a7f3d0" : "none"
+              }}
+            >
+              <Settings size={17} />
+              {isEditing ? "Fermer l'édition" : "Modifier mon profil"}
+            </button>
+            <button
+              type="button"
+              className="edit-profile-button"
+              onClick={handleLogout}
+              style={{ background: "#fee2e2", color: "#dc2626", borderColor: "#fca5a5" }}
+            >
+              <LogOut size={17} />
+              Déconnexion
+            </button>
+          </div>
+        </div>
+
+        {/* TOAST DE SUCCÈS */}
+        {saveSuccess && (
+          <div className="profile-save-toast">
+            <CheckCircle2 size={20} />
+            <span>Votre profil et votre photo ont été mis à jour avec succès !</span>
+          </div>
+        )}
+
+        {/* MODAL DE CHOIX DE PHOTO DE PROFIL */}
+        {showAvatarModal && (
+          <div className="avatar-modal-overlay" onClick={() => setShowAvatarModal(false)}>
+            <div className="avatar-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="avatar-modal-header">
+                <h3>Choisir une photo de profil</h3>
+                <button type="button" className="close-modal-btn" onClick={() => setShowAvatarModal(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="avatar-modal-subtitle">
+                Téléversez une image depuis votre appareil ou sélectionnez un avatar de la communauté :
+              </p>
+
+              {/* TÉLÉVERSEMENT PERSONNALISÉ */}
+              <div className="avatar-upload-dropzone" onClick={() => fileInputRef.current?.click()}>
+                <Upload size={28} color="#00875A" />
+                <div>
+                  <strong>Importer depuis mon ordinateur / téléphone</strong>
+                  <span>Format JPG, PNG ou WebP (max 3 Mo)</span>
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/png, image/jpeg, image/webp"
+                  style={{ display: "none" }}
+                />
+              </div>
+
+              {/* PRESETS D'AVATARS */}
+              <div className="avatar-presets-grid">
+                {AVATAR_PRESETS.map((preset) => (
+                  <div
+                    key={preset.id}
+                    className="avatar-preset-item"
+                    onClick={() => handleSelectPreset(preset.url)}
+                  >
+                    <img src={preset.url} alt={preset.name} />
+                    <span>{preset.name}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* BOUTON SUPPRIMER */}
+              <div className="avatar-modal-footer">
+                {editData.avatar && (
+                  <button type="button" className="remove-avatar-btn" onClick={handleRemoveAvatar}>
+                    <Trash2 size={16} /> Supprimer la photo actuelle
+                  </button>
+                )}
+                <button type="button" className="cancel-modal-btn" onClick={() => setShowAvatarModal(false)}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* FORMULAIRE COMPLET D'ÉDITION DE COMPTE */}
+        {isEditing && (
+          <section className="profile-edit-card">
+            <div className="edit-card-header">
+              <div className="edit-card-title">
+                <Settings size={22} color="#00875A" />
+                <div>
+                  <h2>Modifier les informations de mon compte</h2>
+                  <p>Mettez à jour vos identifiants, votre photo, vos coordonnées et votre véhicule.</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="profile-edit-form">
+              {/* SECTION PHOTO DE PROFIL */}
+              <div className="edit-avatar-section">
+                <div className="edit-avatar-preview-wrapper" onClick={() => setShowAvatarModal(true)}>
+                  {editData.avatar ? (
+                    <img src={editData.avatar} alt="Aperçu" className="edit-avatar-img" />
+                  ) : (
+                    <div className="edit-avatar-initials">
+                      {user.initials || "PN"}
+                    </div>
+                  )}
+                  <div className="edit-avatar-overlay">
+                    <Camera size={20} />
+                    <span>Changer</span>
+                  </div>
+                </div>
+
+                <div className="edit-avatar-info">
+                  <strong>Photo de profil</strong>
+                  <p>Cliquez sur l'image pour importer votre photo ou choisir un avatar stylé.</p>
+                  <button
+                    type="button"
+                    className="change-photo-btn"
+                    onClick={() => setShowAvatarModal(true)}
+                  >
+                    <Camera size={15} /> Modifier la photo
+                  </button>
+                </div>
+              </div>
+
+              <div className="edit-fields-grid">
+                {/* NOM COMPLET */}
+                <div className="edit-field-group">
+                  <label><User size={15} /> Nom complet</label>
+                  <input
+                    type="text"
+                    value={editData.name}
+                    onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                    placeholder="Ex: Paule Noumbissi"
+                    required
+                  />
+                </div>
+
+                {/* NOM D'UTILISATEUR (USERNAME) */}
+                <div className="edit-field-group">
+                  <label><AtSign size={15} /> Nom d'utilisateur (Pseudo)</label>
+                  <input
+                    type="text"
+                    value={editData.username}
+                    onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                    placeholder="Ex: paule_237"
+                    required
+                  />
+                </div>
+
+                {/* ADRESSE EMAIL */}
+                <div className="edit-field-group">
+                  <label><Mail size={15} /> Adresse e-mail</label>
+                  <input
+                    type="email"
+                    value={editData.email}
+                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                    placeholder="Ex: paule@cityflow.cm"
+                    required
+                  />
+                </div>
+
+                {/* NUMÉRO DE TÉLÉPHONE */}
+                <div className="edit-field-group">
+                  <label><Phone size={15} /> Numéro de téléphone</label>
+                  <input
+                    type="text"
+                    value={editData.phone}
+                    onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                    placeholder="+237 699 00 11 22"
+                  />
+                </div>
+
+                {/* VILLE DE RÉSIDENCE */}
+                <div className="edit-field-group">
+                  <label><MapPin size={15} /> Ville principale</label>
+                  <select
+                    value={editData.city}
+                    onChange={(e) => setEditData({ ...editData, city: e.target.value })}
+                  >
+                    <option value="Yaoundé">📍 Yaoundé (Centre)</option>
+                    <option value="Douala">📍 Douala (Littoral)</option>
+                  </select>
+                </div>
+
+                {/* RÔLE & PRIVILÈGES */}
+                <div className="edit-field-group">
+                  <label><Shield size={15} /> Rôle & Profil utilisateur</label>
+                  <select
+                    value={editData.role}
+                    onChange={(e) => setEditData({ ...editData, role: e.target.value })}
+                  >
+                    <option value="citizen">🚗 Conducteur / Citoyen</option>
+                    <option value="emergency">🚑 Services d'Urgence (SAMU / Pompiers)</option>
+                    <option value="traffic_manager">🚦 Régulateur Urbain (Mairie / Police)</option>
+                  </select>
+                </div>
+
+                {/* VÉHICULE & TRANSPORT */}
+                <div className="edit-field-group">
+                  <label><Car size={15} /> Moyen de transport principal</label>
+                  <select
+                    value={editData.vehicleType}
+                    onChange={(e) => setEditData({ ...editData, vehicleType: e.target.value })}
+                  >
+                    <option value="Voiture particulière">Voiture particulière</option>
+                    <option value="Taxi urbain (Jaune)">Taxi urbain (Jaune)</option>
+                    <option value="Moto-taxi (Bend-skin)">Moto-taxi (Bend-skin)</option>
+                    <option value="Transport en commun / Bus">Transport en commun / Bus</option>
+                    <option value="Ambulance / SAMU">Ambulance / SAMU</option>
+                    <option value="Marche à pied / Vélo">Marche à pied / Vélo</option>
+                  </select>
+                </div>
+
+                {/* BIO / STATUT */}
+                <div className="edit-field-group" style={{ gridColumn: "1 / -1" }}>
+                  <label><FileText size={15} /> Bio & Phrase de profil</label>
+                  <input
+                    type="text"
+                    value={editData.bio}
+                    onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
+                    placeholder="Ex: Conductrice quotidienne sur l'axe Bastos - Centre-ville"
+                  />
+                </div>
+
+                {/* MODIFICATION DU MOT DE PASSE */}
+                <div className="edit-field-group" style={{ gridColumn: "1 / -1" }}>
+                  <label><Lock size={15} /> Nouveau mot de passe (laisser vide pour conserver l'actuel)</label>
+                  <input
+                    type="password"
+                    value={editData.password || ""}
+                    onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                    placeholder="Saisissez un nouveau mot de passe (ex: clem@nce)"
+                  />
+                </div>
+              </div>
+
+              {/* BOUTONS D'ACTION */}
+              <div className="edit-actions-bar">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="save-profile-btn"
+                >
+                  <Save size={18} />
+                  {isLoading ? "Enregistrement en cours..." : "Enregistrer les modifications"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="cancel-edit-btn"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {/* CARTE D'IDENTITÉ PRINCIPALE DU PROFIL */}
+        <section className="profile-card">
+          <div className="profile-main">
+            <div className="profile-avatar-container">
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.name} className="profile-photo-img" />
+              ) : (
+                <div className="profile-avatar">
+                  {user.initials || "PN"}
+                </div>
+              )}
+              <button 
+                type="button" 
+                className="edit-avatar-quick-badge" 
+                onClick={handleOpenEdit} 
+                title="Changer la photo de profil"
+              >
+                <Camera size={14} />
+              </button>
+            </div>
+
+            <div className="profile-identity">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <h2>{user.name || "Paule Noumbissi"}</h2>
+                {user.username && (
+                  <span className="profile-username-tag">@{user.username.replace(/^@/, '')}</span>
+                )}
+              </div>
+
+              {user.bio && (
+                <p className="profile-bio-text">{user.bio}</p>
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "6px 0 10px", flexWrap: "wrap" }}>
+                <span style={{ ...getRoleBadgeStyle(), padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  {getRoleIcon()} {user.roleLabel || "Conducteur / Citoyen"}
+                </span>
+                <span style={{ fontSize: "12px", color: "#64748b" }}>
+                  • Transport : <strong style={{ color: "#1e293b" }}>{user.vehicleType || "Voiture particulière"}</strong>
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: "18px", flexWrap: "wrap", fontSize: "13px", color: "#475569" }}>
+                <div className="profile-location" style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <MapPin size={15} color="#00875A" />
+                  <strong>{user.city || "Yaoundé"}</strong>, Cameroun
+                </div>
+                {user.phone && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <Phone size={15} color="#00875A" />
+                    <strong>{user.phone}</strong>
+                  </div>
+                )}
+                {user.email && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <Mail size={15} color="#00875A" />
+                    <span>{user.email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="profile-status">
+            <span></span>
+            Compte actif & vérifié
+          </div>
+        </section>
+
+        {/* PRIVILÈGES LIÉS AU RÔLE */}
+        {user.role === "emergency" && (
+          <div style={{ background: "linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%)", border: "1.5px solid #fca5a5", borderRadius: "16px", padding: "18px 22px", margin: "20px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#b91c1c", fontWeight: "800", fontSize: "15px" }}>
+              <Siren size={20} />
+              <span>Privilèges Services de Secours & SAMU Activés</span>
+            </div>
+            <p style={{ margin: "6px 0 12px", fontSize: "13px", color: "#7f1d1d" }}>
+              Vous avez l'habilitation prioritaire pour déclencher l'onde verte et diffuser des alertes d'urgence sur le réseau de Yaoundé et Douala.
+            </p>
+            <Link to="/urgences" style={{ background: "#dc2626", color: "white", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textDecoration: "none", display: "inline-block" }}>
+              Accéder au Poste de Contrôle des Urgences →
+            </Link>
+          </div>
+        )}
+
+        {user.role === "traffic_manager" && (
+          <div style={{ background: "linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)", border: "1.5px solid #bfdbfe", borderRadius: "16px", padding: "18px 22px", margin: "20px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#1d4ed8", fontWeight: "800", fontSize: "15px" }}>
+              <Shield size={20} />
+              <span>Privilèges Régulateur Urbain / Communauté Urbaine</span>
+            </div>
+            <p style={{ margin: "6px 0 12px", fontSize: "13px", color: "#1e3a8a" }}>
+              Accès complet à la supervision géospatiale, au paramétrage du modèle IA et aux alertes d'anomalies en direct.
+            </p>
+            <Link to="/carte" style={{ background: "#2563eb", color: "white", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textDecoration: "none", display: "inline-block" }}>
+              Superviser la Carte du Trafic →
+            </Link>
+          </div>
+        )}
+
+        {/* INFORMATIONS & STATS */}
+        <section className="profile-grid">
+          {/* COORDONNÉES */}
+          <div className="profile-section-card">
+            <h3>Paramètres & Statut du compte</h3>
+
+            <div className="profile-info-list">
+              <div className="info-row">
+                <AtSign size={16} color="#00875A" />
+                <div>
+                  <small>Nom d'utilisateur</small>
+                  <strong>@{user.username || "utilisateur_cityflow"}</strong>
+                </div>
+              </div>
+
+              <div className="info-row">
+                <Phone size={16} color="#00875A" />
+                <div>
+                  <small>Numéro de mobile</small>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <strong>{user.phone || "+237 699 00 11 22"}</strong>
+                    <span style={{ fontSize: "11px", fontWeight: "700", background: user.authChannel === "whatsapp" ? "#dcfce7" : "#eff6ff", color: user.authChannel === "whatsapp" ? "#15803d" : "#1d4ed8", padding: "2px 8px", borderRadius: "10px" }}>
+                      {user.authChannel === "whatsapp" ? "💬 Vérifié WhatsApp" : "📱 Vérifié SMS"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="info-row">
+                <Mail size={16} color="#00875A" />
+                <div>
+                  <small>Adresse e-mail</small>
+                  <strong>{user.email || "conducteur@cityflow.cm"}</strong>
+                </div>
+              </div>
+
+              <div className="info-row">
+                <CalendarDays size={16} color="#00875A" />
+                <div>
+                  <small>Membre depuis</small>
+                  <strong>Août 2026</strong>
+                </div>
+              </div>
+
+              <div className="info-row">
+                <ShieldCheck size={16} color="#00875A" />
+                <div>
+                  <small>Indice de confiance CityFlow</small>
+                  <strong>Vérifié (Score : {user.score || 94}%)</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* STATISTIQUES MOBILITÉ */}
+          <div className="profile-section-card">
+            <h3>Statistiques de mobilité</h3>
+
+            <div className="profile-stats-grid">
+              <div className="profile-stat-box">
+                <Route size={22} className="stat-icon-color" />
+                <strong>{user.tripsCount || 47}</strong>
+                <span>Trajets calculés</span>
+              </div>
+
+              <div className="profile-stat-box">
+                <Clock size={22} className="stat-icon-color" />
+                <strong>{user.timeSavedMin || 184} min</strong>
+                <span>Temps gagné</span>
+              </div>
+
+              <div className="profile-stat-box">
+                <Sparkles size={22} className="stat-icon-color" />
+                <strong>{user.co2SavedKg || 14.2} kg</strong>
+                <span>CO₂ économisé</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* HISTORIQUE */}
+        <section className="history-card">
+          <div className="history-header">
+            <div>
+              <span className="profile-label">HISTORIQUE D'ACTIVITÉ</span>
+              <h2>Mes derniers trajets</h2>
+            </div>
+
+            <Link to="/routes" className="history-link">
+              Nouveau trajet
+              <ChevronRight size={17} />
+            </Link>
+          </div>
+
+          <div className="trip-list">
+            {recentTrips.map((trip, index) => (
+              <div className="trip-item" key={index}>
+                <div className="trip-route">
+                  <div className="trip-point">
+                    <span className="trip-dot start"></span>
+                    <strong>{trip.departure}</strong>
+                  </div>
+
+                  <div className="trip-line"></div>
+
+                  <div className="trip-point">
+                    <span className="trip-dot destination"></span>
+                    <strong>{trip.destination}</strong>
+                  </div>
+                </div>
+
+                <div className="trip-details">
+                  <strong>{trip.duration}</strong>
+                  <span>{trip.distance}</span>
+                  <small>{trip.date}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ZONE DE SÉCURITÉ / SUPPRESSION DU COMPTE */}
+        <section className="profile-danger-zone" style={{ marginTop: "32px", padding: "24px", background: "var(--cityflow-surface-elevated, #ffffff)", borderRadius: "16px", border: "1px solid #fee2e2" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+            <div>
+              <h3 style={{ color: "#dc2626", fontSize: "16px", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px", margin: "0 0 6px" }}>
+                <Trash2 size={18} /> Zone de gestion du compte
+              </h3>
+              <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
+                La suppression de votre compte effacera définitivement toutes vos données et votre profil de la base de données PostgreSQL.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                border: "1px solid #fca5a5",
+                padding: "10px 20px",
+                borderRadius: "12px",
+                fontWeight: "700",
+                fontSize: "13px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <Trash2 size={16} /> Supprimer mon compte
+            </button>
+          </div>
+        </section>
+
+        {/* MODAL DE CONFIRMATION DE SUPPRESSION */}
+        {showDeleteModal && (
+          <div className="avatar-modal-overlay" onClick={() => !isDeleting && setShowDeleteModal(false)}>
+            <div className="avatar-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "460px" }}>
+              <div className="avatar-modal-header">
+                <h3 style={{ color: "#dc2626" }}>⚠️ Confirmer la suppression ?</h3>
+                <button type="button" className="close-modal-btn" onClick={() => !isDeleting && setShowDeleteModal(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+              <p style={{ color: "#475569", fontSize: "14px", lineHeight: "1.6", margin: "16px 0 24px" }}>
+                Êtes-vous sûr de vouloir supprimer définitivement le compte <strong>{user.email || user.name}</strong> ? Cette action est irréversible et supprimera le compte de la base de données.
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  style={{
+                    background: "#f1f5f9",
+                    color: "#334155",
+                    border: "1px solid #cbd5e1",
+                    padding: "10px 18px",
+                    borderRadius: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  style={{
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "10px 20px",
+                    borderRadius: "12px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isDeleting ? "Suppression en cours..." : "Oui, supprimer définitivement"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default ProfilePage;

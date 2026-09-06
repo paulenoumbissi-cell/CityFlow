@@ -1,0 +1,10 @@
+{
+  "appId": "com.cityflow.app",
+  "appName": "CityFlow",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}

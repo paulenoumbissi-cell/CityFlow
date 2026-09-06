@@ -291,11 +291,16 @@
 }
 
 /* ==========================================================================
-   MAP PAGE - DARK MODE
+   MAP PAGE - DARK MODE (COMPLETE HIGH-CONTRAST PALETTE)
    ========================================================================== */
 [data-theme="dark"] .map-page,
 body.dark .map-page {
   background: #0b0f19;
+}
+
+[data-theme="dark"] .map-page-eyebrow,
+body.dark .map-page-eyebrow {
+  color: #34d399;
 }
 
 [data-theme="dark"] .map-page-title h1,
@@ -319,12 +324,18 @@ body.dark .map-page-status {
 body.dark .map-page-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
 
 [data-theme="dark"] .map-page-card-header,
 body.dark .map-page-card-header {
   border-bottom-color: #1e293b;
+}
+
+[data-theme="dark"] .map-card-icon,
+body.dark .map-card-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
 }
 
 [data-theme="dark"] .map-page-card-header h2,
@@ -337,6 +348,11 @@ body.dark .map-page-card-header p {
   color: #94a3b8;
 }
 
+[data-theme="dark"] .map-update,
+body.dark .map-update {
+  color: #94a3b8;
+}
+
 [data-theme="dark"] .map-info-card,
 body.dark .map-info-card {
   background: #131b2e;
@@ -344,12 +360,17 @@ body.dark .map-info-card {
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
 }
 
+[data-theme="dark"] .map-info-card span,
+body.dark .map-info-card span {
+  color: #f8fafc;
+}
+
 [data-theme="dark"] .map-info-card strong,
 body.dark .map-info-card strong {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .map-info-card span,
-body.dark .map-info-card span {
+[data-theme="dark"] .map-info-card p,
+body.dark .map-info-card p {
   color: #94a3b8;
-}
+}

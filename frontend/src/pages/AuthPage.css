@@ -629,35 +629,67 @@
 }
 
 /* ==========================================================================
-   AUTH PAGE - DARK MODE
+   AUTH PAGE - COMPLETE HIGH-CONTRAST DARK MODE
    ========================================================================== */
+[data-theme="dark"] .auth-glass-screen,
 [data-theme="dark"] .glass-auth-page,
+body.dark .auth-glass-screen,
 body.dark .glass-auth-page {
-  background: linear-gradient(135deg, #0b0f19 0%, #0f172a 100%);
+  background: radial-gradient(circle at 50% 0%, #131b2e 0%, #0b0f19 60%, #070a12 100%);
 }
 
 [data-theme="dark"] .glass-auth-box,
 body.dark .glass-auth-box {
-  background: rgba(19, 27, 46, 0.85);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  background: rgba(19, 27, 46, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
+[data-theme="dark"] .cityflow-logo-title,
+[data-theme="dark"] .glass-sub-header h2,
 [data-theme="dark"] .glass-title,
+body.dark .cityflow-logo-title,
+body.dark .glass-sub-header h2,
 body.dark .glass-title {
   color: #f8fafc;
 }
 
+[data-theme="dark"] .glass-sub-header p,
 [data-theme="dark"] .glass-subtitle,
-body.dark .glass-subtitle {
+[data-theme="dark"] .glass-otp-hint,
+[data-theme="dark"] .auth-switch-text,
+body.dark .glass-sub-header p,
+body.dark .glass-subtitle,
+body.dark .glass-otp-hint,
+body.dark .auth-switch-text {
   color: #94a3b8;
 }
 
-[data-theme="dark"] .glass-input-wrapper input,
-body.dark .glass-input-wrapper input {
+[data-theme="dark"] .cityflow-badge,
+body.dark .cityflow-badge {
+  color: #34d399;
+}
+
+[data-theme="dark"] .glass-form-group label,
+body.dark .glass-form-group label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .glass-input-wrapper,
+body.dark .glass-input-wrapper {
   background: #1a233a;
   border-color: #334155;
+}
+
+[data-theme="dark"] .glass-input-wrapper input,
+[data-theme="dark"] .glass-input-wrapper select,
+body.dark .glass-input-wrapper input,
+body.dark .glass-input-wrapper select {
+  background: transparent;
   color: #f8fafc;
+  border-color: transparent;
 }
 
 [data-theme="dark"] .glass-input-wrapper input::placeholder,
@@ -665,20 +697,39 @@ body.dark .glass-input-wrapper input::placeholder {
   color: #64748b;
 }
 
-[data-theme="dark"] .glass-tabs,
-body.dark .glass-tabs {
-  background: #1a233a;
-}
-
-[data-theme="dark"] .glass-tab,
-body.dark .glass-tab {
+[data-theme="dark"] .glass-input-icon,
+[data-theme="dark"] .glass-pass-toggle,
+body.dark .glass-input-icon,
+body.dark .glass-pass-toggle {
   color: #94a3b8;
 }
 
-[data-theme="dark"] .glass-tab.active,
-body.dark .glass-tab.active {
-  background: #2563eb;
-  color: #ffffff;
+[data-theme="dark"] .glass-link-forgot,
+[data-theme="dark"] .auth-switch-btn,
+body.dark .glass-link-forgot,
+body.dark .auth-switch-btn {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .glass-link-forgot:hover,
+[data-theme="dark"] .auth-switch-btn:hover,
+body.dark .glass-link-forgot:hover,
+body.dark .auth-switch-btn:hover {
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .channel-pill-glass,
+body.dark .channel-pill-glass {
+  background: #1a233a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .channel-pill-glass.active,
+body.dark .channel-pill-glass.active {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #6ee7b7;
 }
 
 [data-theme="dark"] .glass-otp-digit,
@@ -688,24 +739,29 @@ body.dark .glass-otp-digit {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .glass-slider-track,
-body.dark .glass-slider-track {
-  background: #1a233a;
-}
-
-[data-theme="dark"] .slider-hint-text,
-body.dark .slider-hint-text {
+[data-theme="dark"] .glass-home-link,
+body.dark .glass-home-link {
   color: #94a3b8;
 }
 
-[data-theme="dark"] .glass-direct-click-btn,
-body.dark .glass-direct-click-btn {
-  background: #1e293b;
-  border-color: #334155;
+[data-theme="dark"] .glass-home-link:hover,
+body.dark .glass-home-link:hover {
+  color: #34d399;
+}
+
+[data-theme="dark"] .glass-demo-toast,
+body.dark .glass-demo-toast {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .toast-text-group,
+body.dark .toast-text-group {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .glass-direct-click-btn:hover,
-body.dark .glass-direct-click-btn:hover {
-  background: #283548;
+[data-theme="dark"] .toast-code,
+body.dark .toast-code {
+  color: #34d399;
 }

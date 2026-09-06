@@ -784,7 +784,7 @@
 }
 
 /* ==========================================================================
-   PREDICTION PAGE - DARK MODE
+   PREDICTION PAGE - DARK MODE (COMPLETE HIGH-CONTRAST PALETTE)
    ========================================================================== */
 [data-theme="dark"] .prediction-page,
 body.dark .prediction-page {
@@ -801,34 +801,150 @@ body.dark .prediction-page-header p {
   color: #94a3b8;
 }
 
+[data-theme="dark"] .prediction-eyebrow,
+body.dark .prediction-eyebrow {
+  color: #34d399;
+}
+
+[data-theme="dark"] .prediction-city,
+body.dark .prediction-city {
+  background: #131b2e;
+  border-color: #1e293b;
+  color: #34d399;
+}
+
+[data-theme="dark"] .prediction-city select,
+body.dark .prediction-city select {
+  color: #f8fafc;
+  background: #131b2e;
+}
+
+/* AI SIMULATOR CARD */
+[data-theme="dark"] .ai-simulator-card,
+body.dark .ai-simulator-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .ai-sim-header h3,
+body.dark .ai-sim-header h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .ai-badge-model,
+body.dark .ai-badge-model {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+[data-theme="dark"] .sim-label,
+body.dark .sim-label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .weather-chip,
+body.dark .weather-chip {
+  background: #1a233a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .weather-chip:hover,
+body.dark .weather-chip:hover {
+  background: #202b45;
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .weather-chip.active,
+body.dark .weather-chip.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .ai-recommendation-box,
+body.dark .ai-recommendation-box {
+  background: #1a233a;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .ai-recom-title,
+body.dark .ai-recom-title {
+  color: #34d399;
+}
+
+[data-theme="dark"] .ai-recommendation-box p,
+body.dark .ai-recommendation-box p {
+  color: #cbd5e1;
+}
+
+/* PRINCIPALE */
 [data-theme="dark"] .prediction-main-card,
 body.dark .prediction-main-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.45);
 }
 
-[data-theme="dark"] .prediction-main-card strong,
-body.dark .prediction-main-card strong {
+[data-theme="dark"] .prediction-main-left h2,
+body.dark .prediction-main-left h2 {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .prediction-main-card p,
-body.dark .prediction-main-card p {
+[data-theme="dark"] .prediction-main-left span,
+body.dark .prediction-main-left span {
   color: #94a3b8;
 }
 
-[data-theme="dark"] .prediction-page-card,
-body.dark .prediction-page-card {
+[data-theme="dark"] .prediction-main-left strong,
+body.dark .prediction-main-left strong {
+  color: #f59e0b;
+}
+
+[data-theme="dark"] .prediction-main-description p,
+body.dark .prediction-main-description p {
+  color: #cbd5e1;
+}
+
+/* SECTION HEADINGS */
+[data-theme="dark"] .page-section-heading h2,
+body.dark .page-section-heading h2 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .page-section-heading p,
+body.dark .page-section-heading p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .city-label,
+body.dark .city-label {
+  background: #1a233a;
+  color: #60a5fa;
+  border: 1px solid #1e293b;
+}
+
+/* CARTES D'HORIZON */
+[data-theme="dark"] .prediction-cards-page .prediction-page-card,
+body.dark .prediction-cards-page .prediction-page-card {
   background: #131b2e;
   border-color: #1e293b;
 }
 
-[data-theme="dark"] .prediction-page-card strong,
-body.dark .prediction-page-card strong {
+[data-theme="dark"] .prediction-time,
+body.dark .prediction-time {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .prediction-level,
+body.dark .prediction-level {
   color: #f8fafc;
 }
 
+/* CHART & ZONES */
 [data-theme="dark"] .traffic-chart,
 body.dark .traffic-chart {
   background: #131b2e;
@@ -860,3 +976,19 @@ body.dark .zone-values strong {
 body.dark .zone-values span {
   color: #94a3b8;
 }
+
+[data-theme="dark"] .prediction-info-card,
+body.dark .prediction-info-card {
+  background: #131b2e;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .info-text h3,
+body.dark .info-text h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .info-text p,
+body.dark .info-text p {
+  color: #cbd5e1;
+}

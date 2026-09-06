@@ -1298,20 +1298,64 @@
 }
 
 /* ==========================================================================
-   5. EMERGENCY PAGE - DARK MODE COMPATIBILITY
+   5. EMERGENCY PAGE - DARK MODE (COMPLETE HIGH-CONTRAST PALETTE)
    ========================================================================== */
 [data-theme="dark"] .emergency-page,
 body.dark .emergency-page {
   background: #0b0f19;
 }
 
+[data-theme="dark"] .emergency-hero-tactical h1,
+body.dark .emergency-hero-tactical h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .emergency-hero-tactical p,
+body.dark .emergency-hero-tactical p {
+  color: #94a3b8;
+}
+
+/* TELEMETRY BANNER & GAUGES */
+[data-theme="dark"] .telemetry-gauge-card,
+body.dark .telemetry-gauge-card {
+  background: #131b2e;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .gauge-label,
+body.dark .gauge-label {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .gauge-value,
+body.dark .gauge-value {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .progress-bar-labels,
+body.dark .progress-bar-labels {
+  color: #cbd5e1;
+}
+
+/* QUICK STATS */
+[data-theme="dark"] .stat-pill .stat-num,
+body.dark .stat-pill .stat-num {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .stat-pill .stat-desc,
+body.dark .stat-pill .stat-desc {
+  color: #94a3b8;
+}
+
+/* EMERGENCY CARDS & TILES */
 [data-theme="dark"] .emergency-card,
 [data-theme="dark"] .emergency-map-card,
 body.dark .emergency-card,
 body.dark .emergency-map-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
 }
 
 [data-theme="dark"] .card-heading,
@@ -1331,16 +1375,31 @@ body.dark .step-name {
   color: #f8fafc;
 }
 
+[data-theme="dark"] .vehicle-info p,
+[data-theme="dark"] .corridor-info p,
+[data-theme="dark"] .hospital-meta,
+[data-theme="dark"] .hotline-desc,
+[data-theme="dark"] .step-desc,
+body.dark .vehicle-info p,
+body.dark .corridor-info p,
+body.dark .hospital-meta,
+body.dark .hotline-desc,
+body.dark .step-desc {
+  color: #94a3b8;
+}
+
 [data-theme="dark"] .vehicle-card,
 [data-theme="dark"] .corridor-card,
 [data-theme="dark"] .hospital-select-card,
 [data-theme="dark"] .history-item,
 [data-theme="dark"] .stat-card,
+[data-theme="dark"] .hotline-card,
 body.dark .vehicle-card,
 body.dark .corridor-card,
 body.dark .hospital-select-card,
 body.dark .history-item,
-body.dark .stat-card {
+body.dark .stat-card,
+body.dark .hotline-card {
   background: #1a233a;
   border-color: #243048;
 }
@@ -1348,9 +1407,11 @@ body.dark .stat-card {
 [data-theme="dark"] .vehicle-card:hover,
 [data-theme="dark"] .corridor-card:hover,
 [data-theme="dark"] .hospital-select-card:hover,
+[data-theme="dark"] .hotline-card:hover,
 body.dark .vehicle-card:hover,
 body.dark .corridor-card:hover,
-body.dark .hospital-select-card:hover {
+body.dark .hospital-select-card:hover,
+body.dark .hotline-card:hover {
   background: #202b45;
   border-color: #3b82f6;
 }
@@ -1359,7 +1420,7 @@ body.dark .hospital-select-card:hover {
 [data-theme="dark"] .hospital-select-card.selected,
 body.dark .corridor-card.selected,
 body.dark .hospital-select-card.selected {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.18);
   border-color: #ef4444;
 }
 
@@ -1374,7 +1435,7 @@ body.dark .input-custom-text {
 [data-theme="dark"] .hotlines-intro,
 body.dark .input-label,
 body.dark .hotlines-intro {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 [data-theme="dark"] .timeline-step,
@@ -1399,6 +1460,11 @@ body.dark .timeline-step.cleared {
 body.dark .broadcast-box {
   background: #2a1520;
   border-color: #881337;
+}
+
+[data-theme="dark"] .broadcast-box p,
+body.dark .broadcast-box p {
+  color: #fecaca;
 }
 
 [data-theme="dark"] .leaflet-emergency-wrapper,
@@ -1426,3 +1492,4 @@ body.dark .btn-recalculate {
   color: #cbd5e1;
   border-color: #334155;
 }
+

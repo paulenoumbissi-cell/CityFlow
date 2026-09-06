@@ -1303,23 +1303,121 @@
 }
 
 /* ==========================================================================
-   COMMUNITY PAGE - DARK MODE
+   COMMUNITY PAGE - DARK MODE (COMPLETE HIGH-CONTRAST PALETTE)
    ========================================================================== */
 [data-theme="dark"] .community-page,
 body.dark .community-page {
   background: #0b0f19;
 }
 
+[data-theme="dark"] .community-hero-content h1,
+body.dark .community-hero-content h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .community-hero-content p,
+body.dark .community-hero-content p {
+  color: #94a3b8;
+}
+
+/* QUICK STATS */
+[data-theme="dark"] .stat-pill,
+body.dark .stat-pill {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .stat-pill .pill-number,
+body.dark .stat-pill .pill-number {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .stat-pill .pill-label,
+body.dark .stat-pill .pill-label {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .stat-pill.highlight-points .pill-number,
+body.dark .stat-pill.highlight-points .pill-number {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .stat-pill.highlight-trust .pill-number,
+body.dark .stat-pill.highlight-trust .pill-number {
+  color: #34d399;
+}
+
+/* ONGLETS */
+[data-theme="dark"] .community-tabs-nav,
+body.dark .community-tabs-nav {
+  border-bottom-color: #1e293b;
+}
+
+[data-theme="dark"] .community-tabs-nav .tab-btn,
+body.dark .community-tabs-nav .tab-btn {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .community-tabs-nav .tab-btn:hover,
+body.dark .community-tabs-nav .tab-btn:hover {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .community-tabs-nav .tab-btn.active,
+body.dark .community-tabs-nav .tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #3b82f6;
+}
+
+/* FILTRES */
+[data-theme="dark"] .filter-chip,
+body.dark .filter-chip {
+  background: #131b2e;
+  border-color: #1e293b;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .filter-chip:hover,
+body.dark .filter-chip:hover {
+  background: #1a233a;
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .filter-chip.active,
+body.dark .filter-chip.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+/* REPORT CARDS */
 [data-theme="dark"] .report-card,
 body.dark .report-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .report-title,
 body.dark .report-title {
   color: #f8fafc;
+}
+
+[data-theme="dark"] .report-location,
+body.dark .report-location {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .meta-author,
+body.dark .meta-author {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .meta-time,
+body.dark .meta-time {
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .category-pill,
@@ -1350,25 +1448,6 @@ body.dark .btn-vote.resolve:hover {
   color: #34d399;
 }
 
-[data-theme="dark"] .filter-btn,
-body.dark .filter-btn {
-  background: #131b2e;
-  border-color: #1e293b;
-  color: #cbd5e1;
-}
-
-[data-theme="dark"] .filter-btn:hover,
-body.dark .filter-btn:hover {
-  background: #1e293b;
-  border-color: #3b82f6;
-}
-
-[data-theme="dark"] .filter-btn.active,
-body.dark .filter-btn.active {
-  background: #2563eb;
-  color: #ffffff;
-}
-
 [data-theme="dark"] .empty-reports-card,
 body.dark .empty-reports-card {
   background: #131b2e;
@@ -1392,6 +1471,7 @@ body.dark .gamification-header-card {
   border-color: #1e293b;
 }
 
+/* DASHBOARD TRUST & REWARDS */
 [data-theme="dark"] .trust-points-dashboard-card,
 body.dark .trust-points-dashboard-card {
   background: #131b2e;
@@ -1469,6 +1549,7 @@ body.dark .rule-box.highlight-rule {
   border-color: #3b82f6;
 }
 
+/* PLANS & ABONNEMENTS */
 [data-theme="dark"] .plans-heading h2,
 body.dark .plans-heading h2 {
   color: #f8fafc;
@@ -1483,7 +1564,7 @@ body.dark .plans-heading p {
 body.dark .plan-pricing-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .plan-pricing-card.b2b-card,
@@ -1499,6 +1580,11 @@ body.dark .plan-name {
 [data-theme="dark"] .plan-subtitle,
 body.dark .plan-subtitle {
   color: #94a3b8;
+}
+
+[data-theme="dark"] .discount-tier-selector-box label,
+body.dark .discount-tier-selector-box label {
+  color: #cbd5e1;
 }
 
 [data-theme="dark"] .tier-pill-btn,
@@ -1533,9 +1619,19 @@ body.dark .plan-pricing-block {
   border-color: #1e293b;
 }
 
+[data-theme="dark"] .price-discount-meta .original-price,
+body.dark .price-discount-meta .original-price {
+  color: #94a3b8;
+}
+
 [data-theme="dark"] .final-price-amount,
 body.dark .final-price-amount {
   color: #f8fafc;
+}
+
+[data-theme="dark"] .price-period,
+body.dark .price-period {
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .savings-inline-pill,
@@ -1550,6 +1646,7 @@ body.dark .plan-features-list li {
   color: #cbd5e1;
 }
 
+/* MODALES DE PAIEMENT ET SIGNALEMENT */
 [data-theme="dark"] .modal-card,
 body.dark .modal-card {
   background: #131b2e;
@@ -1560,6 +1657,23 @@ body.dark .modal-card {
 [data-theme="dark"] .modal-title-box h3,
 body.dark .modal-title-box h3 {
   color: #f8fafc;
+}
+
+[data-theme="dark"] .modal-title-box small,
+body.dark .modal-title-box small {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .btn-close-modal,
+body.dark .btn-close-modal {
+  color: #94a3b8;
+  background: #1e293b;
+}
+
+[data-theme="dark"] .btn-close-modal:hover,
+body.dark .btn-close-modal:hover {
+  color: #f8fafc;
+  background: #334155;
 }
 
 [data-theme="dark"] .payment-summary-box,
@@ -1578,6 +1692,11 @@ body.dark .pay-row strong {
   color: #f8fafc;
 }
 
+[data-theme="dark"] .payment-label,
+body.dark .payment-label {
+  color: #cbd5e1;
+}
+
 [data-theme="dark"] .pay-method-btn,
 body.dark .pay-method-btn {
   background: #1e293b;
@@ -1592,6 +1711,25 @@ body.dark .pay-method-btn.selected {
   color: #60a5fa;
 }
 
+[data-theme="dark"] .free-month-notice,
+body.dark .free-month-notice {
+  background: #1a233a;
+  border-color: #1e293b;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .free-month-notice p,
+body.dark .free-month-notice p {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .gamification-prompt,
+body.dark .gamification-prompt {
+  background: #1a233a;
+  border-color: #1e293b;
+  color: #cbd5e1;
+}
+
 [data-theme="dark"] .form-group label,
 body.dark .form-group label {
   color: #cbd5e1;
@@ -1599,8 +1737,10 @@ body.dark .form-group label {
 
 [data-theme="dark"] .form-group input,
 [data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea,
 body.dark .form-group input,
-body.dark .form-group select {
+body.dark .form-group select,
+body.dark .form-group textarea {
   background: #1a233a;
   color: #f8fafc;
   border-color: #334155;
@@ -1625,3 +1765,4 @@ body.dark .btn-cancel {
   background: #1e293b;
   color: #94a3b8;
 }
+

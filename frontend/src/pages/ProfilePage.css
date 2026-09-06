@@ -787,6 +787,10 @@
    PROFILE PAGE - DARK MODE
    ========================================================================== */
 [data-theme="dark"] .profile-page,
+/* ==========================================================================
+   PROFILE PAGE - COMPLETE HIGH-CONTRAST DARK MODE
+   ========================================================================== */
+[data-theme="dark"] .profile-page,
 body.dark .profile-page {
   background: #0b0f19;
 }
@@ -801,86 +805,164 @@ body.dark .profile-header p {
   color: #94a3b8;
 }
 
+[data-theme="dark"] .profile-label,
+body.dark .profile-label {
+  color: #34d399;
+}
+
 [data-theme="dark"] .edit-profile-button,
 body.dark .edit-profile-button {
-  background: #131b2e;
-  border-color: #1e293b;
+  background: #1e293b;
+  border-color: #334155;
   color: #f8fafc;
+}
+
+[data-theme="dark"] .edit-profile-button:hover,
+body.dark .edit-profile-button:hover {
+  background: #283548;
+  border-color: #475569;
 }
 
 [data-theme="dark"] .profile-card,
-[data-theme="dark"] .profile-stat-box,
 [data-theme="dark"] .profile-section-card,
+[data-theme="dark"] .history-card,
+[data-theme="dark"] .profile-edit-card,
+[data-theme="dark"] .avatar-modal-card,
 body.dark .profile-card,
-body.dark .profile-stat-box,
-body.dark .profile-section-card {
+body.dark .profile-section-card,
+body.dark .history-card,
+body.dark .profile-edit-card,
+body.dark .avatar-modal-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
-}
-
-[data-theme="dark"] .profile-user-info h2,
-body.dark .profile-user-info h2 {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   color: #f8fafc;
 }
 
-[data-theme="dark"] .profile-user-info p,
-body.dark .profile-user-info p {
-  color: #94a3b8;
-}
-
-[data-theme="dark"] .profile-stat-value,
-body.dark .profile-stat-value {
+[data-theme="dark"] .profile-identity h2,
+body.dark .profile-identity h2 {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .profile-stat-label,
-body.dark .profile-stat-label {
+[data-theme="dark"] .profile-username-tag,
+body.dark .profile-username-tag {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+[data-theme="dark"] .profile-bio-text,
+body.dark .profile-bio-text {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .profile-location,
+[data-theme="dark"] .profile-contact,
+body.dark .profile-location,
+body.dark .profile-contact {
   color: #94a3b8;
 }
 
-[data-theme="dark"] .profile-badge-card,
-body.dark .profile-badge-card {
-  background: #1a233a;
-  border-color: #1e293b;
-}
-
-[data-theme="dark"] .profile-badge-card strong,
-body.dark .profile-badge-card strong {
+[data-theme="dark"] .profile-section-card h3,
+[data-theme="dark"] .history-header h2,
+[data-theme="dark"] .edit-card-title h2,
+[data-theme="dark"] .avatar-modal-header h3,
+body.dark .profile-section-card h3,
+body.dark .history-header h2,
+body.dark .edit-card-title h2,
+body.dark .avatar-modal-header h3 {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .profile-badge-card span,
-body.dark .profile-badge-card span {
-  color: #94a3b8;
-}
-
-[data-theme="dark"] .history-item,
-body.dark .history-item {
-  background: #1a233a;
-  border-color: #1e293b;
-}
-
+[data-theme="dark"] .info-row strong,
+[data-theme="dark"] .trip-details strong,
 [data-theme="dark"] .trip-point strong,
-body.dark .trip-point strong {
+[data-theme="dark"] .edit-avatar-info strong,
+body.dark .info-row strong,
+body.dark .trip-details strong,
+body.dark .trip-point strong,
+body.dark .edit-avatar-info strong {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .modal-overlay,
-body.dark .modal-overlay {
-  background: rgba(0, 0, 0, 0.7);
+[data-theme="dark"] .info-row small,
+[data-theme="dark"] .trip-details small,
+[data-theme="dark"] .edit-avatar-info p,
+[data-theme="dark"] .edit-card-title p,
+[data-theme="dark"] .avatar-modal-subtitle,
+body.dark .info-row small,
+body.dark .trip-details small,
+body.dark .edit-avatar-info p,
+body.dark .edit-card-title p,
+body.dark .avatar-modal-subtitle {
+  color: #94a3b8;
 }
 
-[data-theme="dark"] .edit-modal-card,
-body.dark .edit-modal-card {
-  background: #131b2e;
-  border-color: #1e293b;
+[data-theme="dark"] .profile-stat-box,
+[data-theme="dark"] .trip-item,
+[data-theme="dark"] .avatar-upload-dropzone,
+[data-theme="dark"] .avatar-preset-item,
+body.dark .profile-stat-box,
+body.dark .trip-item,
+body.dark .avatar-upload-dropzone,
+body.dark .avatar-preset-item {
+  background: #1a233a;
+  border-color: #243048;
+}
+
+[data-theme="dark"] .profile-stat-box strong,
+body.dark .profile-stat-box strong {
   color: #f8fafc;
 }
 
-[data-theme="dark"] .form-group input,
-body.dark .form-group input {
+[data-theme="dark"] .profile-stat-box span,
+[data-theme="dark"] .trip-details span,
+body.dark .profile-stat-box span,
+body.dark .trip-details span {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .edit-field-group label,
+body.dark .edit-field-group label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .edit-field-group input,
+[data-theme="dark"] .edit-field-group select,
+body.dark .edit-field-group input,
+body.dark .edit-field-group select {
   background: #1a233a;
   border-color: #334155;
   color: #f8fafc;
+}
+
+[data-theme="dark"] .edit-field-group input::placeholder,
+body.dark .edit-field-group input::placeholder {
+  color: #64748b;
+}
+
+[data-theme="dark"] .cancel-edit-btn,
+[data-theme="dark"] .cancel-modal-btn,
+body.dark .cancel-edit-btn,
+body.dark .cancel-modal-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .profile-danger-zone,
+body.dark .profile-danger-zone {
+  background: #131b2e !important;
+  border-color: #7f1d1d !important;
+}
+
+[data-theme="dark"] .profile-danger-zone p,
+body.dark .profile-danger-zone p {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .profile-save-toast,
+body.dark .profile-save-toast {
+  background: #064e3b;
+  color: #6ee7b7;
+  border-color: #047857;
 }

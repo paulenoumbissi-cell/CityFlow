@@ -226,11 +226,16 @@
 }
 
 /* ==========================================================================
-   ABOUT PAGE - DARK MODE
+   ABOUT PAGE - DARK MODE (COMPLETE HIGH-CONTRAST PALETTE)
    ========================================================================== */
 [data-theme="dark"] .about-page,
 body.dark .about-page {
   background: #0b0f19;
+}
+
+[data-theme="dark"] .about-badge,
+body.dark .about-badge {
+  color: #34d399;
 }
 
 [data-theme="dark"] .about-hero h1,
@@ -249,7 +254,13 @@ body.dark .about-card,
 body.dark .team-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .about-icon-box,
+body.dark .about-icon-box {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
 }
 
 [data-theme="dark"] .about-card h3,
@@ -265,5 +276,26 @@ body.dark .team-info h3 {
 [data-theme="dark"] .team-info p,
 body.dark .about-card p,
 body.dark .team-info p {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
+
+[data-theme="dark"] .team-role,
+body.dark .team-role {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .about-cta,
+body.dark .about-cta {
+  background: #1a233a;
+  border: 1px solid #334155;
+}
+
+[data-theme="dark"] .about-cta h2,
+body.dark .about-cta h2 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .about-cta p,
+body.dark .about-cta p {
+  color: #cbd5e1;
+}

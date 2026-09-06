@@ -228,10 +228,17 @@ input:checked + .slider:before {
   }
 }
 
-/* DARK THEME */
+/* ==========================================================================
+   SETTINGS PAGE - DARK MODE (COMPLETE HIGH-CONTRAST PALETTE)
+   ========================================================================== */
 [data-theme="dark"] .settings-page,
 body.dark .settings-page {
   background: #0b0f19;
+}
+
+[data-theme="dark"] .settings-label,
+body.dark .settings-label {
+  color: #34d399;
 }
 
 [data-theme="dark"] .settings-header h1,
@@ -248,7 +255,7 @@ body.dark .settings-header p {
 body.dark .settings-card {
   background: #131b2e;
   border-color: #1e293b;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
 
 [data-theme="dark"] .settings-card-header,
@@ -268,8 +275,8 @@ body.dark .settings-card-header span {
 
 [data-theme="dark"] .settings-icon-box,
 body.dark .settings-icon-box {
-  background: #1e293b;
-  color: #60a5fa;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
 }
 
 [data-theme="dark"] .settings-item,
@@ -289,9 +296,31 @@ body.dark .settings-item span {
 
 [data-theme="dark"] .settings-select,
 body.dark .settings-select {
-  background: #1e293b;
+  background: #1a233a;
   color: #f8fafc;
   border-color: #334155;
+}
+
+[data-theme="dark"] .settings-select option,
+body.dark .settings-select option {
+  background: #131b2e;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .badge-status,
+body.dark .badge-status {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+[data-theme="dark"] .chevron,
+body.dark .chevron {
+  color: #64748b;
+}
+
+[data-theme="dark"] .settings-item:hover .chevron,
+body.dark .settings-item:hover .chevron {
+  color: #34d399;
 }
 
 [data-theme="dark"] .slider,
@@ -301,5 +330,5 @@ body.dark .slider {
 
 [data-theme="dark"] input:checked + .slider,
 body.dark input:checked + .slider {
-  background-color: #2563eb;
-}
+  background-color: #10b981;
+}

@@ -391,42 +391,43 @@ function Home() {
       </main>
 
       {/* FOOTER */}
-      <footer className="footer">
+      {/* FOOTER */}
+      <footer className="footer app-footer">
         <div className="footer-container" style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "32px", padding: "40px 24px" }}>
           <div style={{ maxWidth: "420px" }}>
             <strong style={{ fontSize: "20px", color: "var(--cityflow-primary)", display: "block", marginBottom: "8px" }}>
               CityFlow
             </strong>
-            <p style={{ color: "#64748b", fontSize: "14px", lineHeight: "1.6" }}>
+            <p style={{ color: "var(--cityflow-text-secondary, #64748b)", fontSize: "14px", lineHeight: "1.6" }}>
               Plateforme intelligente de prédiction du trafic et de gestion des itinéraires prioritaires pour Yaoundé et Douala.
             </p>
           </div>
 
           <div style={{ display: "flex", gap: "40px", flexWrap: "wrap" }}>
             <div>
-              <span style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Navigation</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
-                <Link to="/" style={{ color: "#475569" }}>Accueil</Link>
-                <Link to="/carte" style={{ color: "#475569" }}>Carte du trafic</Link>
-                <Link to="/routes" style={{ color: "#475569" }}>Itinéraires</Link>
-                <Link to="/prediction" style={{ color: "#475569" }}>Prédictions</Link>
-                <Link to="/profil" style={{ color: "#00875A", fontWeight: "600" }}>Mon Profil 👤</Link>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--cityflow-muted, #94a3b8)", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Navigation</span>
+              <div className="footer-links-col" style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
+                <Link to="/" className="footer-link">Accueil</Link>
+                <Link to="/carte" className="footer-link">Carte du trafic</Link>
+                <Link to="/routes" className="footer-link">Itinéraires</Link>
+                <Link to="/prediction" className="footer-link">Prédictions</Link>
+                <Link to="/profil" style={{ color: "var(--cityflow-primary, #00875A)", fontWeight: "600" }}>Mon Profil 👤</Link>
               </div>
             </div>
 
             <div>
-              <span style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Services</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
-                <Link to="/urgences" style={{ color: "#dc2626", fontWeight: "600" }}>Couloirs d'urgence 🚨</Link>
-                <Link to="/notifications" style={{ color: "#475569" }}>Centre d'alertes</Link>
-                <Link to="/a-propos" style={{ color: "#475569" }}>À propos du projet</Link>
-                <Link to="/parametres" style={{ color: "#475569" }}>Paramètres</Link>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--cityflow-muted, #94a3b8)", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Services</span>
+              <div className="footer-links-col" style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
+                <Link to="/urgences" style={{ color: "#ef4444", fontWeight: "600" }}>Couloirs d'urgence 🚨</Link>
+                <Link to="/notifications" className="footer-link">Centre d'alertes</Link>
+                <Link to="/a-propos" className="footer-link">À propos du projet</Link>
+                <Link to="/parametres" className="footer-link">Paramètres</Link>
               </div>
             </div>
           </div>
         </div>
 
-        <div style={{ borderTop: "1px solid #e2e8f0", padding: "20px", textAlign: "center", fontSize: "13px", color: "#94a3b8" }}>
+        <div style={{ borderTop: "1px solid var(--cityflow-border, #e2e8f0)", padding: "20px", textAlign: "center", fontSize: "13px", color: "var(--cityflow-muted, #94a3b8)" }}>
           © 2026 CityFlow — Yaoundé & Douala, Cameroun. Tous droits réservés.
         </div>
       </footer>

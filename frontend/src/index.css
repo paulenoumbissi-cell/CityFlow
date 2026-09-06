@@ -2798,7 +2798,7 @@ body.dark,
 
   .footer span,
   .footer p {
-    color: #64748b;
+    color: #94a3b8;
   }
 
   .app-footer {
@@ -2809,12 +2809,32 @@ body.dark,
   .app-footer p,
   .app-footer a,
   .app-footer span {
-    color: #94a3b8 !important;
+    color: #cbd5e1 !important;
   }
 
   .app-footer a:hover {
     color: #60a5fa !important;
   }
+}
+
+.footer-link {
+  color: var(--cityflow-text-secondary, #475569);
+  transition: color 0.2s ease, transform 0.15s ease;
+}
+
+.footer-link:hover {
+  color: var(--cityflow-primary, #087f5b) !important;
+  transform: translateX(2px);
+}
+
+[data-theme="dark"] .footer-link,
+body.dark .footer-link {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .footer-link:hover,
+body.dark .footer-link:hover {
+  color: #60a5fa !important;
 }
 
 /* ==========================================================================
@@ -2968,5 +2988,167 @@ body.dark .map-popup-footer {
   color: #94a3b8 !important;
   border-top-color: #334155 !important;
 }
+
+/* ==========================================================================
+   GLOBAL HIGH-CONTRAST DARK MODE OVERRIDES (CITYFLOW UNIFIED TYPOGRAPHY)
+   ========================================================================== */
+[data-theme="dark"],
+body.dark {
+  color: #f8fafc;
+  background-color: #0b0f19;
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6,
+body.dark h1,
+body.dark h2,
+body.dark h3,
+body.dark h4,
+body.dark h5,
+body.dark h6 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] p,
+body.dark p {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] label,
+body.dark label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+body.dark input,
+body.dark select,
+body.dark textarea {
+  color: #f8fafc;
+  background-color: #1a233a;
+  border-color: #334155;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder,
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  color: #64748b;
+}
+
+[data-theme="dark"] .hero h1,
+body.dark .hero h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .hero-content > p,
+body.dark .hero-content > p {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .search-card,
+body.dark .search-card {
+  background: #131b2e;
+  border-color: #1e293b;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .location-input label,
+body.dark .location-input label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .location-input input,
+body.dark .location-input input {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .stat-card strong,
+body.dark .stat-card strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .stat-card div span,
+body.dark .stat-card div span {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .traffic-card,
+[data-theme="dark"] .map-card,
+body.dark .traffic-card,
+body.dark .map-card {
+  background: #131b2e;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .section-header h2,
+[data-theme="dark"] .prediction-header h2,
+[data-theme="dark"] .route-title h2,
+body.dark .section-header h2,
+body.dark .prediction-header h2,
+body.dark .route-title h2 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .section-header p,
+[data-theme="dark"] .prediction-header p,
+[data-theme="dark"] .route-title p,
+body.dark .section-header p,
+body.dark .prediction-header p,
+body.dark .route-title p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .traffic-info h3,
+body.dark .traffic-info h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .traffic-info p,
+body.dark .traffic-info p {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .traffic-bar-item > div:first-child span,
+body.dark .traffic-bar-item > div:first-child span {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .route-card,
+body.dark .route-card {
+  background: #131b2e;
+  border-color: #1e293b;
+}
+
+[data-theme="dark"] .route-point strong,
+body.dark .route-point strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .route-point small,
+body.dark .route-point small {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .route-result strong,
+body.dark .route-result strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .prediction-card span,
+body.dark .prediction-card span {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .prediction-card strong,
+body.dark .prediction-card strong {
+  color: #f8fafc;
+}
+
 
 

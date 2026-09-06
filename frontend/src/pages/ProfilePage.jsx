@@ -40,7 +40,7 @@ const AVATAR_PRESETS = [
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout, updateProfile, isLoading } = useAuth();
+  const { user, isAuthenticated, logout, updateProfile, isLoading, setUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
@@ -79,13 +79,42 @@ function ProfilePage() {
     navigate("/connexion");
   };
 
+  const handleLoadDemoUser = () => {
+    const demo = {
+      id: "usr_current",
+      name: "Paul Enoumbissi",
+      username: "paul_237",
+      email: "paul.enoumbissi@cityflow.cm",
+      phone: "+237699123456",
+      bio: "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+      avatar: null,
+      phoneVerified: true,
+      authChannel: "whatsapp",
+      role: "citizen",
+      roleLabel: "Conducteur / Citoyen",
+      city: "Yaoundé",
+      vehicleType: "Voiture particulière",
+      initials: "PE",
+      isAuthenticated: true,
+      tripsCount: 47,
+      timeSavedMin: 184,
+      co2SavedKg: 14.2,
+      points: 380,
+      trustScore: 85,
+      score: 85,
+      token: "jwt_cityflow_default",
+    };
+    setUser(demo);
+    localStorage.setItem("cityflow_user", JSON.stringify(demo));
+  };
+
   const handleOpenEdit = () => {
     setEditData({
-      name: user?.name || "Paule Noumbissi",
-      username: user?.username || "paule_237",
-      email: user?.email || "conducteur@cityflow.cm",
-      phone: user?.phone || "+237 699 00 11 22",
-      bio: user?.bio || "Conductrice quotidienne engagée pour une mobilité fluide à Yaoundé et Douala.",
+      name: user?.name || "Paul Enoumbissi",
+      username: user?.username || "paul_237",
+      email: user?.email || "paul.enoumbissi@cityflow.cm",
+      phone: user?.phone || "+237 699 12 34 56",
+      bio: user?.bio || "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
       city: user?.city || "Yaoundé",
       role: user?.role || "citizen",
       vehicleType: user?.vehicleType || "Voiture particulière",
@@ -136,24 +165,80 @@ function ProfilePage() {
   if (!isAuthenticated || !user) {
     return (
       <main className="profile-page">
-        <div className="profile-container" style={{ textAlign: "center", padding: "80px 20px" }}>
-          <h2>Vous n'êtes pas encore connecté</h2>
-          <p style={{ color: "#64748b", margin: "14px 0 24px" }}>
-            Connectez-vous pour retrouver vos trajets favoris, votre historique et vos privilèges de rôle.
+        <div className="profile-container" style={{ textAlign: "center", padding: "60px 20px", maxWidth: "600px", margin: "0 auto" }}>
+          <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "#e8f5e9", color: "#00875a", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+            <User size={36} />
+          </div>
+          <h2 style={{ fontSize: "24px", fontWeight: "800", color: "var(--cityflow-text, #1e293b)", marginBottom: "10px" }}>
+            Espace Profil & Compte
+          </h2>
+          <p style={{ color: "#64748b", margin: "0 0 28px", fontSize: "15px", lineHeight: "1.6" }}>
+            Connectez-vous à votre compte CityFlow pour visualiser et personnaliser votre identité, vos préférences de circulation, vos trajets récents et vos points de fidélité.
           </p>
-          <Link
-            to="/connexion"
-            style={{
-              background: "#087f5b",
-              color: "#ffffff",
-              padding: "12px 28px",
-              borderRadius: "20px",
-              fontWeight: "700",
-              display: "inline-block",
-            }}
-          >
-            Se connecter / Créer un compte
-          </Link>
+
+          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap", marginBottom: "20px" }}>
+            <Link
+              to="/connexion"
+              style={{
+                background: "#00875a",
+                color: "#ffffff",
+                padding: "12px 24px",
+                borderRadius: "24px",
+                fontWeight: "700",
+                fontSize: "14px",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                boxShadow: "0 4px 14px rgba(0, 135, 90, 0.25)",
+              }}
+            >
+              <User size={16} />
+              Se connecter
+            </Link>
+
+            <Link
+              to="/connexion"
+              style={{
+                background: "transparent",
+                color: "#00875a",
+                border: "2px solid #00875a",
+                padding: "10px 22px",
+                borderRadius: "24px",
+                fontWeight: "700",
+                fontSize: "14px",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              Créer un compte
+            </Link>
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--cityflow-border, #e2e8f0)", paddingTop: "20px", marginTop: "24px" }}>
+            <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "12px" }}>
+              Vous souhaitez tester immédiatement l'interface profil ?
+            </p>
+            <button
+              type="button"
+              onClick={handleLoadDemoUser}
+              style={{
+                background: "#f1f5f9",
+                color: "#334155",
+                border: "1px solid #cbd5e1",
+                padding: "8px 18px",
+                borderRadius: "18px",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              ✨ Activer le profil Démo (Paul Enoumbissi)
+            </button>
+          </div>
         </div>
       </main>
     );

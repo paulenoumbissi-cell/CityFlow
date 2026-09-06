@@ -14,7 +14,8 @@ import {
   Users, 
   Info,
   Sun,
-  Moon
+  Moon,
+  User
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useCity } from "../context/CityContext";
@@ -217,6 +218,18 @@ function Navbar() {
           </span>
         </Link>
 
+        {/* PROFIL / ESPACE PERSONNEL */}
+        <Link
+          to="/profil"
+          className={`nav-link ${location.pathname === "/profil" ? "active" : ""}`}
+          onClick={closeAllMenus}
+        >
+          <span className="nav-link-with-icon">
+            <User size={16} />
+            Profil
+          </span>
+        </Link>
+
         {/* URGENCES */}
         <Link
           to="/urgences"
@@ -285,7 +298,7 @@ function Navbar() {
         {isAuthenticated && user ? (
           <Link
             to="/profil"
-            className={`profile-button ${location.pathname === "/profil" ? "active" : ""}`}
+            className={`profile-button-pill ${location.pathname === "/profil" ? "active" : ""}`}
             aria-label="Profil utilisateur"
             title={`Connecté : ${user.name || user.username || user.email || "Utilisateur"}`}
             onClick={closeAllMenus}
@@ -293,18 +306,30 @@ function Navbar() {
             {user.avatar ? (
               <img src={user.avatar} alt="Avatar" className="navbar-avatar-img" />
             ) : (
-              <span>{user.initials || "PN"}</span>
+              <span className="profile-pill-initials">{user.initials || "PE"}</span>
             )}
+            <span className="profile-pill-name">{user.name ? user.name.split(" ")[0] : "Mon Profil"}</span>
           </Link>
         ) : (
-          <Link
-            to="/connexion"
-            className="login-navbar-btn"
-            onClick={closeAllMenus}
-          >
-            <LogIn size={16} />
-            <span>Connexion</span>
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Link
+              to="/profil"
+              className={`icon-nav-btn ${location.pathname === "/profil" ? "active" : ""}`}
+              aria-label="Profil"
+              title="Mon Profil"
+              onClick={closeAllMenus}
+            >
+              <User size={20} />
+            </Link>
+            <Link
+              to="/connexion"
+              className="login-navbar-btn"
+              onClick={closeAllMenus}
+            >
+              <LogIn size={16} />
+              <span>Connexion</span>
+            </Link>
+          </div>
         )}
       </div>
     </header>

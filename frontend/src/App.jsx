@@ -410,6 +410,7 @@ function Home() {
                 <Link to="/carte" style={{ color: "#475569" }}>Carte du trafic</Link>
                 <Link to="/routes" style={{ color: "#475569" }}>Itinéraires</Link>
                 <Link to="/prediction" style={{ color: "#475569" }}>Prédictions</Link>
+                <Link to="/profil" style={{ color: "#00875A", fontWeight: "600" }}>Mon Profil 👤</Link>
               </div>
             </div>
 

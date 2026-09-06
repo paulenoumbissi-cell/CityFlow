@@ -3,15 +3,20 @@ import 'package:latlong2/latlong.dart';
 
 enum CitizenReportCategory {
   trafficJam('Embouteillage', Icons.traffic_rounded, Color(0xFFFF9800)),
-  police('Police & Radar', Icons.local_police_rounded, Color(0xFF2196F3)),
+  trafficLight('Feu en panne', Icons.traffic_outlined, Color(0xFFE11D48)),
+  motoRush('Motos / Blocage', Icons.two_wheeler_rounded, Color(0xFFF97316)),
+  police('Police & Contrôle', Icons.local_police_rounded, Color(0xFF2563EB)),
   accident('Accident', Icons.car_crash_rounded, Color(0xFFEF4444)),
-  hazard('Danger & Obstacle', Icons.warning_amber_rounded, Color(0xFFFFC107)),
-  roadworks('Travaux', Icons.construction_rounded, Color(0xFFFF5722)),
+  funeral('Deuil / Bâche', Icons.night_shelter_rounded, Color(0xFF7C3AED)),
+  truckBreakdown('Camion / Grumier', Icons.local_shipping_rounded, Color(0xFFD97706)),
+  hazard('Danger / Nid-de-poule', Icons.warning_amber_rounded, Color(0xFFF59E0B)),
+  roadworks('Travaux', Icons.construction_rounded, Color(0xFFEA580C)),
   closure('Route barrée', Icons.block_rounded, Color(0xFFDC2626)),
   flooding('Inondation', Icons.water_drop_rounded, Color(0xFF0284C7)),
   gasStation('Carburant', Icons.local_gas_station_rounded, Color(0xFF10B981)),
-  breakdown('Véhicule en panne', Icons.build_rounded, Color(0xFFF59E0B)),
-  other('Info citoyenne', Icons.chat_bubble_rounded, Color(0xFF8B5CF6));
+  breakdown('Véhicule en panne', Icons.build_rounded, Color(0xFF64748B)),
+  sosHelp('SOS Dépannage', Icons.emergency_rounded, Color(0xFFDC2626)),
+  other('Info citoyenne', Icons.campaign_rounded, Color(0xFF8B5CF6));
 
   final String label;
   final IconData icon;
@@ -21,26 +26,54 @@ enum CitizenReportCategory {
   static CitizenReportCategory fromString(String? val) {
     switch (val?.toLowerCase()) {
       case 'police':
+      case 'radar':
         return CitizenReportCategory.police;
       case 'trafficjam':
       case 'trafficblock':
+      case 'bouchon':
         return CitizenReportCategory.trafficJam;
+      case 'trafficlight':
+      case 'feu':
+        return CitizenReportCategory.trafficLight;
+      case 'motorush':
+      case 'moto':
+        return CitizenReportCategory.motoRush;
+      case 'funeral':
+      case 'deuil':
+      case 'bache':
+        return CitizenReportCategory.funeral;
+      case 'truckbreakdown':
+      case 'grumier':
+      case 'camion':
+        return CitizenReportCategory.truckBreakdown;
       case 'roadworks':
       case 'roadwork':
+      case 'travaux':
         return CitizenReportCategory.roadworks;
       case 'closure':
+      case 'barree':
         return CitizenReportCategory.closure;
       case 'flooding':
       case 'flood':
+      case 'inondation':
         return CitizenReportCategory.flooding;
       case 'gasstation':
       case 'fuel':
+      case 'carburant':
         return CitizenReportCategory.gasStation;
       case 'breakdown':
+      case 'panne':
         return CitizenReportCategory.breakdown;
+      case 'soshelp':
+      case 'sos':
+      case 'assistance':
+        return CitizenReportCategory.sosHelp;
       case 'hazard':
+      case 'danger':
+      case 'pothole':
         return CitizenReportCategory.hazard;
       case 'other':
+      case 'info':
         return CitizenReportCategory.other;
       case 'accident':
       default:
@@ -189,3 +222,178 @@ class CitizenReport {
     );
   }
 }
+
+class CommunityRadioMessage {
+  final String id;
+  final String author;
+  final String authorBadge;
+  final String city;
+  final String crossroad;
+  final String message;
+  final bool isAudio;
+  final int audioDurationSeconds;
+  final DateTime createdAt;
+  final int likesCount;
+  final bool isLikedByMe;
+
+  const CommunityRadioMessage({
+    required this.id,
+    required this.author,
+    required this.authorBadge,
+    required this.city,
+    required this.crossroad,
+    required this.message,
+    this.isAudio = false,
+    this.audioDurationSeconds = 0,
+    required this.createdAt,
+    this.likesCount = 0,
+    this.isLikedByMe = false,
+  });
+
+  factory CommunityRadioMessage.fromJson(Map<String, dynamic> json) {
+    return CommunityRadioMessage(
+      id: json['id'] as String? ?? 'msg_${DateTime.now().millisecondsSinceEpoch}',
+      author: json['author'] as String? ?? 'Conducteur',
+      authorBadge: json['authorBadge'] as String? ?? '🚕 Taxi Citoyen',
+      city: json['city'] as String? ?? 'Yaoundé',
+      crossroad: json['crossroad'] as String? ?? 'Carrefour Nlongkak',
+      message: json['message'] as String? ?? '',
+      isAudio: json['isAudio'] as bool? ?? false,
+      audioDurationSeconds: json['audioDurationSeconds'] as int? ?? 0,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      likesCount: json['likesCount'] as int? ?? 0,
+      isLikedByMe: json['isLikedByMe'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'author': author,
+      'authorBadge': authorBadge,
+      'city': city,
+      'crossroad': crossroad,
+      'message': message,
+      'isAudio': isAudio,
+      'audioDurationSeconds': audioDurationSeconds,
+      'createdAt': createdAt.toIso8601String(),
+      'likesCount': likesCount,
+      'isLikedByMe': isLikedByMe,
+    };
+  }
+
+  CommunityRadioMessage copyWith({
+    String? id,
+    String? author,
+    String? authorBadge,
+    String? city,
+    String? crossroad,
+    String? message,
+    bool? isAudio,
+    int? audioDurationSeconds,
+    DateTime? createdAt,
+    int? likesCount,
+    bool? isLikedByMe,
+  }) {
+    return CommunityRadioMessage(
+      id: id ?? this.id,
+      author: author ?? this.author,
+      authorBadge: authorBadge ?? this.authorBadge,
+      city: city ?? this.city,
+      crossroad: crossroad ?? this.crossroad,
+      message: message ?? this.message,
+      isAudio: isAudio ?? this.isAudio,
+      audioDurationSeconds: audioDurationSeconds ?? this.audioDurationSeconds,
+      createdAt: createdAt ?? this.createdAt,
+      likesCount: likesCount ?? this.likesCount,
+      isLikedByMe: isLikedByMe ?? this.isLikedByMe,
+    );
+  }
+}
+
+class SosAssistanceRequest {
+  final String id;
+  final String author;
+  final String phone;
+  final String city;
+  final String crossroad;
+  final String sosType; // Crevaison, Batterie, Panne Sèche, Remorquage
+  final String details;
+  final DateTime createdAt;
+  final String status; // 'searching', 'assisted', 'resolved'
+  final String? helperName;
+
+  const SosAssistanceRequest({
+    required this.id,
+    required this.author,
+    required this.phone,
+    required this.city,
+    required this.crossroad,
+    required this.sosType,
+    required this.details,
+    required this.createdAt,
+    this.status = 'searching',
+    this.helperName,
+  });
+
+  factory SosAssistanceRequest.fromJson(Map<String, dynamic> json) {
+    return SosAssistanceRequest(
+      id: json['id'] as String? ?? 'sos_${DateTime.now().millisecondsSinceEpoch}',
+      author: json['author'] as String? ?? 'Automobiliste en panne',
+      phone: json['phone'] as String? ?? '+237 6XX XX XX XX',
+      city: json['city'] as String? ?? 'Yaoundé',
+      crossroad: json['crossroad'] as String? ?? 'Poste Centrale',
+      sosType: json['sosType'] as String? ?? 'Crevaison',
+      details: json['details'] as String? ?? '',
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      status: json['status'] as String? ?? 'searching',
+      helperName: json['helperName'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'author': author,
+      'phone': phone,
+      'city': city,
+      'crossroad': crossroad,
+      'sosType': sosType,
+      'details': details,
+      'createdAt': createdAt.toIso8601String(),
+      'status': status,
+      'helperName': helperName,
+    };
+  }
+
+  SosAssistanceRequest copyWith({
+    String? id,
+    String? author,
+    String? phone,
+    String? city,
+    String? crossroad,
+    String? sosType,
+    String? details,
+    DateTime? createdAt,
+    String? status,
+    String? helperName,
+  }) {
+    return SosAssistanceRequest(
+      id: id ?? this.id,
+      author: author ?? this.author,
+      phone: phone ?? this.phone,
+      city: city ?? this.city,
+      crossroad: crossroad ?? this.crossroad,
+      sosType: sosType ?? this.sosType,
+      details: details ?? this.details,
+      createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
+      helperName: helperName ?? this.helperName,
+    );
+  }
+}
+

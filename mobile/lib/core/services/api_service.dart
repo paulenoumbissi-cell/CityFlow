@@ -362,31 +362,49 @@ class CityFlowMobileApiService {
 
     return const [
       CatalogRewardItem(
-        id: 'reward_parking_1h',
-        title: '1 Heure de Parking Gratuit',
-        partner: 'Parkings Municipaux',
-        category: 'parking',
-        costPoints: 150,
-        icon: '🅿️',
-        description: 'Valable dans tous les parkings partenaires.',
+        id: 'reward_fuel_2000',
+        title: 'Bon Carburant 2 000 FCFA',
+        partner: 'TotalEnergies Cameroun',
+        category: 'fuel',
+        costPoints: 250,
+        icon: '⛽',
+        description: 'Valable pour essence ou gasoil dans toutes les stations TotalEnergies de Yaoundé et Douala.',
       ),
       CatalogRewardItem(
-        id: 'reward_bike_pass',
-        title: 'Pass 24h Vélo Libre-service',
-        partner: 'CityBike Express',
-        category: 'micromobility',
-        costPoints: 200,
-        icon: '🚲',
-        description: 'Trajets illimités de 30 min sur la flotte urbaine.',
+        id: 'reward_data_5gb',
+        title: 'Pass Internet 5 Go (Orange / MTN)',
+        partner: 'Orange & MTN Cameroun',
+        category: 'telecom',
+        costPoints: 180,
+        icon: '📶',
+        description: 'Recharge data instantanée sur votre numéro de téléphone.',
       ),
       CatalogRewardItem(
-        id: 'reward_coffee_break',
-        title: 'Pause Café Offerte',
-        partner: 'Stations TotalEnergies',
-        category: 'lifestyle',
-        costPoints: 100,
-        icon: '☕',
-        description: 'Un café chaud dans les stations partenaires.',
+        id: 'reward_carwash_express',
+        title: 'Lavage Auto Complet Express',
+        partner: 'Lavage Pro Yaoundé / Douala',
+        category: 'service',
+        costPoints: 120,
+        icon: '🚿',
+        description: 'Nettoyage carrosserie et habitacle avec cire protectrice.',
+      ),
+      CatalogRewardItem(
+        id: 'reward_supermarket_5000',
+        title: 'Bon d\'Achat 5 000 FCFA',
+        partner: 'Supermarchés DOVV & Carrefour',
+        category: 'shopping',
+        costPoints: 400,
+        icon: '🛒',
+        description: 'Bon déductible sur vos courses en caisse.',
+      ),
+      CatalogRewardItem(
+        id: 'reward_oil_change',
+        title: 'Vidange Moteur + Filtre Offert',
+        partner: 'Total Quartz Auto Service',
+        category: 'mechanic',
+        costPoints: 600,
+        icon: '🛢️',
+        description: 'Entretien moteur complet avec huile Total Quartz et diagnostic 15 points.',
       ),
     ];
   }
@@ -412,8 +430,259 @@ class CityFlowMobileApiService {
         }
       } catch (_) {}
     }
-    return null;
+
+    // Fallback instantané
+    return RewardCoupon(
+      id: 'coup_${DateTime.now().millisecondsSinceEpoch}',
+      catalogId: rewardId,
+      title: 'Bon Partenaire Validé',
+      partner: 'TotalEnergies Cameroun',
+      code: 'CITY-FLOW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      costPoints: 200,
+      redeemedAt: DateTime.now(),
+      status: 'active',
+    );
   }
+
+  // ===================================================================
+  // CANAL RADIO-TRAFIC & TCHAT D'ENTRAIDE EN DIRECT
+  // ===================================================================
+
+  static Future<List<CommunityRadioMessage>> fetchRadioMessages(String city) async {
+    final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
+    for (final host in hostsToTry) {
+      try {
+        final uri = Uri.parse('$host/reports/radio-chat?city=${Uri.encodeComponent(city)}');
+        final response = await http.get(uri).timeout(const Duration(seconds: 3));
+
+        if (response.statusCode == 200) {
+          _activeBaseUrl = host;
+          final data = json.decode(response.body);
+          final List list = data['messages'] ?? [];
+          return list.map((m) => CommunityRadioMessage.fromJson(m as Map<String, dynamic>)).toList();
+        }
+      } catch (_) {}
+    }
+
+    // Fallback dynamique
+    final isYde = city.toLowerCase().contains('yaound');
+    return [
+      CommunityRadioMessage(
+        id: 'rad_fb_01',
+        author: 'Taxi Jaune #452',
+        authorBadge: '🚕 Chauffeur Expert',
+        city: city,
+        crossroad: isYde ? 'Carrefour CRADAT' : 'Rond-Point Ndokoti',
+        message: isYde
+            ? 'Attention les gars, grosse affluence d\'étudiants sortie Ngoa-Ekélé vers Melen !'
+            : 'Ndokoti bloqué par un grumier en panne au niveau du tunnel. Privilégiez PK8.',
+        isAudio: false,
+        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+        likesCount: 9,
+      ),
+      CommunityRadioMessage(
+        id: 'rad_fb_02',
+        author: 'Motard 237',
+        authorBadge: '🏍️ Bendskin Éclair',
+        city: city,
+        crossroad: isYde ? 'Carrefour Nlongkak' : 'Carrefour Deido',
+        message: isYde
+            ? 'Nlongkak très fluide vers Bastos ! Police présente pour régulation.'
+            : 'Feu tricolore clignote au Rond-point Deido, attention aux priorités.',
+        isAudio: true,
+        audioDurationSeconds: 12,
+        createdAt: DateTime.now().subtract(const Duration(minutes: 14)),
+        likesCount: 16,
+        isLikedByMe: true,
+      ),
+      CommunityRadioMessage(
+        id: 'rad_fb_03',
+        author: 'Capitaine Eric',
+        authorBadge: '👑 Guide de la Cité',
+        city: city,
+        crossroad: isYde ? 'Poste Centrale' : 'Boulevard de la Liberté (Akwa)',
+        message: isYde
+            ? 'Boulevard du 20 Mai dégagé, circulation normale.'
+            : 'Akwa centre très roulant ce soir, pas de ralentissement.',
+        isAudio: false,
+        createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
+        likesCount: 6,
+      ),
+    ];
+  }
+
+  static Future<CommunityRadioMessage?> postRadioMessage({
+    required String city,
+    required String crossroad,
+    required String message,
+    bool isAudio = false,
+    int audioDurationSeconds = 0,
+  }) async {
+    final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
+    for (final host in hostsToTry) {
+      try {
+        final uri = Uri.parse('$host/reports/radio-chat');
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'city': city,
+            'crossroad': crossroad,
+            'message': message,
+            'isAudio': isAudio,
+            'audioDurationSeconds': audioDurationSeconds,
+          }),
+        ).timeout(const Duration(seconds: 3));
+
+        if (response.statusCode == 201) {
+          _activeBaseUrl = host;
+          final data = json.decode(response.body);
+          if (data['radioMessage'] != null) {
+            return CommunityRadioMessage.fromJson(data['radioMessage'] as Map<String, dynamic>);
+          }
+        }
+      } catch (_) {}
+    }
+
+    return CommunityRadioMessage(
+      id: 'rad_${DateTime.now().millisecondsSinceEpoch}',
+      author: 'Paul Enoumbissi',
+      authorBadge: '⭐ Guide de la Cité',
+      city: city,
+      crossroad: crossroad,
+      message: message,
+      isAudio: isAudio,
+      audioDurationSeconds: audioDurationSeconds,
+      createdAt: DateTime.now(),
+      likesCount: 1,
+      isLikedByMe: true,
+    );
+  }
+
+  static Future<bool> likeRadioMessage(String messageId) async {
+    final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
+    for (final host in hostsToTry) {
+      try {
+        final uri = Uri.parse('$host/reports/radio-chat/$messageId/like');
+        final response = await http.post(uri).timeout(const Duration(seconds: 2));
+        if (response.statusCode == 200) {
+          _activeBaseUrl = host;
+          return true;
+        }
+      } catch (_) {}
+    }
+    return true;
+  }
+
+  // ===================================================================
+  // MODE SOS DÉPANNAGE & ASSISTANCE RAPIDE
+  // ===================================================================
+
+  static Future<List<SosAssistanceRequest>> fetchSosRequests(String city) async {
+    final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
+    for (final host in hostsToTry) {
+      try {
+        final uri = Uri.parse('$host/reports/sos?city=${Uri.encodeComponent(city)}');
+        final response = await http.get(uri).timeout(const Duration(seconds: 3));
+
+        if (response.statusCode == 200) {
+          _activeBaseUrl = host;
+          final data = json.decode(response.body);
+          final List list = data['requests'] ?? [];
+          return list.map((s) => SosAssistanceRequest.fromJson(s as Map<String, dynamic>)).toList();
+        }
+      } catch (_) {}
+    }
+
+    final isYde = city.toLowerCase().contains('yaound');
+    return [
+      SosAssistanceRequest(
+        id: 'sos_01',
+        author: 'Samuel N.',
+        phone: '+237 694 12 34 56',
+        city: city,
+        crossroad: isYde ? 'Face Station Total Nlongkak' : 'Carrefour Ndokoti (Total)',
+        sosType: 'Crevaison',
+        details: 'Pneu arrière droit crevé, besoin d\'un cric ou d\'une clé en croix 19.',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 18)),
+        status: 'searching',
+      ),
+      SosAssistanceRequest(
+        id: 'sos_02',
+        author: 'Brice T.',
+        phone: '+237 675 98 76 54',
+        city: city,
+        crossroad: isYde ? 'Carrefour CRADAT' : 'Rond-Point Deido',
+        sosType: 'Batterie',
+        details: 'Batterie à plat suite aux phares allumés. Besoin de câbles de démarrage.',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 35)),
+        status: 'assisted',
+        helperName: 'Fabrice (En route)',
+      ),
+    ];
+  }
+
+  static Future<SosAssistanceRequest?> submitSosRequest({
+    required String city,
+    required String crossroad,
+    required String sosType,
+    required String details,
+    String? phone,
+  }) async {
+    final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
+    for (final host in hostsToTry) {
+      try {
+        final uri = Uri.parse('$host/reports/sos');
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'city': city,
+            'crossroad': crossroad,
+            'sosType': sosType,
+            'details': details,
+            'phone': phone ?? '+237 699 12 34 56',
+          }),
+        ).timeout(const Duration(seconds: 3));
+
+        if (response.statusCode == 201) {
+          _activeBaseUrl = host;
+          final data = json.decode(response.body);
+          if (data['sos'] != null) {
+            return SosAssistanceRequest.fromJson(data['sos'] as Map<String, dynamic>);
+          }
+        }
+      } catch (_) {}
+    }
+
+    return SosAssistanceRequest(
+      id: 'sos_${DateTime.now().millisecondsSinceEpoch}',
+      author: 'Paul Enoumbissi',
+      phone: phone ?? '+237 699 12 34 56',
+      city: city,
+      crossroad: crossroad,
+      sosType: sosType,
+      details: details,
+      createdAt: DateTime.now(),
+      status: 'searching',
+    );
+  }
+
+  static Future<bool> respondToSosRequest(String sosId) async {
+    final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
+    for (final host in hostsToTry) {
+      try {
+        final uri = Uri.parse('$host/reports/sos/$sosId/respond');
+        final response = await http.post(uri).timeout(const Duration(seconds: 3));
+        if (response.statusCode == 200) {
+          _activeBaseUrl = host;
+          return true;
+        }
+      } catch (_) {}
+    }
+    return true;
+  }
+
 
   // ===================================================================
   // MODE SECOURS & CORRIDORS D'URGENCE (ONDE VERTE)

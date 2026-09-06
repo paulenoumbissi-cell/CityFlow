@@ -220,7 +220,6 @@ export default function RoutesPage() {
   const [currentSpeed, setCurrentSpeed] = useState(42);
 
   const [emergencyMission, setEmergencyMission] = useState(null);
-  const dropdownRef = useRef(null);
 
   // Synchronisation du fond de carte avec le thème
   useEffect(() => {

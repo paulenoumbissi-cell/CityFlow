@@ -1,4 +1,9 @@
-import { broadcastNewReport, broadcastReportVote } from "../services/websocketServer.js";
+import {
+  broadcastNewReport,
+  broadcastReportVote,
+  broadcastRadioMessage,
+  broadcastSosAlert,
+} from "../services/websocketServer.js";
 import dbService from "../services/dbService.js";
 
 // ==========================================================================
@@ -75,17 +80,27 @@ export const DISCOUNT_REWARDS = [
 ];
 
 // ==========================================================================
-// 3. BARÈME DES POINTS PAR TYPE D'INCIDENT (Attribués après confirmation)
+// 3. BARÈME DES POINTS PAR TYPE D'INCIDENT (Spécialités Camerounaises)
 // ==========================================================================
 export const REPORT_POINTS_CONFIG = {
-  trafficBlock: { points: 10, label: "Embouteillage", icon: "🚗" },
-  accident: { points: 15, label: "Accident de circulation", icon: "🚨" },
+  trafficJam: { points: 15, label: "Embouteillage", icon: "🚗" },
+  trafficBlock: { points: 15, label: "Bouchon sévère", icon: "🚗" },
   trafficLight: { points: 20, label: "Feu de circulation en panne", icon: "🚦" },
-  roadworks: { points: 15, label: "Route bloquée / Travaux", icon: "🛣️" },
-  hazard: { points: 15, label: "Obstacle ou nid de poule", icon: "⚠️" },
+  motoRush: { points: 15, label: "Concentration Motos / Blocage", icon: "🏍️" },
+  police: { points: 10, label: "Contrôle Police & Gendarmerie", icon: "👮" },
+  accident: { points: 20, label: "Accident de circulation", icon: "🚨" },
+  funeral: { points: 15, label: "Deuil / Bâche sur chaussée", icon: "🎪" },
+  truckBreakdown: { points: 20, label: "Camion / Grumier en panne", icon: "🚛" },
+  hazard: { points: 15, label: "Nid-de-poule ou danger", icon: "⚠️" },
+  roadworks: { points: 15, label: "Travaux de voirie", icon: "🚧" },
+  closure: { points: 15, label: "Route barrée / Déviation", icon: "⛔" },
+  flooding: { points: 20, label: "Inondation de bas-fond", icon: "🌊" },
+  gasStation: { points: 15, label: "Disponibilité Carburant", icon: "⛽" },
   breakdown: { points: 15, label: "Véhicule en panne", icon: "🔧" },
-  flooding: { points: 15, label: "Inondation de chaussée", icon: "💧" },
+  sosHelp: { points: 25, label: "SOS Dépannage", icon: "🆘" },
+  other: { points: 10, label: "Info citoyenne", icon: "📢" },
 };
+
 
 // ==========================================================================
 // 4. SYSTÈME DE CONFIANCE (Score sur 100)
@@ -428,4 +443,247 @@ export const subscribeWithDiscount = async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la souscription" });
   }
 };
+
+// ==========================================================================
+// 7. CANAL RADIO-TRAFIC DES CONDUCTEURS & TCHAT D'ENTRAIDE EN DIRECT
+// ==========================================================================
+let RADIO_MESSAGES_STORE = [
+  {
+    id: "rad_01",
+    author: "Taxi Jaune #452",
+    authorBadge: "🚕 Chauffeur Expert",
+    city: "Yaoundé",
+    crossroad: "Carrefour CRADAT",
+    message: "Attention les gars, grosse affluence d'étudiants sortie Ngoa-Ekélé, la voie vers Melen commence à saturer !",
+    isAudio: false,
+    audioDurationSeconds: 0,
+    createdAt: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
+    likesCount: 8,
+    isLikedByMe: false,
+  },
+  {
+    id: "rad_02",
+    author: "Motard 237",
+    authorBadge: "🏍️ Bendskin Éclair",
+    city: "Yaoundé",
+    crossroad: "Carrefour Nlongkak",
+    message: "Nlongkak fluide vers Bastos ! Police présente mais circulation très propre pour le moment.",
+    isAudio: true,
+    audioDurationSeconds: 12,
+    createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    likesCount: 14,
+    isLikedByMe: true,
+  },
+  {
+    id: "rad_03",
+    author: "Capitaine Eric",
+    authorBadge: "👑 Guide de la Cité",
+    city: "Douala",
+    crossroad: "Rond-point Ndokoti",
+    message: "Ndokoti bloqué par un grumier en panne au niveau du tunnel. Privilégiez l'axe PK8 ou CCC.",
+    isAudio: false,
+    audioDurationSeconds: 0,
+    createdAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+    likesCount: 22,
+    isLikedByMe: false,
+  },
+  {
+    id: "rad_04",
+    author: "Clarisse M.",
+    authorBadge: "🌱 Citoyenne Active",
+    city: "Douala",
+    crossroad: "Carrefour Deido",
+    message: "Feu tricolore clignote en orange au Rond-Point Deido, ralentissement vers le pont Wouri.",
+    isAudio: true,
+    audioDurationSeconds: 8,
+    createdAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
+    likesCount: 5,
+    isLikedByMe: false,
+  },
+];
+
+export const getRadioMessages = async (req, res) => {
+  try {
+    const { city } = req.query;
+    let msgs = [...RADIO_MESSAGES_STORE];
+    if (city && city !== "all") {
+      msgs = msgs.filter((m) => m.city.toLowerCase() === city.toLowerCase());
+    }
+    msgs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json({ count: msgs.length, messages: msgs });
+  } catch (err) {
+    console.error("[getRadioMessages Error]", err);
+    res.status(500).json({ error: "Erreur radio trafic" });
+  }
+};
+
+export const postRadioMessage = async (req, res) => {
+  try {
+    const { message, crossroad, city, isAudio, audioDurationSeconds } = req.body;
+    if (!message && !isAudio) {
+      return res.status(400).json({ error: "Message ou note vocale requis." });
+    }
+
+    const profile = await dbService.getProfile();
+    const newMsg = {
+      id: `rad_${Date.now()}`,
+      author: profile.userName || "Conducteur Citoyen",
+      authorBadge: profile.levelBadge || "🚕 Taxi Citoyen",
+      city: city || "Yaoundé",
+      crossroad: crossroad || "Carrefour Central",
+      message: message || "🎤 Note vocale transmise sur le canal radio",
+      isAudio: Boolean(isAudio),
+      audioDurationSeconds: audioDurationSeconds || 0,
+      createdAt: new Date().toISOString(),
+      likesCount: 1,
+      isLikedByMe: true,
+    };
+
+    RADIO_MESSAGES_STORE.unshift(newMsg);
+    if (RADIO_MESSAGES_STORE.length > 50) {
+      RADIO_MESSAGES_STORE.pop();
+    }
+
+    // Récompense immédiate de +5 points pour contribution radio
+    profile.points = (profile.points || 380) + 5;
+    profile.reputationScore = profile.points;
+    await dbService.saveProfile(profile);
+
+    broadcastRadioMessage(newMsg);
+
+    res.status(201).json({
+      success: true,
+      message: "Message diffusé sur le canal radio (+5 points) !",
+      radioMessage: newMsg,
+      points: profile.points,
+    });
+  } catch (err) {
+    console.error("[postRadioMessage Error]", err);
+    res.status(500).json({ error: "Erreur lors de l'envoi radio" });
+  }
+};
+
+export const likeRadioMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const msg = RADIO_MESSAGES_STORE.find((m) => m.id === id);
+    if (!msg) {
+      return res.status(404).json({ error: "Message radio introuvable." });
+    }
+
+    msg.likesCount = (msg.likesCount || 0) + 1;
+    msg.isLikedByMe = true;
+
+    res.json({ success: true, message: msg });
+  } catch (err) {
+    console.error("[likeRadioMessage Error]", err);
+    res.status(500).json({ error: "Erreur like radio" });
+  }
+};
+
+// ==========================================================================
+// 8. MODE SOS DÉPANNAGE & ASSISTANCE RAPIDE
+// ==========================================================================
+let SOS_REQUESTS_STORE = [
+  {
+    id: "sos_01",
+    author: "Samuel N.",
+    phone: "+237 694 12 34 56",
+    city: "Yaoundé",
+    crossroad: "Face Station Total Nlongkak",
+    sosType: "Crevaison",
+    details: "Pneu arrière droit à plat, besoin d'une clé en croix ou d'un cric hydraulique.",
+    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    status: "searching",
+    helperName: null,
+  },
+  {
+    id: "sos_02",
+    author: "Brice T.",
+    phone: "+237 675 98 76 54",
+    city: "Douala",
+    crossroad: "Carrefour Ndokoti (Total)",
+    sosType: "Batterie",
+    details: "Batterie à plat suite aux feux laissés allumés. Besoin de câbles de démarrage.",
+    createdAt: new Date(Date.now() - 32 * 60 * 1000).toISOString(),
+    status: "assisted",
+    helperName: "Fabrice (En route)",
+  },
+];
+
+export const getSosRequests = async (req, res) => {
+  try {
+    const { city } = req.query;
+    let reqs = [...SOS_REQUESTS_STORE];
+    if (city && city !== "all") {
+      reqs = reqs.filter((r) => r.city.toLowerCase() === city.toLowerCase());
+    }
+    res.json({ count: reqs.length, requests: reqs });
+  } catch (err) {
+    console.error("[getSosRequests Error]", err);
+    res.status(500).json({ error: "Erreur requêtes SOS" });
+  }
+};
+
+export const createSosRequest = async (req, res) => {
+  try {
+    const { crossroad, city, sosType, details, phone } = req.body;
+    const profile = await dbService.getProfile();
+
+    const newSos = {
+      id: `sos_${Date.now()}`,
+      author: profile.userName || "Conducteur en détresse",
+      phone: phone || profile.phone || "+237 690 00 00 00",
+      city: city || "Yaoundé",
+      crossroad: crossroad || "Carrefour Central",
+      sosType: sosType || "Crevaison",
+      details: details || "Demande d'assistance mécanique immédiate",
+      createdAt: new Date().toISOString(),
+      status: "searching",
+      helperName: null,
+    };
+
+    SOS_REQUESTS_STORE.unshift(newSos);
+    broadcastSosAlert(newSos);
+
+    res.status(201).json({
+      success: true,
+      message: "🚨 Alerte SOS diffusée aux conducteurs et bons samaritains à proximité !",
+      sos: newSos,
+    });
+  } catch (err) {
+    console.error("[createSosRequest Error]", err);
+    res.status(500).json({ error: "Erreur création SOS" });
+  }
+};
+
+export const respondToSosRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sos = SOS_REQUESTS_STORE.find((s) => s.id === id);
+    if (!sos) {
+      return res.status(404).json({ error: "Alerte SOS introuvable." });
+    }
+
+    const profile = await dbService.getProfile();
+    sos.status = "assisted";
+    sos.helperName = `${profile.userName || "Bon Samaritain"} (En route)`;
+
+    // Attribution de +25 points pour assistance citoyenne
+    profile.points = (profile.points || 380) + 25;
+    profile.reputationScore = profile.points;
+    await dbService.saveProfile(profile);
+
+    res.json({
+      success: true,
+      message: "Merci pour votre esprit citoyen ! Vous recevez +25 points pour cette assistance.",
+      sos,
+      points: profile.points,
+    });
+  } catch (err) {
+    console.error("[respondToSosRequest Error]", err);
+    res.status(500).json({ error: "Erreur réponse SOS" });
+  }
+};
+
 

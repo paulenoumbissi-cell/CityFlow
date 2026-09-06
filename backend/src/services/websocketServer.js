@@ -157,3 +157,26 @@ export function broadcastEmergencyCancel() {
     type: "EMERGENCY_MISSION_CANCELLED",
   });
 }
+
+/**
+ * 6. Broadcast d'un message radio / tchat d'entraide
+ */
+export function broadcastRadioMessage(radioMsg) {
+  broadcastEvent({
+    type: "RADIO_MESSAGE_CREATED",
+    radioMsg,
+    message: `📻 Canal Radio [${radioMsg.crossroad}] : ${radioMsg.author}`,
+  }, radioMsg.city);
+}
+
+/**
+ * 7. Broadcast d'une alerte SOS dépannage communautaire
+ */
+export function broadcastSosAlert(sos) {
+  broadcastEvent({
+    type: "SOS_ALERT_CREATED",
+    sos,
+    message: `🛠️ SOS Dépannage à ${sos.crossroad} : ${sos.sosType}`,
+  }, sos.city);
+}
+

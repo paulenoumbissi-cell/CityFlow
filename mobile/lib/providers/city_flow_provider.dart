@@ -31,6 +31,8 @@ class CityFlowProvider extends ChangeNotifier {
   List<CitizenReport> _citizenReports = [];
   CitizenProfileData? _citizenProfile;
   List<CatalogRewardItem> _rewardsCatalog = [];
+  List<CommunityRadioMessage> _radioMessages = [];
+  List<SosAssistanceRequest> _sosRequests = [];
 
   // Mode Secours & Onde Verte
   EmergencyMission? _activeEmergencyMission;
@@ -122,6 +124,11 @@ class CityFlowProvider extends ChangeNotifier {
   CitizenProfileData? get citizenProfile => _citizenProfile;
   List<CatalogRewardItem> get rewardsCatalog => _rewardsCatalog;
   int get citizenPoints => _citizenProfile?.reputationScore ?? 320;
+  List<CommunityRadioMessage> get currentCityRadioMessages =>
+      _radioMessages.where((m) => m.city.toLowerCase() == _selectedCity.toLowerCase()).toList();
+  List<SosAssistanceRequest> get currentCitySosRequests =>
+      _sosRequests.where((s) => s.city.toLowerCase() == _selectedCity.toLowerCase()).toList();
+
   
   List<PriorityRoute> get currentCityPriorityRoutes => _priorityRoutes;
   PriorityRoute? get activePriorityRoute => _activePriorityRoute;
@@ -417,7 +424,36 @@ class CityFlowProvider extends ChangeNotifier {
         }
         break;
 
+      case 'RADIO_MESSAGE_CREATED':
+        final msgJson = data['radioMsg'];
+        if (msgJson is Map<String, dynamic>) {
+          final msg = CommunityRadioMessage.fromJson(msgJson);
+          if (msg.city.toLowerCase() == _selectedCity.toLowerCase()) {
+            final exists = _radioMessages.any((m) => m.id == msg.id);
+            if (!exists) {
+              _radioMessages.insert(0, msg);
+              notifyListeners();
+            }
+          }
+        }
+        break;
+
+      case 'SOS_ALERT_CREATED':
+        final sosJson = data['sos'];
+        if (sosJson is Map<String, dynamic>) {
+          final sos = SosAssistanceRequest.fromJson(sosJson);
+          if (sos.city.toLowerCase() == _selectedCity.toLowerCase()) {
+            final exists = _sosRequests.any((s) => s.id == sos.id);
+            if (!exists) {
+              _sosRequests.insert(0, sos);
+              notifyListeners();
+            }
+          }
+        }
+        break;
+
       case 'REPORT_VOTE_UPDATED':
+
         final repJson = data['report'];
         if (repJson is Map<String, dynamic>) {
           final rep = CitizenReport.fromJson(repJson);
@@ -1027,11 +1063,15 @@ class CityFlowProvider extends ChangeNotifier {
       final reports = await CityFlowMobileApiService.fetchCitizenReports(_selectedCity);
       final profile = await CityFlowMobileApiService.fetchCitizenProfile();
       final catalog = await CityFlowMobileApiService.fetchRewardsCatalog();
+      final radio = await CityFlowMobileApiService.fetchRadioMessages(_selectedCity);
+      final sos = await CityFlowMobileApiService.fetchSosRequests(_selectedCity);
 
       if (!_isDisposed) {
         _citizenReports = reports;
         _citizenProfile = profile;
         _rewardsCatalog = catalog;
+        _radioMessages = radio;
+        _sosRequests = sos;
         notifyListeners();
       }
     } catch (_) {}
@@ -1101,6 +1141,91 @@ class CityFlowProvider extends ChangeNotifier {
 
   Future<void> voteCitizenReport(String reportId, String voteType) => voteReport(reportId, voteType);
 
+  // --- CANAL RADIO-TRAFIC ACTIONS ---
+  Future<bool> postRadioMessage({
+    required String crossroad,
+    required String message,
+    bool isAudio = false,
+    int audioDurationSeconds = 0,
+  }) async {
+    final created = await CityFlowMobileApiService.postRadioMessage(
+      city: _selectedCity,
+      crossroad: crossroad,
+      message: message,
+      isAudio: isAudio,
+      audioDurationSeconds: audioDurationSeconds,
+    );
+
+    if (created != null) {
+      _radioMessages.insert(0, created);
+      if (_citizenProfile != null) {
+        _citizenProfile = _citizenProfile!.copyWith(
+          reputationScore: _citizenProfile!.reputationScore + 5,
+        );
+      }
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> likeRadioMessage(String messageId) async {
+    final idx = _radioMessages.indexWhere((m) => m.id == messageId);
+    if (idx != -1) {
+      final msg = _radioMessages[idx];
+      _radioMessages[idx] = msg.copyWith(
+        likesCount: msg.likesCount + 1,
+        isLikedByMe: true,
+      );
+      notifyListeners();
+    }
+    await CityFlowMobileApiService.likeRadioMessage(messageId);
+  }
+
+  // --- SOS DÉPANNAGE ACTIONS ---
+  Future<bool> createSosRequest({
+    required String crossroad,
+    required String sosType,
+    required String details,
+    String? phone,
+  }) async {
+    final created = await CityFlowMobileApiService.submitSosRequest(
+      city: _selectedCity,
+      crossroad: crossroad,
+      sosType: sosType,
+      details: details,
+      phone: phone,
+    );
+
+    if (created != null) {
+      _sosRequests.insert(0, created);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> respondToSosRequest(String sosId) async {
+    final ok = await CityFlowMobileApiService.respondToSosRequest(sosId);
+    if (ok) {
+      final idx = _sosRequests.indexWhere((s) => s.id == sosId);
+      if (idx != -1) {
+        _sosRequests[idx] = _sosRequests[idx].copyWith(
+          status: 'assisted',
+          helperName: '${_citizenProfile?.userName ?? "Moi"} (En route)',
+        );
+      }
+      if (_citizenProfile != null) {
+        _citizenProfile = _citizenProfile!.copyWith(
+          reputationScore: _citizenProfile!.reputationScore + 25,
+        );
+      }
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
   Future<RewardCoupon?> claimReward(String rewardId) async {
     final coupon = await CityFlowMobileApiService.redeemReward(rewardId);
     if (coupon != null) {
@@ -1111,6 +1236,7 @@ class CityFlowProvider extends ChangeNotifier {
   }
 
   Future<RewardCoupon?> redeemCatalogReward(String rewardId) => claimReward(rewardId);
+
 
   // --- ACTIONS MODE SECOURS (ONDE VERTE) ---
   EmergencyMission? get activeEmergencyMission => _activeEmergencyMission;

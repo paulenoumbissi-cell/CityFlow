@@ -187,44 +187,7 @@ function AuthPage() {
         otpInputRefs.current[0]?.focus();
       }, 300);
     } catch (err) {
-      setErrorMessage(err.message || "Impossible d'envoyer le code.");
-    }
-  };
-
-    try {
-      let formattedId = cleanId;
-      if (!cleanId.includes("@")) {
-        const digits = cleanId.replace(/[^0-9]/g, "");
-        formattedId = digits.startsWith("237") ? `+${digits}` : `+237 ${digits}`;
-      }
-
-      const res = await sendOtpCode({
-        name: name.trim() || "Utilisateur CityFlow",
-        identifier: formattedId,
-        channel,
-        role,
-        city,
-      });
-
-      setOtpStep(2);
-      setTimerSeconds(300);
-      setIsTimerActive(true);
-      setOtpDigits(["", "", "", "", "", ""]);
-      setSuccessMessage(res.message || "Code de sécurité envoyé.");
-
-      if (res.previewCode) {
-        setPreviewToast({
-          channel,
-          code: res.previewCode,
-          target: formattedId,
-        });
-      }
-
-      setTimeout(() => {
-        otpInputRefs.current[0]?.focus();
-      }, 300);
-    } catch (err) {
-      setErrorMessage(err.message || "Impossible d'envoyer le code.");
+      setErrorMessage(err.message || "Impossible d'envoyer le code OTP.");
     }
   };
 

@@ -90,6 +90,21 @@ class TrafficNode {
     );
   }
 
+  int get congestionLevel {
+    switch (currentCongestion) {
+      case CongestionLevel.jammed:
+        return 90;
+      case CongestionLevel.heavy:
+        return 75;
+      case CongestionLevel.moderate:
+        return 50;
+      case CongestionLevel.fluid:
+        return 20;
+    }
+  }
+
+  double get averageSpeed => averageSpeedKmh;
+
   TrafficNode copyWith({
     String? id,
     String? name,

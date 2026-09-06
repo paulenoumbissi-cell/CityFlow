@@ -160,7 +160,7 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
                                   destination: item.destinationPos,
                                 );
                                 Navigator.pop(context);
-                                widget.onNavigateTab?.call(1);
+                                widget.onNavigateTab?.call(0);
                               },
                             ),
                             IconButton(

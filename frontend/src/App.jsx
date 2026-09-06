@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Link, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useNavigate, Navigate } from "react-router-dom";
 import { Sparkles, Activity, Clock3, TrendingUp, MapPin, Zap } from "lucide-react";
 
 import Navbar from "./components/Navbar";
@@ -408,8 +408,7 @@ function Home() {
               <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--cityflow-muted, #94a3b8)", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Navigation</span>
               <div className="footer-links-col" style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
                 <Link to="/" className="footer-link">Accueil</Link>
-                <Link to="/carte" className="footer-link">Carte du trafic</Link>
-                <Link to="/routes" className="footer-link">Itinéraires</Link>
+                <Link to="/routes" className="footer-link">Itinéraires & Carte</Link>
                 <Link to="/prediction" className="footer-link">Prédictions</Link>
                 <Link to="/profil" style={{ color: "var(--cityflow-primary, #00875A)", fontWeight: "600" }}>Mon Profil 👤</Link>
               </div>
@@ -445,7 +444,8 @@ function App() {
               <Navbar />
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/carte" element={<MapPage />} />
+                <Route path="/carte" element={<Navigate to="/routes" replace />} />
+                <Route path="/map" element={<Navigate to="/routes" replace />} />
                 <Route path="/routes" element={<RoutesPage />} />
                 <Route path="/prediction" element={<PredictionPage />} />
                 <Route path="/communaute" element={<CommunityPage />} />

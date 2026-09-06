@@ -65,6 +65,12 @@ const updateLiveTrafficState = () => {
 // Démarrer la boucle de simulation toutes les 3 secondes
 setInterval(updateLiveTrafficState, 3000);
 
+export const getLiveTrafficNodes = (city = "Yaoundé") => {
+  updateLiveTrafficState();
+  const isDouala = city.toLowerCase().includes("douala");
+  return isDouala ? liveDoualaNodes : liveYaoundeNodes;
+};
+
 export const getTrafficNodes = (req, res) => {
   updateLiveTrafficState();
   const city = req.query.city || "Yaoundé";

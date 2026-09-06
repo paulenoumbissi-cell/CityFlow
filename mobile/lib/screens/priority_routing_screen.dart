@@ -1084,31 +1084,39 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: catColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: catColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(_getCategoryIcon(landmark.category), color: catColor, size: 22),
                       ),
-                      child: Icon(_getCategoryIcon(landmark.category), color: catColor, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          landmark.name,
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.navy),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              landmark.name,
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.navy),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${landmark.district} • ${_getCategoryLabel(landmark.category)}',
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        Text(
-                          '${landmark.district} • ${_getCategoryLabel(landmark.category)}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textSecondary),
@@ -1350,14 +1358,14 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                               '${activeRoute.durationMinutes} min',
                               style: const TextStyle(
                                 color: Color(0xFF00C3FF),
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: -0.5,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(6),
@@ -1366,31 +1374,33 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                                 '${activeRoute.distanceKm} km',
                                 style: const TextStyle(
                                   color: Color(0xFF475569),
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: activeRoute.type == 'fastest'
-                                    ? const Color(0xFF0284C7).withValues(alpha: 0.12)
-                                    : const Color(0xFF10B981).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                activeRoute.type == 'fastest' ? 'Axe Principal' : 'Route Secondaire (${activeRoute.practicabilityScore}/10)',
-                                style: TextStyle(
-                                  color: activeRoute.type == 'fastest' ? const Color(0xFF0284C7) : const Color(0xFF10B981),
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: activeRoute.type == 'fastest'
+                                      ? const Color(0xFF0284C7).withValues(alpha: 0.12)
+                                      : const Color(0xFF10B981).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  activeRoute.type == 'fastest' ? 'Principal' : 'Secondaire (${activeRoute.practicabilityScore}/10)',
+                                  style: TextStyle(
+                                    color: activeRoute.type == 'fastest' ? const Color(0xFF0284C7) : const Color(0xFF10B981),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
-                            const Spacer(),
-                            const Icon(Icons.keyboard_arrow_up_rounded, color: Color(0xFF0284C7), size: 20),
                           ],
                         ),
                         const SizedBox(height: 2),
@@ -1398,7 +1408,7 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                           activeRoute.title,
                           style: const TextStyle(
                             color: Color(0xFF334155),
-                            fontSize: 12.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
                           maxLines: 1,
@@ -1407,21 +1417,21 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                       ],
                     ),
                   ),
-
+                  const SizedBox(width: 8),
                   // Bouton Cyan direct "Y aller"
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF00C3FF),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       elevation: 2,
                     ),
                     onPressed: () => _startLiveNavigation(provider),
-                    icon: const Icon(Icons.navigation_rounded, size: 16, color: Colors.white),
+                    icon: const Icon(Icons.navigation_rounded, size: 15, color: Colors.white),
                     label: const Text(
                       'Y aller',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white),
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.white),
                     ),
                   ),
                 ],
@@ -1472,30 +1482,37 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Text(
-                    '${routes.length} itinéraires calculés',
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${routes.length} itinéraires calculés',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'Routes Secondaires',
+                        style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w800),
+                      ),
                     ),
-                    child: const Text(
-                      '2 Routes Secondaires',
-                      style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   if (_sheetController.isAttached) {
@@ -2562,19 +2579,25 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
-                      child: const Icon(Icons.emergency_rounded, color: Colors.white, size: 20),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Mode Secours & Onde Verte',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
-                    ),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                        child: const Icon(Icons.emergency_rounded, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      const Flexible(
+                        child: Text(
+                          'Mode Secours & Onde Verte',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, color: Colors.white70),
@@ -2995,33 +3018,39 @@ class _GoogleMapsSearchModalState extends State<_GoogleMapsSearchModal> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          widget.isDeparture ? 'Point de départ' : 'Destination',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            widget.selectedCity,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.isDeparture ? 'Point de départ' : 'Destination',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.navy,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              widget.selectedCity,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 22, color: AppColors.textSecondary),

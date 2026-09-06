@@ -391,7 +391,7 @@ class SavedPlacesScreen extends StatelessWidget {
                           category: 'favorite',
                         );
                         Navigator.pop(context);
-                        onNavigateTab?.call(1);
+                        onNavigateTab?.call(0);
                       },
                     ),
 

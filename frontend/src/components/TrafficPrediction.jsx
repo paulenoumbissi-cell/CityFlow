@@ -1,61 +1,17 @@
-import { useState } from "react";
-
-const predictionData = {
-  Yaoundé: {
-    Mvan: {
-      current: 68,
-      predictions: [68, 74, 86, 82, 61],
-    },
-
-    Nsam: {
-      current: 76,
-      predictions: [76, 81, 89, 92, 78],
-    },
-
-    Bastos: {
-      current: 52,
-      predictions: [52, 55, 61, 58, 49],
-    },
-
-    Nlongkak: {
-      current: 59,
-      predictions: [59, 64, 72, 69, 57],
-    },
-  },
-
-  Douala: {
-    Akwa: {
-      current: 82,
-      predictions: [82, 87, 93, 90, 79],
-    },
-
-    Deido: {
-      current: 78,
-      predictions: [78, 84, 89, 86, 73],
-    },
-
-    Bépanda: {
-      current: 61,
-      predictions: [61, 67, 74, 70, 58],
-    },
-
-    Bonamoussadi: {
-      current: 31,
-      predictions: [31, 35, 42, 39, 30],
-    },
-  },
-};
+import { useState, useEffect } from "react";
+import { useCity } from "../context/CityContext";
+import { apiService } from "../services/api";
 
 function getTrafficStatus(value) {
-  if (value >= 80) {
+  if (value >= 75) {
     return {
-      label: "Dense",
+      label: "Dense / Saturé",
       className: "prediction-dense",
       icon: "🔴",
     };
   }
 
-  if (value >= 50) {
+  if (value >= 40) {
     return {
       label: "Modéré",
       className: "prediction-moderate",
@@ -71,279 +27,279 @@ function getTrafficStatus(value) {
 }
 
 function TrafficPrediction() {
-  const [city, setCity] = useState("Yaoundé");
-  const [zone, setZone] = useState("Mvan");
+  const { selectedCity, setSelectedCity } = useCity();
+  const [forecast, setForecast] = useState(null);
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState(0);
 
-  const cityData = predictionData[city];
-  const data = cityData[zone];
+  useEffect(() => {
+    let isMounted = true;
+    apiService.getAiForecast({ city: selectedCity }).then((res) => {
+      if (isMounted && res) {
+        setForecast(res);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [selectedCity]);
 
-  const timeLabels = [
-    "Maintenant",
-    "15 min",
-    "30 min",
-    "45 min",
-    "60 min",
+  const nodes = forecast?.nodeForecasts || [];
+  const activeNode = nodes[selectedNodeIndex] || nodes[0] || {
+    name: "Carrefour Central",
+    congestionValue: 50,
+    predictions: [
+      { horizon: "15 min", congestionPercentage: 55 },
+      { horizon: "30 min", congestionPercentage: 65 },
+      { horizon: "1h", congestionPercentage: 75 },
+      { horizon: "2h", congestionPercentage: 60 },
+      { horizon: "3h", congestionPercentage: 40 },
+    ],
+  };
+
+  const timeLabels = ["Maintenant", "15 min", "30 min", "1h", "2h"];
+  const predictionsList = [
+    activeNode.congestionValue || 50,
+    ...(activeNode.predictions || []).map((p) => p.congestionPercentage).slice(0, 4),
   ];
-
-  const maxValue = Math.max(...data.predictions);
 
   return (
     <section className="prediction-page">
-
       {/* HEADER */}
-
       <div className="prediction-page-header">
-
         <div>
-
           <span className="section-label">
             INTELLIGENCE CITYFLOW
           </span>
-
           <h2>
-            🔮 Prédiction du trafic
+            🔮 Prédiction du trafic • {selectedCity}
           </h2>
-
           <p>
-            Anticipez l'évolution de la circulation et
-            adaptez votre trajet en conséquence.
+            Anticipez l'évolution de la circulation et adaptez votre trajet en conséquence.
           </p>
-
         </div>
-
         <div className="prediction-ai-badge">
-          ✨ Analyse intelligente
+          ✨ {forecast?.aiModel || "Analyse intelligente"}
         </div>
-
       </div>
 
       {/* FILTRES */}
-
       <div className="prediction-filters">
-
         <div className="prediction-filter">
-
           <label>Ville</label>
-
           <select
-            value={city}
-            onChange={(event) => {
-              const newCity = event.target.value;
-
-              setCity(newCity);
-
-              setZone(
-                Object.keys(predictionData[newCity])[0]
-              );
+            value={selectedCity}
+            onChange={(e) => {
+              setSelectedCity(e.target.value);
+              setSelectedNodeIndex(0);
             }}
           >
-
-            <option value="Yaoundé">
-              Yaoundé
-            </option>
-
-            <option value="Douala">
-              Douala
-            </option>
-
+            <option value="Yaoundé">Yaoundé</option>
+            <option value="Douala">Douala</option>
           </select>
-
         </div>
 
         <div className="prediction-filter">
-
-          <label>Zone</label>
-
+          <label>Zone / Carrefour</label>
           <select
-            value={zone}
-            onChange={(event) =>
-              setZone(event.target.value)
-            }
+            value={selectedNodeIndex}
+            onChange={(e) => setSelectedNodeIndex(parseInt(e.target.value, 10))}
           >
-
-            {Object.keys(cityData).map((zoneName) => (
-              <option
-                key={zoneName}
-                value={zoneName}
-              >
-                {zoneName}
+            {nodes.map((node, idx) => (
+              <option key={node.id || idx} value={idx}>
+                {node.name}
               </option>
             ))}
+import { useState, useEffect } from "react";
+import { useCity } from "../context/CityContext";
+import { apiService } from "../services/api";
 
+function getTrafficStatus(value) {
+  if (value >= 75) {
+    return {
+      label: "Dense / Saturé",
+      className: "prediction-dense",
+      icon: "🔴",
+    };
+  }
+
+  if (value >= 40) {
+    return {
+      label: "Modéré",
+      className: "prediction-moderate",
+      icon: "🟠",
+    };
+  }
+
+  return {
+    label: "Fluide",
+    className: "prediction-fluid",
+    icon: "🟢",
+  };
+}
+
+function TrafficPrediction() {
+  const { selectedCity, setSelectedCity } = useCity();
+  const [forecast, setForecast] = useState(null);
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    apiService.getAiForecast({ city: selectedCity }).then((res) => {
+      if (isMounted && res) {
+        setForecast(res);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCity]);
+
+  const nodes = forecast?.nodeForecasts || [];
+  const activeNode = nodes[selectedNodeIndex] || nodes[0] || {
+    name: "Carrefour Central",
+    congestionValue: 50,
+    predictions: [
+      { horizon: "15 min", congestionPercentage: 55 },
+      { horizon: "30 min", congestionPercentage: 65 },
+      { horizon: "1h", congestionPercentage: 75 },
+      { horizon: "2h", congestionPercentage: 60 },
+      { horizon: "3h", congestionPercentage: 40 },
+    ],
+  };
+
+  const timeLabels = ["Maintenant", "+15 min", "+30 min", "+1h", "+2h"];
+  const predictionsList = [
+    activeNode.congestionValue || 50,
+    ...(activeNode.predictions || []).map((p) => p.congestionPercentage).slice(0, 4),
+  ];
+
+  return (
+    <section className="prediction-page">
+      {/* HEADER */}
+      <div className="prediction-page-header">
+        <div>
+          <span className="section-label">INTELLIGENCE CITYFLOW</span>
+          <h2>🔮 Prédiction du trafic • {selectedCity}</h2>
+          <p>
+            Anticipez l'évolution de la circulation et adaptez votre trajet en conséquence.
+          </p>
+        </div>
+        <div className="prediction-ai-badge">
+          ✨ {forecast?.aiModel || "Analyse intelligente"}
+        </div>
+      </div>
+
+      {/* FILTRES */}
+      <div className="prediction-filters">
+        <div className="prediction-filter">
+          <label>Ville</label>
+          <select
+            value={selectedCity}
+            onChange={(e) => {
+              setSelectedCity(e.target.value);
+              setSelectedNodeIndex(0);
+            }}
+          >
+            <option value="Yaoundé">Yaoundé</option>
+            <option value="Douala">Douala</option>
           </select>
-
         </div>
 
+        <div className="prediction-filter">
+          <label>Zone / Carrefour</label>
+          <select
+            value={selectedNodeIndex}
+            onChange={(e) => setSelectedNodeIndex(parseInt(e.target.value, 10))}
+          >
+            {nodes.map((node, idx) => (
+              <option key={node.id || idx} value={idx}>
+                {node.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* CARDS */}
-
       <div className="prediction-time-grid">
-
-        {data.predictions.slice(0, 4).map(
-          (value, index) => {
-
-            const status = getTrafficStatus(value);
-
-            return (
-              <div
-                className="prediction-time-card"
-                key={timeLabels[index]}
-              >
-
-                <span>
-                  {timeLabels[index]}
-                </span>
-
-                <strong>
-                  {value}%
-                </strong>
-
-                <div
-                  className={`prediction-card-status ${status.className}`}
-                >
-                  {status.icon} {status.label}
-                </div>
-
+        {predictionsList.map((value, index) => {
+          const status = getTrafficStatus(value);
+          return (
+            <div className="prediction-time-card" key={timeLabels[index] || index}>
+              <span>{timeLabels[index] || `H+${index}`}</span>
+              <strong>{value}%</strong>
+              <div className={`prediction-card-status ${status.className}`}>
+                {status.icon} {status.label}
               </div>
-            );
-          }
-        )}
-
+            </div>
+          );
+        })}
       </div>
 
       {/* GRAPHIQUE */}
-
       <div className="prediction-chart-card">
-
         <div className="prediction-chart-header">
-
           <div>
-
-            <span className="section-label">
-              ÉVOLUTION
-            </span>
-
-            <h3>
-              Évolution prévue du trafic
-            </h3>
-
+            <span className="section-label">ÉVOLUTION</span>
+            <h3>Évolution prévue du trafic</h3>
           </div>
-
-          <span className="prediction-zone">
-            📍 {zone}
-          </span>
-
+          <span className="prediction-zone">📍 {activeNode.name}</span>
         </div>
 
         <div className="prediction-chart">
-
-          {data.predictions.map(
-            (value, index) => {
-
-              const height =
-                (value / 100) * 180;
-
-              const status =
-                getTrafficStatus(value);
-
-              return (
+          {predictionsList.map((value, index) => {
+            const height = (value / 100) * 180;
+            const status = getTrafficStatus(value);
+            return (
+              <div className="chart-column" key={timeLabels[index] || index}>
+                <div className="chart-value">{value}%</div>
                 <div
-                  className="chart-column"
-                  key={timeLabels[index]}
-                >
-
-                  <div className="chart-value">
-                    {value}%
-                  </div>
-
-                  <div
-                    className={`chart-bar ${status.className}`}
-                    style={{
-                      height: `${height}px`,
-                    }}
-                  ></div>
-
-                  <span>
-                    {timeLabels[index]}
-                  </span>
-
-                </div>
-              );
-            }
-          )}
-
+                  className={`chart-bar ${status.className}`}
+                  style={{ height: `${height}px` }}
+                ></div>
+                <span>{timeLabels[index] || `H+${index}`}</span>
+              </div>
+            );
+          })}
         </div>
-
       </div>
 
       {/* ALERTE */}
-
       <PredictionAlert
-        predictions={data.predictions}
-        zone={zone}
+        predictions={predictionsList}
+        zone={activeNode.name}
       />
-
     </section>
   );
 }
 
 function PredictionAlert({ predictions, zone }) {
-
   const futureValues = predictions.slice(1);
+  const maxValue = futureValues.length > 0 ? Math.max(...futureValues) : predictions[0];
 
-  const maxValue = Math.max(...futureValues);
-
-  if (maxValue >= 80) {
-
-    const index =
-      predictions.indexOf(maxValue);
-
+  if (maxValue >= 75) {
+    const index = predictions.indexOf(maxValue);
     return (
       <div className="prediction-alert danger">
-
-        <div className="alert-icon">
-          ⚠️
-        </div>
-
+        <div className="alert-icon">⚠️</div>
         <div>
-
-          <strong>
-            Risque de congestion élevé
-          </strong>
-
+          <strong>Risque de congestion élevé</strong>
           <p>
-            Une forte congestion pourrait être
-            observée à <b>{zone}</b> dans environ{" "}
+            Une forte congestion pourrait être observée à <b>{zone}</b> d'ici{" "}
             {index * 15} minutes.
           </p>
-
         </div>
-
       </div>
     );
   }
 
   return (
     <div className="prediction-alert success">
-
-      <div className="alert-icon">
-        ✅
-      </div>
-
+      <div className="alert-icon">✅</div>
       <div>
-
-        <strong>
-          Circulation relativement stable
-        </strong>
-
+        <strong>Circulation relativement stable</strong>
         <p>
-          Aucun risque important de congestion
-          n'est actuellement détecté pour cette zone.
+          Aucun risque important de congestion n'est actuellement détecté pour {zone}.
         </p>
-
       </div>
-
     </div>
   );
 }

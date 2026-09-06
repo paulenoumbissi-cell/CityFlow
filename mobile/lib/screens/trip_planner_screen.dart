@@ -588,7 +588,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                               destination: _lastCalculatedTrip!.destinationPos,
                             );
                             Navigator.pop(context);
-                            widget.onNavigateTab?.call(1);
+                            widget.onNavigateTab?.call(0);
                           },
                           icon: const Icon(Icons.navigation_rounded, size: 18),
                           label: const Text('Naviguer', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -715,7 +715,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                           onPressed: () {
                             provider.fetchSmartRoutes(origin: trip.originPos, destination: trip.destinationPos);
                             Navigator.pop(context);
-                            widget.onNavigateTab?.call(1);
+                            widget.onNavigateTab?.call(0);
                           },
                           child: const Text('Partir', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                         ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cityflow/providers/city_flow_provider.dart';
 import 'package:cityflow/core/constants/app_colors.dart';
-import 'package:cityflow/screens/map_screen.dart';
 import 'package:cityflow/screens/priority_routing_screen.dart';
 import 'package:cityflow/screens/traffic_prediction_screen.dart';
 import 'package:cityflow/screens/citizen_reports_screen.dart';
@@ -28,7 +27,6 @@ class _HomeNavigationScreenState extends State<HomeNavigationScreen> {
     final provider = context.watch<CityFlowProvider>();
 
     final List<Widget> screens = [
-      MapScreen(onNavigateTab: _onTabTapped),
       PriorityRoutingScreen(onNavigateTab: _onTabTapped),
       TrafficPredictionScreen(onNavigateTab: _onTabTapped),
       CitizenReportsScreen(onNavigateTab: _onTabTapped),
@@ -66,38 +64,30 @@ class _HomeNavigationScreenState extends State<HomeNavigationScreen> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // TAB 1: CARTE (ACCUEIL GOOGLE MAPS)
+                  // TAB 1: ITINÉRAIRES (CARTE COMPLÈTE & GUIDAGE GPS)
                   _buildNavItem(
                     index: 0,
-                    icon: Icons.map_outlined,
-                    activeIcon: Icons.map_rounded,
-                    label: 'Carte',
-                  ),
-
-                  // TAB 2: ITINÉRAIRES (PROPOSITIONS TEMPS RÉEL SUR LA CARTE & GUIDAGE)
-                  _buildNavItem(
-                    index: 1,
                     icon: Icons.alt_route_outlined,
                     activeIcon: Icons.alt_route_rounded,
                     label: 'Itinéraires',
                     isEmergency: provider.isEmergencyModeActive,
                   ),
 
-                  // TAB 3: PRÉDICTION IA (MÉTÉO, HORIZONS & TENDANCES)
+                  // TAB 2: PRÉDICTION IA (MÉTÉO, HORIZONS & TENDANCES)
                   _buildNavItem(
-                    index: 2,
+                    index: 1,
                     icon: Icons.auto_awesome_outlined,
                     activeIcon: Icons.auto_awesome_rounded,
                     label: 'Prédiction',
                   ),
 
-                  // TAB 4: ENTRAIDE (SIGNALEMENT CITOYEN & RÉCOMPENSES)
+                  // TAB 3: ENTRAIDE (SIGNALEMENT CITOYEN & RÉCOMPENSES)
                   _buildNavItem(
-                    index: 3,
+                    index: 2,
                     icon: Icons.handshake_outlined,
                     activeIcon: Icons.handshake_rounded,
                     label: 'Entraide',

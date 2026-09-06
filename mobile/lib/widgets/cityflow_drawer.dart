@@ -240,22 +240,12 @@ class CityFlowDrawer extends StatelessWidget {
                   _buildSectionTitle('NAVIGATION & COCKPIT'),
                   _buildDrawerTile(
                     context: context,
-                    icon: Icons.map_rounded,
-                    title: 'Carte & Trafic Live',
-                    subtitle: 'Vue d\'ensemble des axes routiers',
+                    icon: Icons.alt_route_rounded,
+                    title: 'Itinéraires & Carte Live',
+                    subtitle: 'Carte en direct, trafic, recherche & guidage',
                     onTap: () {
                       Navigator.pop(context);
                       onNavigateTab?.call(0);
-                    },
-                  ),
-                  _buildDrawerTile(
-                    context: context,
-                    icon: Icons.alt_route_rounded,
-                    title: 'Itinéraires & Guidage HUD',
-                    subtitle: 'Multi-critères avec vitesse et voix',
-                    onTap: () {
-                      Navigator.pop(context);
-                      onNavigateTab?.call(1);
                     },
                   ),
                   _buildDrawerTile(
@@ -310,21 +300,21 @@ class CityFlowDrawer extends StatelessWidget {
                   _buildSectionTitle('COMMUNAUTÉ & IA'),
                   _buildDrawerTile(
                     context: context,
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'Prédiction IA & Météo',
+                    subtitle: 'Horizons 30 min et heures de pointe',
+                    onTap: () {
+                      Navigator.pop(context);
+                      onNavigateTab?.call(1);
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context: context,
                     icon: Icons.handshake_rounded,
                     title: 'Entraide & Signalements',
                     subtitle: 'Signalez bouchons, police et nids-de-poule',
                     badge: '+15 XP',
                     badgeColor: const Color(0xFFEA580C),
-                    onTap: () {
-                      Navigator.pop(context);
-                      onNavigateTab?.call(3);
-                    },
-                  ),
-                  _buildDrawerTile(
-                    context: context,
-                    icon: Icons.auto_awesome_rounded,
-                    title: 'Prédiction IA & Météo',
-                    subtitle: 'Horizons 30 min et heures de pointe',
                     onTap: () {
                       Navigator.pop(context);
                       onNavigateTab?.call(2);

@@ -149,30 +149,16 @@ function Navbar() {
               onMouseLeave={handleMouseLeave}
             >
               <Link
-                to="/carte"
-                className={`dropdown-item ${location.pathname === "/carte" ? "active" : ""}`}
-                onClick={closeAllMenus}
-              >
-                <div className="dropdown-item-icon map-icon">
-                  <Map size={18} />
-                </div>
-                <div className="dropdown-item-text">
-                  <strong>Carte Interactive</strong>
-                  <span>Flux temps réel, carrefours & caméras</span>
-                </div>
-              </Link>
-
-              <Link
                 to="/routes"
-                className={`dropdown-item ${location.pathname === "/routes" ? "active" : ""}`}
+                className={`dropdown-item ${location.pathname === "/routes" || location.pathname === "/carte" || location.pathname === "/map" ? "active" : ""}`}
                 onClick={closeAllMenus}
               >
                 <div className="dropdown-item-icon route-icon">
                   <Route size={18} />
                 </div>
                 <div className="dropdown-item-text">
-                  <strong>Itinéraires & GPS</strong>
-                  <span>Navigation multimodale & guidage vocal</span>
+                  <strong>Itinéraires & Carte GPS</strong>
+                  <span>Carte en direct, trafic, itinéraires & guidage</span>
                 </div>
               </Link>
 
@@ -186,7 +172,7 @@ function Navbar() {
                 </div>
                 <div className="dropdown-item-text">
                   <strong>Prédictions IA</strong>
-                  <span>Anticipation des bouchons & météo</span>
+                  <span>Anticipation des bouchons, météo & simulations</span>
                 </div>
               </Link>
             </div>

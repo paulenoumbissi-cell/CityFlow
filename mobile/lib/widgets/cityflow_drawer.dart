@@ -4,6 +4,8 @@ import '../providers/city_flow_provider.dart';
 import '../screens/trip_planner_screen.dart';
 import '../screens/saved_places_screen.dart';
 import '../screens/trip_history_screen.dart';
+import '../screens/profile_screen.dart';
+import '../screens/auth_screen.dart';
 
 class CityFlowDrawer extends StatelessWidget {
   final Function(int)? onNavigateTab;
@@ -45,84 +47,102 @@ class CityFlowDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      // Avatar avec anneau de niveau
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00875A), Color(0xFF10B981), Color(0xFF38BDF8)],
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        // Avatar avec anneau de niveau
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00875A), Color(0xFF10B981), Color(0xFF38BDF8)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00875A).withValues(alpha: 0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF00875A).withValues(alpha: 0.4),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: CircleAvatar(
-                          radius: 26,
-                          backgroundColor: const Color(0xFF0F172A),
-                          child: Text(
-                            provider.selectedCity.substring(0, 1),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  'Conducteur CityFlow',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: const Color(0xFF10B981), width: 0.8),
-                                  ),
-                                  child: const Text(
-                                    'PRO',
-                                    style: TextStyle(
-                                      color: Color(0xFF10B981),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${provider.selectedCity} • Mode : ${provider.userMoodLabel}',
+                          child: CircleAvatar(
+                            radius: 26,
+                            backgroundColor: const Color(0xFF0F172A),
+                            child: Text(
+                              provider.userName.isNotEmpty
+                                  ? provider.userName.split(' ').where((s) => s.isNotEmpty).map((s) => s[0].toUpperCase()).take(2).join()
+                                  : provider.selectedCity.substring(0, 1),
                               style: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      provider.userName.isNotEmpty ? provider.userName : 'Conducteur CityFlow',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                                    ),
+                                    child: const Text(
+                                      'PRO',
+                                      style: TextStyle(
+                                        color: Color(0xFF10B981),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${provider.userAddress} • ${provider.selectedCity}',
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B), size: 20),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -308,6 +328,43 @@ class CityFlowDrawer extends StatelessWidget {
                     onTap: () {
                       Navigator.pop(context);
                       onNavigateTab?.call(2);
+                    },
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(color: Color(0x22FFFFFF), height: 1),
+                  ),
+
+                  _buildSectionTitle('COMPTE & SÉCURITÉ'),
+                  _buildDrawerTile(
+                    context: context,
+                    icon: Icons.person_pin_rounded,
+                    title: 'Mon Profil & Paramètres',
+                    subtitle: '${provider.userName} • ${provider.userPhone}',
+                    badge: 'Vérifié',
+                    badgeColor: const Color(0xFF10B981),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context: context,
+                    icon: Icons.phonelink_lock_rounded,
+                    title: 'Création de Compte / OTP',
+                    subtitle: 'Vérification de numéro style Yango',
+                    badge: '🇨🇲 OTP',
+                    badgeColor: const Color(0xFF006666),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AuthScreen()),
+                      );
                     },
                   ),
                 ],

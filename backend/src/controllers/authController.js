@@ -83,8 +83,9 @@ export const sendOtp = async (req, res) => {
     identifier,
     phone,
     email,
-    channel = "whatsapp",
+    channel = "sms",
     name,
+    address,
     role = "citizen",
     city = "Yaoundé",
     vehicleType = "Voiture particulière",
@@ -117,6 +118,7 @@ export const sendOtp = async (req, res) => {
     channel: effectiveChannel,
     isEmail,
     name: userName,
+    address: address || "",
     role,
     city,
     vehicleType,
@@ -178,6 +180,7 @@ export const verifyOtp = (req, res) => {
     code,
     channel,
     name,
+    address,
     role,
     city,
     vehicleType,
@@ -213,15 +216,17 @@ export const verifyOtp = (req, res) => {
   // Chercher ou créer l'utilisateur
   let user = usersDb.get(cleanId);
   const token = "jwt_cityflow_otp_" + Date.now() + "_" + Math.random().toString(36).substring(7);
-  const finalChannel = channel || storedOtp.channel || (isEmail ? "email" : "whatsapp");
+  const finalChannel = channel || storedOtp.channel || (isEmail ? "email" : "sms");
 
   if (!user) {
     const finalRole = role || storedOtp.role || "citizen";
     const userName = name || storedOtp.name || (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
+    const userAddress = address || storedOtp.address || "Bastos, Yaoundé";
 
     user = {
       id: "usr_" + Math.floor(Math.random() * 10000),
       name: userName,
+      address: userAddress,
       phone: isEmail ? "+237 699 00 11 22" : cleanId,
       email: isEmail ? cleanId : `${userName.toLowerCase().replace(/\s+/g, "")}@cityflow.cm`,
       city: city || storedOtp.city || "Yaoundé",
@@ -232,7 +237,7 @@ export const verifyOtp = (req, res) => {
       tripsCount: 1,
       timeSavedMin: 12,
       co2SavedKg: 1.0,
-      score: 90,
+      score: 100,
       verifiedVia: finalChannel.toUpperCase(),
     };
 
@@ -240,6 +245,7 @@ export const verifyOtp = (req, res) => {
   } else {
     user.verifiedVia = finalChannel.toUpperCase();
     if (name) user.name = name;
+    if (address) user.address = address;
     if (role) {
       user.role = role;
       user.roleLabel = getRoleLabel(role);

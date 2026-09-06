@@ -126,7 +126,23 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ),
                     // Couloir prioritaire Mode Secours
-                    if (provider.isEmergencyModeActive && activeRoute != null) ...[
+                    if (provider.activeEmergencyMission != null && provider.activeEmergencyMission!.coordinates.isNotEmpty) ...[
+                      Polyline(
+                        points: provider.activeEmergencyMission!.coordinates,
+                        strokeWidth: 14.0,
+                        color: (provider.activeEmergencyMission!.vehicleType == 'firefighters' ? const Color(0xFFEA580C) : const Color(0xFFDC2626)).withValues(alpha: 0.35),
+                      ),
+                      Polyline(
+                        points: provider.activeEmergencyMission!.coordinates,
+                        strokeWidth: 7.0,
+                        color: provider.activeEmergencyMission!.vehicleType == 'firefighters' ? const Color(0xFFF97316) : const Color(0xFFEF4444),
+                      ),
+                      Polyline(
+                        points: provider.activeEmergencyMission!.coordinates,
+                        strokeWidth: 2.5,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ] else if (provider.isEmergencyModeActive && activeRoute != null) ...[
                       Polyline(
                         points: activeRoute.waypoints,
                         strokeWidth: 9.0,

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/city_flow_provider.dart';
 import 'screens/home_navigation_screen.dart';
+import 'screens/auth_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,8 +33,22 @@ class CityFlowApp extends StatelessWidget {
         title: 'CityFlow - Trafic & Itinéraires Yaoundé/Douala',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const HomeNavigationScreen(),
+        home: const _AppRootGate(),
       ),
     );
   }
 }
+
+class _AppRootGate extends StatelessWidget {
+  const _AppRootGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<CityFlowProvider>();
+    if (provider.hasAccess) {
+      return const HomeNavigationScreen();
+    }
+    return const AuthScreen();
+  }
+}
+

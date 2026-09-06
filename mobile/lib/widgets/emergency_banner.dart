@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/city_flow_provider.dart';
-import '../core/constants/app_colors.dart';
 
 class EmergencyBanner extends StatelessWidget {
   const EmergencyBanner({super.key});
@@ -10,21 +9,33 @@ class EmergencyBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CityFlowProvider>();
     final activeRoute = provider.activePriorityRoute;
+    final activeMission = provider.activeEmergencyMission;
 
-    if (!provider.isEmergencyModeActive || activeRoute == null) {
+    if (!provider.isEmergencyModeActive && activeMission == null && activeRoute == null) {
       return const SizedBox.shrink();
     }
+
+    final isFirefighter = activeMission?.vehicleType == 'firefighters';
+    final vehicleName = activeMission?.vehicleName ?? (activeRoute?.emergencyType.label ?? 'Véhicule d\'Urgence');
+    final corridorName = activeMission?.corridorName ?? (activeRoute?.corridorDescription ?? 'Corridor Prioritaire');
+    final timeSaved = activeMission?.timeSavedMinutes ?? (activeRoute?.timeSavedMinutes ?? 15);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: AppColors.emergencyGradient,
+        gradient: LinearGradient(
+          colors: isFirefighter
+              ? [const Color(0xFFEA580C), const Color(0xFFC2410C)]
+              : [const Color(0xFFDC2626), const Color(0xFF991B1B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.emergency.withValues(alpha: 0.4),
-            blurRadius: 15,
+            color: (isFirefighter ? const Color(0xFFEA580C) : const Color(0xFFDC2626)).withValues(alpha: 0.45),
+            blurRadius: 16,
             spreadRadius: 1,
             offset: const Offset(0, 4),
           ),
@@ -36,14 +47,14 @@ class EmergencyBanner extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(7),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  activeRoute.emergencyType.icon,
-                  color: activeRoute.emergencyType.color,
+                  isFirefighter ? Icons.fire_truck_rounded : Icons.medical_services_rounded,
+                  color: isFirefighter ? const Color(0xFFEA580C) : const Color(0xFFDC2626),
                   size: 18,
                 ),
               ),
@@ -55,27 +66,27 @@ class EmergencyBanner extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          'MODE URGENCE PRIORITAIRE',
+                          '🚨 MODE URGENCE : PRIORITÉ ABSOLUE',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.95),
                             fontWeight: FontWeight.w900,
                             fontSize: 11,
-                            letterSpacing: 0.8,
+                            letterSpacing: 0.6,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.25),
+                            color: Colors.black.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            '-${activeRoute.timeSavedMinutes} min',
+                            '-$timeSaved min (-35%)',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10.5,
                             ),
                           ),
                         ),
@@ -83,7 +94,7 @@ class EmergencyBanner extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${activeRoute.originName} ➔ ${activeRoute.destinationName}',
+                      '$vehicleName • $corridorName',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -97,8 +108,14 @@ class EmergencyBanner extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
-                onPressed: () => provider.toggleEmergencyMode(false),
-                tooltip: 'Désactiver le mode urgence',
+                onPressed: () {
+                  if (activeMission != null) {
+                    provider.cancelEmergency();
+                  } else {
+                    provider.toggleEmergencyMode(false);
+                  }
+                },
+                tooltip: 'Fermer l\'alerte urgence',
               ),
             ],
           ),
@@ -106,20 +123,20 @@ class EmergencyBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Colors.black.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(Icons.bolt_rounded, color: Colors.amberAccent, size: 14),
-                const SizedBox(width: 6),
+                Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 14),
+                SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    activeRoute.corridorDescription,
-                    style: const TextStyle(
+                    'ALERTE USAGERS : Libérez la voie à droite. Feux synchronisés sur onde verte.',
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

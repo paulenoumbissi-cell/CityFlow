@@ -139,6 +139,11 @@ class SmartRoute {
   final Color color;
   final String fluidityLevel; // 'fluid', 'moderate', 'dense'
   final bool isOsrmRealRoad;
+  final String roadCategory; // 'Axe principal & Voie rapide', 'Route secondaire bitumée', 'Voie secondaire & Raccourci'
+  final double practicabilityScore; // Note sur 10 (ex: 9.5/10)
+  final double rainPracticabilityScore; // Note de praticabilité sous la pluie (ex: 6.8/10)
+  final String roadSurfaceType; // 'Bitume lisse', 'Chaussée pavée', 'Piste latéritique praticable'
+  final int timeSavedVsMainMinutes;
   final List<String> highlights;
   final List<LatLng> coordinates;
   final List<TrafficSegment> trafficSegments;
@@ -159,6 +164,11 @@ class SmartRoute {
     required this.color,
     required this.fluidityLevel,
     this.isOsrmRealRoad = false,
+    this.roadCategory = 'Axe principal',
+    this.practicabilityScore = 9.0,
+    this.rainPracticabilityScore = 8.0,
+    this.roadSurfaceType = 'Bitume en bon état',
+    this.timeSavedVsMainMinutes = 0,
     required this.highlights,
     required this.coordinates,
     required this.trafficSegments,
@@ -203,11 +213,13 @@ class SmartRoute {
       }
     }
 
+    final typeStr = json['type'] as String? ?? 'fastest';
+
     return SmartRoute(
       id: json['id'] as String? ?? 'route_fastest',
-      type: json['type'] as String? ?? 'fastest',
+      type: typeStr,
       title: json['title'] as String? ?? 'Itinéraire recommandé',
-      badge: json['badge'] as String? ?? 'Recommandé',
+      badge: json['badge'] as String? ?? (typeStr == 'fastest' ? '⚡ Axe Principal' : '🌿 Route Secondaire'),
       tag: json['tag'] as String? ?? 'Optimal',
       durationMinutes: json['durationMinutes'] as int? ?? 22,
       distanceKm: (json['distanceKm'] as num?)?.toDouble() ?? 5.0,
@@ -218,6 +230,11 @@ class SmartRoute {
       color: parsedColor,
       fluidityLevel: json['fluidityLevel'] as String? ?? 'fluid',
       isOsrmRealRoad: json['isOsrmRealRoad'] as bool? ?? false,
+      roadCategory: json['roadCategory'] as String? ?? (typeStr == 'fastest' ? 'Axe principal & Voie rapide' : 'Route secondaire praticable'),
+      practicabilityScore: (json['practicabilityScore'] as num?)?.toDouble() ?? (typeStr == 'fastest' ? 9.5 : (typeStr == 'eco' ? 8.8 : 8.2)),
+      rainPracticabilityScore: (json['rainPracticabilityScore'] as num?)?.toDouble() ?? (typeStr == 'fastest' ? 9.0 : (typeStr == 'eco' ? 7.8 : 6.9)),
+      roadSurfaceType: json['roadSurfaceType'] as String? ?? (typeStr == 'fastest' ? 'Bitume en parfait état' : 'Voie secondaire bitumée / pavée'),
+      timeSavedVsMainMinutes: json['timeSavedVsMainMinutes'] as int? ?? (typeStr != 'fastest' ? 8 : 0),
       highlights: highlights,
       coordinates: coords,
       trafficSegments: segments,

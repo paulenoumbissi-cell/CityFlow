@@ -139,6 +139,17 @@ export async function updateUserProfile(profileData) {
   return data;
 }
 
+export async function deleteUserAccount({ id, email, phone }) {
+  const res = await fetch(`${API_BASE_URL}/auth/account`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, email, phone }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Échec de suppression du compte.");
+  return data;
+}
+
 class CityFlowApiService {
   constructor(baseUrl = API_BASE_URL) {
     this.baseUrl = baseUrl;

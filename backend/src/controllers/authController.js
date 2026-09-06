@@ -553,3 +553,30 @@ export const updateProfile = async (req, res) => {
     },
   });
 };
+
+/**
+ * 8. SUPPRESSION DÉFINITIVE D'UN COMPTE UTILISATEUR DE LA BASE DE DONNÉES
+ */
+export const deleteAccount = async (req, res) => {
+  const { id, email, phone } = req.body;
+
+  let user = null;
+  if (id) user = await db.get("SELECT * FROM users WHERE id = ?", [id]);
+  if (!user && email) user = await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email.toLowerCase().trim()]);
+  if (!user && phone) user = await db.get("SELECT * FROM users WHERE phone = ?", [phone]);
+
+  if (!user) {
+    return res.status(404).json({ error: "Utilisateur non trouvé ou déjà supprimé." });
+  }
+
+  try {
+    await db.run("DELETE FROM users WHERE id = ?", [user.id]);
+    res.json({
+      success: true,
+      message: `Le compte ${user.email || user.phone || user.name} a été supprimé définitivement de la base de données.`,
+    });
+  } catch (err) {
+    console.error("[Delete Account Error]", err.message);
+    res.status(500).json({ error: "Erreur lors de la suppression du compte." });
+  }
+};

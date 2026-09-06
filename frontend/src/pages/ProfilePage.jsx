@@ -41,10 +41,12 @@ const AVATAR_PRESETS = [
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout, updateProfile, isLoading, setUser } = useAuth();
+  const { user, isAuthenticated, logout, updateProfile, deleteAccount, isLoading, setUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef(null);
 
   const [editData, setEditData] = useState({
@@ -161,6 +163,19 @@ function ProfilePage() {
       setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err) {
       alert("Erreur lors de la sauvegarde : " + err.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      setShowDeleteModal(false);
+      setIsDeleting(false);
+      navigate("/connexion");
+    } catch (err) {
+      alert("Erreur lors de la suppression du compte : " + (err.message || "Impossible de supprimer le compte."));
+      setIsDeleting(false);
     }
   };
 
@@ -792,6 +807,91 @@ function ProfilePage() {
             ))}
           </div>
         </section>
+
+        {/* ZONE DE SÉCURITÉ / SUPPRESSION DU COMPTE */}
+        <section className="profile-danger-zone" style={{ marginTop: "32px", padding: "24px", background: "var(--cityflow-surface-elevated, #ffffff)", borderRadius: "16px", border: "1px solid #fee2e2" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+            <div>
+              <h3 style={{ color: "#dc2626", fontSize: "16px", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px", margin: "0 0 6px" }}>
+                <Trash2 size={18} /> Zone de gestion du compte
+              </h3>
+              <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
+                La suppression de votre compte effacera définitivement toutes vos données et votre profil de la base de données PostgreSQL.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                border: "1px solid #fca5a5",
+                padding: "10px 20px",
+                borderRadius: "12px",
+                fontWeight: "700",
+                fontSize: "13px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <Trash2 size={16} /> Supprimer mon compte
+            </button>
+          </div>
+        </section>
+
+        {/* MODAL DE CONFIRMATION DE SUPPRESSION */}
+        {showDeleteModal && (
+          <div className="avatar-modal-overlay" onClick={() => !isDeleting && setShowDeleteModal(false)}>
+            <div className="avatar-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "460px" }}>
+              <div className="avatar-modal-header">
+                <h3 style={{ color: "#dc2626" }}>⚠️ Confirmer la suppression ?</h3>
+                <button type="button" className="close-modal-btn" onClick={() => !isDeleting && setShowDeleteModal(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+              <p style={{ color: "#475569", fontSize: "14px", lineHeight: "1.6", margin: "16px 0 24px" }}>
+                Êtes-vous sûr de vouloir supprimer définitivement le compte <strong>{user.email || user.name}</strong> ? Cette action est irréversible et supprimera le compte de la base de données.
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  style={{
+                    background: "#f1f5f9",
+                    color: "#334155",
+                    border: "1px solid #cbd5e1",
+                    padding: "10px 18px",
+                    borderRadius: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  style={{
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "10px 20px",
+                    borderRadius: "12px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isDeleting ? "Suppression en cours..." : "Oui, supprimer définitivement"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

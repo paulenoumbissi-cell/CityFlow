@@ -7,6 +7,7 @@ import {
   resendOtp,
   resetPassword,
   updateProfile,
+  deleteAccount,
 } from "../controllers/authController.js";
 
 const router = Router();
@@ -21,6 +22,7 @@ router.post("/reset-password", resetPassword);
 router.post("/login", login);
 router.post("/register", register);
 router.put("/profile", updateProfile);
+router.delete("/account", deleteAccount);
 
 export default router;
 

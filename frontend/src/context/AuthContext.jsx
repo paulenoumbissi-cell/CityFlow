@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { loginUser, registerUser, updateUserProfile, sendOtp, verifyOtp, resendOtp } from "../services/api";
+import { loginUser, registerUser, updateUserProfile, deleteUserAccount, sendOtp, verifyOtp, resendOtp } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -217,6 +217,26 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const deleteAccount = async () => {
+    setIsLoading(true);
+    try {
+      if (user?.id || user?.email || user?.phone) {
+        await deleteUserAccount({
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+        });
+      }
+      setUser(null);
+      localStorage.removeItem("cityflow_user");
+      setIsLoading(false);
+      return { success: true };
+    } catch (err) {
+      setIsLoading(false);
+      throw err;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("cityflow_user");
@@ -237,6 +257,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         updateProfile,
+        deleteAccount,
         logout,
         setUser,
       }}

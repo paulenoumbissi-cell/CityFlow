@@ -47,9 +47,12 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
   LatLng? _lastTrackedNavPos;
   String? _lastRenderedRouteId;
 
+  late final DraggableScrollableController _sheetController;
+
   @override
   void initState() {
     super.initState();
+    _sheetController = DraggableScrollableController();
     _selectedDeparture = 'Ma position (GPS en direct)';
     _selectedDestination = 'Bastos (Ambassades)';
 
@@ -94,6 +97,12 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
     _mapController.move(landmark.pos, 15.5);
   }
 
+  @override
+  void dispose() {
+    _sheetController.dispose();
+    super.dispose();
+  }
+
   void _requestRouteAndShowOverview(CityFlowProvider provider) async {
     final originParam = _departureCoords ?? provider.userRealPosition ?? provider.currentCityCenter;
     final destParam = _destinationCoords ?? _selectedDestinationLandmark?.pos ?? _selectedDestination;
@@ -102,6 +111,10 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
       _currentMode = _RoutingMode.routeOverview;
       _selectedDestinationLandmark = null;
     });
+
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(0.42, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    }
 
     await provider.fetchSmartRoutes(origin: originParam, destination: destParam);
 
@@ -207,6 +220,7 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
   Widget build(BuildContext context) {
     final provider = context.watch<CityFlowProvider>();
     final isMissionActive = provider.hasActiveEmergencyMission;
+    final activeMission = provider.activeEmergencyMission;
     final landmarks = provider.currentCityLandmarks;
     final userPos = provider.userRealPosition ?? provider.currentCityCenter;
     final selectedRoute = provider.selectedSmartRoute;
@@ -296,6 +310,34 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'cm.cityflow.mobile',
                 ),
+
+                // 0) CORRIDOR D'URGENCE & ONDE VERTE (SI MISSION ACTIVE)
+                if (activeMission != null && activeMission.coordinates.isNotEmpty) ...[
+                  // Halo lumineux rouge/orange d'urgence
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: activeMission.coordinates,
+                        strokeWidth: 16.0,
+                        color: (activeMission.vehicleType == 'firefighters' ? const Color(0xFFEA580C) : const Color(0xFFDC2626)).withValues(alpha: 0.35),
+                      ),
+                      Polyline(
+                        points: activeMission.coordinates,
+                        strokeWidth: 8.0,
+                        color: activeMission.vehicleType == 'firefighters' ? const Color(0xFFF97316) : const Color(0xFFEF4444),
+                        strokeCap: StrokeCap.round,
+                        strokeJoin: StrokeJoin.round,
+                      ),
+                      Polyline(
+                        points: activeMission.coordinates,
+                        strokeWidth: 3.0,
+                        color: Colors.white.withValues(alpha: 0.95),
+                        strokeCap: StrokeCap.round,
+                        strokeJoin: StrokeJoin.round,
+                      ),
+                    ],
+                  ),
+                ],
 
                 // 1) ROUTES ALTERNATIVES AVEC SEGMENTS DE TRAFIC (STYLE WAZE / YANGO)
                 if (_currentMode != _RoutingMode.explore && provider.smartRoutes.length > 1) ...[
@@ -612,6 +654,78 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                           ],
                         ),
                       ),
+
+                    // MARQUEURS DE MISSION D'URGENCE (VÉHICULE EN MISSION & ONDE VERTE)
+                    if (activeMission != null) ...[
+                      // Feux tricolores régulés le long du corridor
+                      ...activeMission.intersections.map((intLight) {
+                        final isGreen = intLight.state == 'green_wave';
+                        return Marker(
+                          point: intLight.position,
+                          width: 44,
+                          height: 44,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isGreen ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isGreen ? const Color(0xFF10B981).withValues(alpha: 0.6) : Colors.black26,
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Icon(
+                                isGreen ? Icons.traffic_rounded : Icons.timer_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+
+                      // Véhicule d'Urgence en déplacement sur le corridor
+                      if (activeMission.coordinates.isNotEmpty)
+                        Marker(
+                          point: activeMission.coordinates[activeMission.currentStepIndex.clamp(0, activeMission.coordinates.length - 1)],
+                          width: 60,
+                          height: 60,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: (activeMission.vehicleType == 'firefighters' ? const Color(0xFFEA580C) : const Color(0xFFDC2626)).withValues(alpha: 0.35),
+                                ),
+                              ),
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: activeMission.vehicleType == 'firefighters' ? const Color(0xFFEA580C) : const Color(0xFFDC2626),
+                                  border: Border.all(color: Colors.white, width: 3),
+                                  boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 3))],
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    activeMission.vehicleType == 'firefighters' ? Icons.fire_truck_rounded : Icons.medical_services_rounded,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ],
@@ -638,42 +752,145 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
             _buildActiveNavigationHud(context, provider, selectedRoute),
           ],
 
+          // BANNIÈRE TOP MISSION D'URGENCE (ONDE VERTE EN DIRECT)
+          if (activeMission != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: activeMission.vehicleType == 'firefighters' ? const Color(0xFFEA580C) : const Color(0xFFDC2626),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (activeMission.vehicleType == 'firefighters' ? const Color(0xFFEA580C) : const Color(0xFFDC2626)).withValues(alpha: 0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: activeMission.vehicleType == 'firefighters' ? const Color(0xFFEA580C) : const Color(0xFFDC2626),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        activeMission.vehicleType == 'firefighters' ? Icons.fire_truck_rounded : Icons.medical_services_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                '🚨 ${activeMission.vehicleName}',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF10B981), width: 1),
+                                ),
+                                child: const Text(
+                                  'ONDE VERTE',
+                                  style: TextStyle(color: Color(0xFF10B981), fontSize: 9, fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${activeMission.corridorName} • +${activeMission.timeSavedMinutes} min gagnées',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                      onPressed: () async {
+                        await provider.cancelEmergency();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Mission d\'urgence terminée.')),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // BOUTONS FLOTTANTS (RECENTRER, MODE SECOURS)
           if (_currentMode != _RoutingMode.activeNavigation)
-            Positioned(
-              right: 16,
-              bottom: _selectedDestinationLandmark != null
-                  ? 240
-                  : (_currentMode == _RoutingMode.routeOverview
-                      ? (MediaQuery.of(context).size.height * 0.46 + 16)
-                      : 30),
-              child: Column(
-                children: [
-                  // Bouton Mode Secours Flottant
-                  FloatingActionButton.small(
-                    heroTag: 'btn_emergency_toggle',
-                    backgroundColor: isMissionActive ? const Color(0xFFDC2626) : Colors.white,
-                    foregroundColor: isMissionActive ? Colors.white : const Color(0xFFDC2626),
-                    elevation: 4,
-                    onPressed: () {
-                      setState(() => _isEmergencyPanelOpen = !_isEmergencyPanelOpen);
-                    },
-                    child: Icon(isMissionActive ? Icons.emergency_rounded : Icons.local_hospital_rounded, size: 20),
+            ListenableBuilder(
+              listenable: _sheetController,
+              builder: (context, _) {
+                final screenH = MediaQuery.of(context).size.height;
+                final sheetFraction = (_currentMode == _RoutingMode.routeOverview && _sheetController.isAttached)
+                    ? _sheetController.size
+                    : (_currentMode == _RoutingMode.routeOverview ? 0.42 : 0.0);
+                final sheetHeightPx = sheetFraction * screenH;
+
+                final bottomOffset = _selectedDestinationLandmark != null
+                    ? 240.0
+                    : (_currentMode == _RoutingMode.routeOverview
+                        ? (sheetHeightPx + 14.0).clamp(100.0, screenH * 0.88 + 14.0)
+                        : 30.0);
+
+                return Positioned(
+                  right: 16,
+                  bottom: bottomOffset,
+                  child: Column(
+                    children: [
+                      // Bouton Mode Secours Flottant
+                      FloatingActionButton.small(
+                        heroTag: 'btn_emergency_toggle',
+                        backgroundColor: isMissionActive ? const Color(0xFFDC2626) : Colors.white,
+                        foregroundColor: isMissionActive ? Colors.white : const Color(0xFFDC2626),
+                        elevation: 4,
+                        onPressed: () {
+                          setState(() => _isEmergencyPanelOpen = !_isEmergencyPanelOpen);
+                        },
+                        child: Icon(isMissionActive ? Icons.emergency_rounded : Icons.local_hospital_rounded, size: 20),
+                      ),
+                      const SizedBox(height: 10),
+                      // Bouton Recentrer sur ma position GPS
+                      FloatingActionButton.small(
+                        heroTag: 'btn_recenter_gps',
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        elevation: 4,
+                        onPressed: () {
+                          _mapController.move(userPos, 15.0);
+                        },
+                        child: const Icon(Icons.my_location_rounded, size: 20),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  // Bouton Recentrer sur ma position GPS
-                  FloatingActionButton.small(
-                    heroTag: 'btn_recenter_gps',
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                    elevation: 4,
-                    onPressed: () {
-                      _mapController.move(userPos, 15.0);
-                    },
-                    child: const Icon(Icons.my_location_rounded, size: 20),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
 
           // TIROIR MODE SECOURS (SI OUVERT)
@@ -1044,247 +1261,573 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
   );
 }
 
-  // TIROIR INFÉRIEUR MULTI-ITINÉRAIRES WAZE : LISTE DE ROUTES, DURÉE, DISTANCE, BARRE DE FLUIDITÉ & ACTIONS
+  // TIROIR INFÉRIEUR MULTI-ITINÉRAIRES WAZE : DÉPLAÇABLE / RÉTRACTABLE (DRAGGABLE SCROLLABLE SHEET)
   Widget _buildWazeRouteBottomCard(BuildContext context, CityFlowProvider provider, SmartRoute? selectedRoute) {
     final routes = provider.smartRoutes;
     if (routes.isEmpty) return const SizedBox.shrink();
 
-    final sheetHeight = MediaQuery.of(context).size.height * 0.46;
+    final activeRoute = selectedRoute ?? routes.first;
 
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        height: sheetHeight,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 20,
-              offset: Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Poignée supérieure de glissement
-            Padding(
-              padding: const EdgeInsets.only(top: 10, bottom: 4),
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: 0.42,
+      minChildSize: 0.12,
+      maxChildSize: 0.88,
+      snap: true,
+      snapSizes: const [0.12, 0.42, 0.88],
+      builder: (BuildContext context, ScrollController scrollController) {
+        return ListenableBuilder(
+          listenable: _sheetController,
+          builder: (context, _) {
+            final currentSize = _sheetController.isAttached ? _sheetController.size : 0.42;
+            final isCollapsed = currentSize <= 0.20;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 18,
+                    offset: const Offset(0, -4),
                   ),
+                ],
+              ),
+              child: isCollapsed
+                  ? _buildCollapsedWazeBar(context, provider, activeRoute, scrollController)
+                  : _buildExpandedWazeSheet(context, provider, routes, selectedRoute, scrollController),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // VUE RÉDUITE (COLLAPSED) : BARRE RÉTRACTÉE FLOTTANTE STYLE WAZE QUAND GLISSÉE VERS LE BAS
+  Widget _buildCollapsedWazeBar(
+    BuildContext context,
+    CityFlowProvider provider,
+    SmartRoute activeRoute,
+    ScrollController scrollController,
+  ) {
+    return SingleChildScrollView(
+      controller: scrollController,
+      physics: const ClampingScrollPhysics(),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (_sheetController.isAttached) {
+            _sheetController.animateTo(0.42, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Poignée supérieure de tirage
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  // Durée, distance et titre de l'itinéraire sélectionné
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              '${activeRoute.durationMinutes} min',
+                              style: const TextStyle(
+                                color: Color(0xFF00C3FF),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${activeRoute.distanceKm} km',
+                                style: const TextStyle(
+                                  color: Color(0xFF475569),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: activeRoute.type == 'fastest'
+                                    ? const Color(0xFF0284C7).withValues(alpha: 0.12)
+                                    : const Color(0xFF10B981).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                activeRoute.type == 'fastest' ? 'Axe Principal' : 'Route Secondaire (${activeRoute.practicabilityScore}/10)',
+                                style: TextStyle(
+                                  color: activeRoute.type == 'fastest' ? const Color(0xFF0284C7) : const Color(0xFF10B981),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.keyboard_arrow_up_rounded, color: Color(0xFF0284C7), size: 20),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          activeRoute.title,
+                          style: const TextStyle(
+                            color: Color(0xFF334155),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Bouton Cyan direct "Y aller"
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00C3FF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 2,
+                    ),
+                    onPressed: () => _startLiveNavigation(provider),
+                    icon: const Icon(Icons.navigation_rounded, size: 16, color: Colors.white),
+                    label: const Text(
+                      'Y aller',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // VUE DÉPLOYÉE (EXPANDED) : LISTE COMPLÈTE DES ITINÉRAIRES, FLUIDITÉ, FILTRES & BOUTONS D'ACTION
+  Widget _buildExpandedWazeSheet(
+    BuildContext context,
+    CityFlowProvider provider,
+    List<SmartRoute> routes,
+    SmartRoute? selectedRoute,
+    ScrollController scrollController,
+  ) {
+    return Column(
+      children: [
+        // Poignée de glissement supérieure & mini en-tête
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            if (_sheetController.isAttached) {
+              _sheetController.animateTo(0.12, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10, bottom: 6),
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 4.5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
             ),
+          ),
+        ),
 
-            // Liste des propositions d'itinéraires Waze (Avec sélection interactive)
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
-                itemCount: routes.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (ctx, idx) {
-                  final route = routes[idx];
-                  final isSelected = route.id == selectedRoute?.id;
-
-                  return GestureDetector(
-                    onTap: () {
-                      provider.selectSmartRoute(route);
-                      _fitRouteBounds(route.coordinates);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFF0F9FF) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? const Color(0xFF00C3FF) : const Color(0xFFE2E8F0),
-                          width: isSelected ? 1.8 : 1.0,
-                        ),
+        // Barre d'en-tête du tiroir avec nombre de trajets & bouton réduire
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    '${routes.length} itinéraires calculés',
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '2 Routes Secondaires',
+                      style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (_sheetController.isAttached) {
+                    _sheetController.animateTo(0.12, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Carte',
+                        style: TextStyle(color: Color(0xFF475569), fontSize: 11.5, fontWeight: FontWeight.w700),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Barre latérale indicatrice d'itinéraire actif
-                          if (isSelected)
-                            Container(
-                              width: 4,
-                              height: 55,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF00C3FF),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
+                      SizedBox(width: 2),
+                      Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF475569), size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
 
-                          // Contenu textuel de l'itinéraire
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+        // Liste scrollable des propositions d'itinéraires Waze
+        Expanded(
+          child: ListView.separated(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            itemCount: routes.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (ctx, idx) {
+              final route = routes[idx];
+              final isSelected = route.id == selectedRoute?.id;
+              final isSecondary = route.type != 'fastest';
+
+              return GestureDetector(
+                onTap: () {
+                  provider.selectSmartRoute(route);
+                  _fitRouteBounds(route.coordinates);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFF0F9FF) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF00C3FF) : const Color(0xFFE2E8F0),
+                      width: isSelected ? 1.8 : 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Barre latérale indicatrice d'itinéraire actif
+                      if (isSelected)
+                        Container(
+                          width: 4,
+                          height: 75,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00C3FF),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+
+                      // Contenu textuel de l'itinéraire
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Ligne 1 : Badges de catégorie routière & Praticabilité
+                            Row(
                               children: [
-                                // Ligne 1 : Durée & Distance
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${route.durationMinutes} min',
-                                      style: TextStyle(
-                                        color: isSelected ? const Color(0xFF00C3FF) : const Color(0xFF0F172A),
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${route.distanceKm} km',
-                                      style: const TextStyle(
-                                        color: Color(0xFF64748B),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-
-                                // Ligne 2 : Titre de l'itinéraire (Via ...)
-                                Text(
-                                  route.title,
-                                  style: TextStyle(
-                                    color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF334155),
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w700,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                  decoration: BoxDecoration(
+                                    color: isSecondary
+                                        ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                        : const Color(0xFF0284C7).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-
-                                // Ligne 3 : État du trafic & Lien Étapes
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        isSelected ? 'Meilleur itinéraire, Trafic normal' : 'Trafic plus dense que d\'habitude',
-                                        style: const TextStyle(
-                                          color: Color(0xFF64748B),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isSecondary ? Icons.alt_route_rounded : Icons.route_rounded,
+                                        size: 12,
+                                        color: isSecondary ? const Color(0xFF10B981) : const Color(0xFF0284C7),
                                       ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => _showStepsModal(context, route),
-                                      child: const Padding(
-                                        padding: EdgeInsets.only(left: 6),
-                                        child: Text(
-                                          'Étapes',
-                                          style: TextStyle(
-                                            color: Color(0xFF0284C7),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        route.roadCategory,
+                                        style: TextStyle(
+                                          color: isSecondary ? const Color(0xFF10B981) : const Color(0xFF0284C7),
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w800,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: 6),
-
-                                // Ligne 4 : Barre de fluidité multi-couleurs Yango
-                                _buildTrafficFluidityBar(route),
+                                const Spacer(),
+                                if (route.timeSavedVsMainMinutes > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '⚡ +${route.timeSavedVsMainMinutes} min',
+                                      style: const TextStyle(
+                                        color: Color(0xFFD97706),
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                            const SizedBox(height: 6),
 
-            // Barre d'actions fixes inférieure : [ Partir plus tard ] & [ Y aller ]
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Bouton Partir plus tard
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF1F5F9),
-                        foregroundColor: const Color(0xFF0284C7),
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                           MaterialPageRoute(builder: (_) => TripPlannerScreen(onNavigateTab: widget.onNavigateTab)),
-                        );
-                      },
-                      child: const Text(
-                        'Partir plus tard',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: Color(0xFF0284C7),
+                            // Ligne 2 : Durée & Distance
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${route.durationMinutes} min',
+                                  style: TextStyle(
+                                    color: isSelected ? const Color(0xFF00C3FF) : const Color(0xFF0F172A),
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                Text(
+                                  '${route.distanceKm} km',
+                                  style: const TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+
+                            // Ligne 3 : Titre de l'itinéraire (Via ...)
+                            Text(
+                              route.title,
+                              style: TextStyle(
+                                color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF334155),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 5),
+
+                            // Ligne 4 : Indicateurs de praticabilité (Sec & Pluie) & Revêtement
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text(
+                                    '🛣️ Note : ${route.practicabilityScore}/10',
+                                    style: const TextStyle(color: Color(0xFF334155), fontSize: 10.5, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0F9FF),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text(
+                                    '🌧️ Pluie : ${route.rainPracticabilityScore}/10',
+                                    style: const TextStyle(color: Color(0xFF0284C7), fontSize: 10.5, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Text(
+                                    route.roadSurfaceType,
+                                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 10, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+
+                            // Ligne 5 : Lien Étapes & Fluidité
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    isSelected ? 'Itinéraire optimisé • Trafic calculé' : 'Variante de contournement disponible',
+                                    style: const TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _showStepsModal(context, route),
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 6),
+                                    child: Text(
+                                      'Étapes',
+                                      style: TextStyle(
+                                        color: Color(0xFF0284C7),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+
+                            // Ligne 6 : Barre de fluidité multi-couleurs Yango
+                            _buildTrafficFluidityBar(route),
+                          ],
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-
-                  // Grand Bouton Cyan Y aller
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00C3FF), // Waze Cyan
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                        elevation: 2,
-                      ),
-                      onPressed: () => _startLiveNavigation(provider),
-                      child: const Text(
-                        'Y aller',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              );
+            },
+          ),
         ),
-      ),
+
+        // Barre d'actions fixes inférieure : [ Partir plus tard ] & [ Y aller ]
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Bouton Partir plus tard
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    foregroundColor: const Color(0xFF0284C7),
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    elevation: 0,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => TripPlannerScreen(onNavigateTab: widget.onNavigateTab)),
+                    );
+                  },
+                  child: const Text(
+                    'Partir plus tard',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Color(0xFF0284C7),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Grand Bouton Cyan Y aller
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00C3FF), // Waze Cyan
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    elevation: 2,
+                  ),
+                  onPressed: () => _startLiveNavigation(provider),
+                  child: const Text(
+                    'Y aller',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -2070,7 +2613,22 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                   minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () => provider.cancelEmergency(),
+                onPressed: () async {
+                  final sm = ScaffoldMessenger.of(context);
+                  await provider.cancelEmergency();
+                  if (mounted) {
+                    setState(() {});
+                    provider.speakInstruction('Mission d\'urgence arrêtée.');
+                    sm.showSnackBar(
+                      SnackBar(
+                        content: const Text('Mission d\'urgence arrêtée avec succès.'),
+                        backgroundColor: const Color(0xFF475569),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  }
+                },
                 icon: const Icon(Icons.stop_rounded),
                 label: const Text('Arrêter la mission', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
@@ -2090,7 +2648,37 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: () => provider.dispatchEmergency(vehicleType: 'Ambulance SAMU'),
+                      onPressed: () async {
+                        final sm = ScaffoldMessenger.of(context);
+                        await provider.dispatchEmergency(vehicleType: 'Ambulance SAMU');
+                        if (mounted) {
+                          setState(() {});
+                          final mission = provider.activeEmergencyMission;
+                          if (mission != null && mission.coordinates.isNotEmpty) {
+                            _fitRouteBounds(mission.coordinates);
+                          }
+                          provider.speakInstruction('Mission d\'urgence activée pour Ambulance SAMU. Corridor prioritaire et onde verte synchronisés.');
+                          sm.showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: const [
+                                  Icon(Icons.medical_services_rounded, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Corridor prioritaire activé pour Ambulance SAMU ! Onde verte synchronisée.',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFFDC2626),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        }
+                      },
                       icon: const Icon(Icons.medical_services_rounded, size: 18),
                       label: const Text('Ambulance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
@@ -2104,7 +2692,37 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: () => provider.dispatchEmergency(vehicleType: 'Sapeurs-Pompiers'),
+                      onPressed: () async {
+                        final sm = ScaffoldMessenger.of(context);
+                        await provider.dispatchEmergency(vehicleType: 'Sapeurs-Pompiers');
+                        if (mounted) {
+                          setState(() {});
+                          final mission = provider.activeEmergencyMission;
+                          if (mission != null && mission.coordinates.isNotEmpty) {
+                            _fitRouteBounds(mission.coordinates);
+                          }
+                          provider.speakInstruction('Mission d\'urgence activée pour Sapeurs-Pompiers. Corridor prioritaire et onde verte synchronisés.');
+                          sm.showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: const [
+                                  Icon(Icons.fire_truck_rounded, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Corridor prioritaire activé pour Sapeurs-Pompiers ! Onde verte synchronisée.',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFFEA580C),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        }
+                      },
                       icon: const Icon(Icons.fire_truck_rounded, size: 18),
                       label: const Text('Pompiers', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),

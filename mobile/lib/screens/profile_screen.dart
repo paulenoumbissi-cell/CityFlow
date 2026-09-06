@@ -58,12 +58,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     shape: BoxShape.circle,
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'PN',
-                      style: TextStyle(
+                      provider.userName.isNotEmpty
+                          ? provider.userName.split(' ').where((s) => s.isNotEmpty).map((s) => s[0].toUpperCase()).take(2).join()
+                          : 'CF',
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -74,18 +76,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Paule Noumbissi',
-                        style: TextStyle(
+                      Text(
+                        provider.userName.isNotEmpty ? provider.userName : 'Conducteur CityFlow',
+                        style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        'paule.noumbissi@cityflow.cm',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      Text(
+                        '${provider.userPhone} • ${provider.userAddress}',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
                       Container(
@@ -94,9 +98,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: AppColors.primaryLight,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          '🌟 Membre Citoyen Actif',
-                          style: TextStyle(
+                        child: Text(
+                          '🌟 ${provider.selectedCity} • Compte Vérifié',
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -107,6 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Modifier mon compte',
                   icon: const Icon(Icons.edit_outlined, color: AppColors.textMuted),
                   onPressed: () {
                     Navigator.of(context).push(

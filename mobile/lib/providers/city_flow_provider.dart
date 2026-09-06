@@ -75,6 +75,7 @@ class CityFlowProvider extends ChangeNotifier {
   bool _isEmergencyModeActive = false;
   bool _isLiveSimulating = true;
   Timer? _simulationTimer;
+  Timer? _emergencyTicker;
 
   // GPS & Localisation Automatique
   bool _isAutoLocating = false;
@@ -258,6 +259,118 @@ class CityFlowProvider extends ChangeNotifier {
   // WebSocket Status Getters
   WsConnectionStatus get wsStatus => _wsService.status;
   bool get isWsConnected => _wsService.isConnected;
+
+  // ===================================================================
+  // PROFIL UTILISATEUR & AUTHENTIFICATION OTP STYLE YANGO
+  // ===================================================================
+  bool _isAuthenticated = false;
+  bool _isGuestMode = false;
+  bool _hasEnteredApp = false;
+  String _userName = '';
+  String _userPhone = '';
+  String _userAddress = '';
+  String _userEmail = '';
+  String? _authToken;
+
+  bool get isAuthenticated => _isAuthenticated;
+  bool get isGuestMode => _isGuestMode;
+  bool get hasEnteredApp => _hasEnteredApp;
+  bool get hasAccess => _hasEnteredApp && (_isAuthenticated || _isGuestMode);
+  String get userName => _userName.isNotEmpty ? _userName : (_isGuestMode ? 'Conducteur Invité' : 'Conducteur CityFlow');
+  String get userPhone => _userPhone.isNotEmpty ? _userPhone : '+237 699 12 34 56';
+  String get userAddress => _userAddress.isNotEmpty ? _userAddress : 'Bastos, Yaoundé';
+  String get userEmail => _userEmail;
+  String? get authToken => _authToken;
+
+  void continueAsGuest() {
+    _isGuestMode = true;
+    _isAuthenticated = false;
+    _hasEnteredApp = true;
+    _userName = 'Conducteur Invité';
+    _userPhone = '+237 6-- -- -- --';
+    _userAddress = 'Yaoundé & Douala';
+    notifyListeners();
+  }
+
+  void enterApp() {
+    _hasEnteredApp = true;
+    notifyListeners();
+  }
+
+  void updateUserProfile({
+    required String name,
+    required String phone,
+    required String address,
+    required String city,
+    String? email,
+  }) {
+    _userName = name.trim();
+    _userPhone = phone.trim();
+    _userAddress = address.trim();
+    _selectedCity = city;
+    if (email != null && email.isNotEmpty) _userEmail = email.trim();
+    _isAuthenticated = true;
+    _hasEnteredApp = true;
+    notifyListeners();
+  }
+
+  void logout() {
+    _isAuthenticated = false;
+    _isGuestMode = false;
+    _hasEnteredApp = false;
+    _authToken = null;
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> sendAuthOtp({
+    required String phone,
+    required String name,
+    required String address,
+    required String city,
+    String channel = 'sms',
+  }) async {
+    return await CityFlowMobileApiService.sendAuthOtp(
+      phone: phone,
+      name: name,
+      address: address,
+      city: city,
+      channel: channel,
+    );
+  }
+
+  Future<Map<String, dynamic>> verifyAuthOtp({
+    required String phone,
+    required String code,
+    required String name,
+    required String address,
+    required String city,
+    String channel = 'sms',
+  }) async {
+    final result = await CityFlowMobileApiService.verifyAuthOtp(
+      phone: phone,
+      code: code,
+      name: name,
+      address: address,
+      city: city,
+      channel: channel,
+    );
+
+    if (result['success'] == true) {
+      final user = result['user'] as Map<String, dynamic>?;
+      if (user != null) {
+        _userName = (user['name'] as String?)?.trim() ?? name;
+        _userPhone = (user['phone'] as String?)?.trim() ?? phone;
+        _userAddress = (user['address'] as String?)?.trim() ?? address;
+        _selectedCity = (user['city'] as String?)?.trim() ?? city;
+        if (user['email'] != null) _userEmail = user['email'];
+      }
+      _authToken = result['token'];
+      _isAuthenticated = true;
+      notifyListeners();
+    }
+
+    return result;
+  }
 
   // City KPI Stats
   double get averageSpeed {
@@ -1009,6 +1122,9 @@ class CityFlowProvider extends ChangeNotifier {
       if (!_isDisposed) {
         _activeEmergencyMission = mission;
         _isEmergencyModeActive = mission != null;
+        if (mission != null && (_emergencyTicker == null || !_emergencyTicker!.isActive)) {
+          _startEmergencySimulation();
+        }
         notifyListeners();
       }
     } catch (_) {}
@@ -1031,20 +1147,44 @@ class CityFlowProvider extends ChangeNotifier {
     if (mission != null) {
       _activeEmergencyMission = mission;
       _isEmergencyModeActive = true;
+      _startEmergencySimulation();
       notifyListeners();
       return true;
     }
     return false;
   }
 
+  void _startEmergencySimulation() {
+    _emergencyTicker?.cancel();
+    _emergencyTicker = Timer.periodic(const Duration(seconds: 4), (timer) async {
+      if (!_isEmergencyModeActive || _isDisposed || _activeEmergencyMission == null) {
+        timer.cancel();
+        return;
+      }
+      final updated = await CityFlowMobileApiService.stepEmergencyMission();
+      if (!_isDisposed) {
+        _activeEmergencyMission = updated;
+        if (updated == null) {
+          _isEmergencyModeActive = false;
+          timer.cancel();
+        }
+        notifyListeners();
+      }
+    });
+  }
+
   Future<void> stepEmergency() async {
     final updated = await CityFlowMobileApiService.stepEmergencyMission();
     _activeEmergencyMission = updated;
     _isEmergencyModeActive = updated != null;
+    if (updated == null) {
+      _emergencyTicker?.cancel();
+    }
     notifyListeners();
   }
 
   Future<void> cancelEmergency() async {
+    _emergencyTicker?.cancel();
     await CityFlowMobileApiService.cancelEmergencyMission();
     _activeEmergencyMission = null;
     _isEmergencyModeActive = false;
@@ -1165,30 +1305,56 @@ class CityFlowProvider extends ChangeNotifier {
     required LatLng destinationPos,
     required TimeOfDay targetArrivalTime,
     required DateTime date,
+    String weather = 'dry',
+    List<String>? activeEvents,
   }) {
     // Calcul distance approximative
     final dLat = (destinationPos.latitude - originPos.latitude).abs() * 111.0;
     final dLng = (destinationPos.longitude - originPos.longitude).abs() * 111.0;
     final distKm = sqrt(dLat * dLat + dLng * dLng);
 
-    // Analyse IA de la congestion selon l'heure cible
+    // Analyse IA de la congestion selon l'heure cible et le jour
     final hour = targetArrivalTime.hour;
+    final weekday = date.weekday; // 1 = Lundi, 5 = Vendredi, 6 = Samedi
     final isMorningPeak = hour >= 7 && hour <= 9;
-    final isEveningPeak = hour >= 17 && hour <= 20;
+    final isEveningPeak = hour >= 16 && hour <= 20;
+    final isFridayFuneralPeak = (weekday == DateTime.friday && (hour >= 11 && hour <= 19)) || (weekday == DateTime.saturday && (hour >= 7 && hour <= 13));
 
     int baseDuration = max(10, (distKm * 2.8).round());
-    int bufferMinutes = 8;
-    String reasoning = 'Trafic estimé fluide. Marge de sécurité normale (+8 min).';
+    int bufferMinutes = isMorningPeak ? 20 : (isEveningPeak ? 25 : 8);
+    final factors = <String>[];
 
     if (isMorningPeak) {
-      bufferMinutes = 20;
       baseDuration = (baseDuration * 1.45).round();
-      reasoning = 'Heure de pointe matinale intense sur Yaoundé/Douala. Embouteillages probables sur les axes structurants (+20 min buffer IA).';
+      factors.add('🎒 Heure de pointe matinale (+20 min)');
     } else if (isEveningPeak) {
-      bufferMinutes = 25;
       baseDuration = (baseDuration * 1.6).round();
-      reasoning = 'Pointe vespérale et sorties de bureaux. Ralentissements carrefours majeurs (+25 min buffer IA).';
+      factors.add('🏢 Sorties de bureaux vespérales (+25 min)');
     }
+
+    if (weather == 'heavy_rain' || weather == 'flood') {
+      baseDuration = (baseDuration * 1.5).round();
+      bufferMinutes += 15;
+      factors.add('🌧️ Pluie tropicale / Inondation (+15 min)');
+    } else if (weather == 'light_rain') {
+      baseDuration = (baseDuration * 1.2).round();
+      bufferMinutes += 6;
+      factors.add('🌦️ Chaussée glissante (+6 min)');
+    }
+
+    if (activeEvents != null && (activeEvents.contains('funeral_cortege') || isFridayFuneralPeak)) {
+      bufferMinutes += 14;
+      factors.add('⚰️ Cortèges de deuil & levées de corps (+14 min)');
+    }
+
+    if (activeEvents != null && activeEvents.contains('market_day')) {
+      bufferMinutes += 12;
+      factors.add('🛒 Affluence grands marchés (+12 min)');
+    }
+
+    String reasoning = factors.isEmpty
+        ? 'Trafic nominal fluide. Marge de sécurité de routine (+8 min).'
+        : 'Prise en compte IA : ${factors.join(" • ")} (Marge totale : +$bufferMinutes min).';
 
     final totalLeadMinutes = baseDuration + bufferMinutes;
     final arrivalDateTime = DateTime(
@@ -1277,6 +1443,7 @@ class CityFlowProvider extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _simulationTimer?.cancel();
+    _emergencyTicker?.cancel();
     _navAutoSimTimer?.cancel();
     _gpsStreamSub?.cancel();
     try {

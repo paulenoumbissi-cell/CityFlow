@@ -293,5 +293,116 @@ void main() {
       onNavigateTab(0); // Retour à la Carte
       expect(activeTab, 0);
     });
+
+    test('Handles Yango-style OTP Authentication, Guest Mode and Startup Access Gate', () async {
+      final provider = CityFlowProvider();
+
+      // 1. Initial State (Unauthenticated on first launch)
+      expect(provider.isAuthenticated, false);
+      expect(provider.hasAccess, false);
+
+      // 2. Test Guest Mode
+      provider.continueAsGuest();
+      expect(provider.isGuestMode, true);
+      expect(provider.hasAccess, true);
+      expect(provider.userName, 'Conducteur Invité');
+
+      // 3. Reset and Send OTP for new account creation
+      provider.logout();
+      expect(provider.hasAccess, false);
+
+      final sendResult = await provider.sendAuthOtp(
+        phone: '+237699123456',
+        name: 'Samuel Eto\'o',
+        address: 'Quartier Bastos (Face Ambassade)',
+        city: 'Yaoundé',
+        channel: 'sms',
+      );
+
+      expect(sendResult['success'], true);
+      expect(sendResult['previewCode'], isNotNull);
+      final previewCode = sendResult['previewCode'] as String;
+      expect(previewCode.length, 6);
+
+      // 4. Verify OTP Code and activate account
+      final verifyResult = await provider.verifyAuthOtp(
+        phone: '+237699123456',
+        code: previewCode,
+        name: 'Samuel Eto\'o',
+        address: 'Quartier Bastos (Face Ambassade)',
+        city: 'Yaoundé',
+        channel: 'sms',
+      );
+
+      expect(verifyResult['success'], true);
+      expect(provider.isAuthenticated, true);
+      expect(provider.userName, 'Samuel Eto\'o');
+      expect(provider.userPhone, '+237699123456');
+      expect(provider.userAddress, 'Quartier Bastos (Face Ambassade)');
+      expect(provider.selectedCity, 'Yaoundé');
+
+      // Confirm entering app from success screen
+      provider.enterApp();
+      expect(provider.hasAccess, true);
+
+      // 5. Update Profile
+      provider.updateUserProfile(
+        name: 'Samuel Eto\'o Fils',
+        phone: '+237677889900',
+        address: 'Bonanjo, Douala',
+        city: 'Douala',
+        email: 'samuel@cityflow.cm',
+      );
+
+      expect(provider.userName, 'Samuel Eto\'o Fils');
+      expect(provider.userPhone, '+237677889900');
+      expect(provider.userAddress, 'Bonanjo, Douala');
+      expect(provider.selectedCity, 'Douala');
+      expect(provider.userEmail, 'samuel@cityflow.cm');
+
+      // 6. Logout
+      provider.logout();
+      expect(provider.isAuthenticated, false);
+      expect(provider.hasAccess, false);
+      expect(provider.authToken, isNull);
+
+      provider.dispose();
+    });
+
+    test('Simulates Realistic Multi-Factor AI Forecasts (Weather, Funerals, Rush Hours, Markets)', () async {
+      // 1. Test standard dry forecast
+      final dryForecast = await CityFlowMobileApiService.fetchAiForecast(
+        city: 'Yaoundé',
+        weather: 'dry',
+        hour: 8, // Heure de pointe du matin
+        dayOfWeek: 5, // Vendredi
+        events: ['school_office_rush', 'funeral_cortege'],
+      );
+
+      expect(dryForecast, isNotNull);
+      expect(dryForecast!['city'], 'Yaoundé');
+      expect(dryForecast['globalForecast'] is List, true);
+
+      final List forecastList = dryForecast['globalForecast'] as List;
+      expect(forecastList.isNotEmpty, true);
+      expect(forecastList.any((f) => f['horizon'] == '+1 heure'), true);
+
+      // 2. Test heavy rain / flood forecast (should have higher congestion than dry)
+      final floodForecast = await CityFlowMobileApiService.fetchAiForecast(
+        city: 'Douala',
+        weather: 'flood',
+        hour: 17, // Pointe du soir
+        dayOfWeek: 6, // Samedi grand marché
+        events: ['market_day', 'funeral_cortege'],
+      );
+
+      expect(floodForecast, isNotNull);
+      expect(floodForecast!['city'], 'Douala');
+      expect(floodForecast['recommendations'] is List, true);
+      expect(floodForecast['optimalDepartureWindow'] is Map, true);
+
+      final floodPcts = (floodForecast['globalForecast'] as List).map((f) => f['congestionPercentage'] as int).toList();
+      expect(floodPcts.any((pct) => pct > 60), true);
+    });
   });
 }

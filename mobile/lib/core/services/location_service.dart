@@ -74,6 +74,17 @@ class LocationService {
       final detectedCity = isCloserToDouala ? 'Douala' : 'Yaoundé';
       final shortestDistance = isCloserToDouala ? distanceToDouala : distanceToYaounde;
 
+      // Si le GPS est situé à l'étranger (ex: simulateur Mountain View aux USA), se rabattre sur le centre urbain
+      if (shortestDistance > 100.0) {
+        return LocationResult(
+          position: isCloserToDouala ? CityData.doualaCenter : CityData.yaoundeCenter,
+          detectedCity: detectedCity,
+          distanceKm: 0.0,
+          isGpsLive: false,
+          errorMessage: 'Position GPS simulée / hors zone Cameroun ($detectedCity par défaut)',
+        );
+      }
+
       return LocationResult(
         position: userLatLng,
         detectedCity: detectedCity,

@@ -1,67 +1,8 @@
 import { sendRealEmail, sendRealWhatsApp, sendRealSms } from "../services/notificationService.js";
+import db from "../services/database.js";
+import dbService from "../services/dbService.js";
 
-// Stockage simulé en mémoire des utilisateurs
-const usersDb = new Map([
-  [
-    "+237699123456",
-    {
-      id: "usr_001",
-      name: "Paule Noumbissi",
-      phone: "+237699123456",
-      email: "conducteur@cityflow.cm",
-      city: "Yaoundé",
-      role: "citizen",
-      roleLabel: "Conducteur / Citoyen",
-      vehicleType: "Voiture particulière",
-      tripsCount: 47,
-      timeSavedMin: 184,
-      co2SavedKg: 14.2,
-      score: 92,
-      channel: "whatsapp",
-      password: "password123",
-    },
-  ],
-  [
-    "+237677889900",
-    {
-      id: "usr_002",
-      name: "Dr. Paul Ebanda (SAMU 119)",
-      phone: "+237677889900",
-      email: "samu@cityflow.cm",
-      city: "Yaoundé",
-      role: "emergency",
-      roleLabel: "Services d'Urgence / SAMU",
-      vehicleType: "Ambulance / SAMU",
-      tripsCount: 128,
-      timeSavedMin: 640,
-      co2SavedKg: 48.0,
-      score: 99,
-      channel: "sms",
-      password: "password123",
-    },
-  ],
-  [
-    "+237695001122",
-    {
-      id: "usr_003",
-      name: "Ing. Christian Haman",
-      phone: "+237695001122",
-      email: "regulateur@cityflow.cm",
-      city: "Douala",
-      role: "traffic_manager",
-      roleLabel: "Régulateur Urbain / Communauté Urbaine",
-      vehicleType: "Poste Central de Contrôle",
-      tripsCount: 230,
-      timeSavedMin: 1240,
-      co2SavedKg: 110.5,
-      score: 96,
-      channel: "whatsapp",
-      password: "password123",
-    },
-  ],
-]);
-
-// Magasin en mémoire des codes OTP générés (clé: identifier/phone/email, valeur: { code, expiresAt, channel, ... })
+// Magasin en mémoire temporaire des codes OTP générés pour validation ultra-rapide
 const otpStore = new Map();
 
 const getRoleLabel = (role) => {
@@ -75,8 +16,17 @@ const getRoleLabel = (role) => {
   }
 };
 
+// Helper : Trouver un utilisateur dans la base de données (PostgreSQL ou SQLite)
+async function findUserInDb(cleanId) {
+  const isEmail = cleanId.includes("@");
+  if (isEmail) {
+    return await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [cleanId]);
+  }
+  return await db.get("SELECT * FROM users WHERE phone = ? OR id = ?", [cleanId, cleanId]);
+}
+
 /**
- * 1. ENVOI DU CODE OTP PAR WHATSAPP, SMS OU EMAIL
+ * 1. ENVOI DU CODE OTP PAR WHATSAPP, SMS OU EMAIL (POUR INSCRIPTION OU RÉCUPÉRATION)
  */
 export const sendOtp = async (req, res) => {
   const {
@@ -90,7 +40,6 @@ export const sendOtp = async (req, res) => {
     vehicleType = "Voiture particulière",
   } = req.body;
 
-  // L'identifiant peut être un téléphone ou un email
   const rawId = (identifier || phone || email || "").trim();
   if (!rawId || rawId.length < 4) {
     return res.status(400).json({ error: "Numéro de téléphone ou adresse e-mail requis." });
@@ -99,7 +48,6 @@ export const sendOtp = async (req, res) => {
   const isEmail = rawId.includes("@");
   const cleanId = isEmail ? rawId.toLowerCase() : rawId.replace(/\s+/g, "");
 
-  // Déterminer le canal effectif
   let effectiveChannel = channel;
   if (isEmail && channel !== "email") {
     effectiveChannel = "email";
@@ -109,7 +57,8 @@ export const sendOtp = async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
-  const userName = name ? name.trim() : (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
+  const existing = await findUserInDb(cleanId);
+  const userName = name ? name.trim() : existing ? existing.name : (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
 
   otpStore.set(cleanId, {
     code,
@@ -117,10 +66,18 @@ export const sendOtp = async (req, res) => {
     channel: effectiveChannel,
     isEmail,
     name: userName,
-    role,
-    city,
-    vehicleType,
+    role: role || (existing ? existing.role : "citizen"),
+    city: city || (existing ? existing.city : "Yaoundé"),
+    vehicleType: vehicleType || (existing ? existing.vehicle_type : "Voiture particulière"),
   });
+
+  // Sauvegarder dans la base table otp_codes
+  dbService.saveOtp(cleanId, code, effectiveChannel, {
+    name: userName,
+    role: role || (existing ? existing.role : "citizen"),
+    city: city || (existing ? existing.city : "Yaoundé"),
+    vehicleType,
+  }).catch((e) => console.warn("[DB OTP Save Warning]", e.message));
 
   // Message formaté selon le canal
   let previewMessage = "";
@@ -128,21 +85,18 @@ export const sendOtp = async (req, res) => {
   if (effectiveChannel === "whatsapp") {
     channelLabel = "WhatsApp";
     previewMessage = `💬 [WhatsApp CityFlow] 🚦 Votre code de sécurité CityFlow est : ${code}. Valable 5 minutes. Ne le partagez avec personne.`;
-    // Déclenchement expédition WhatsApp réelle
     sendRealWhatsApp({ toPhone: cleanId, name: userName, code }).catch((err) =>
       console.warn("Erreur envoi WhatsApp :", err.message)
     );
   } else if (effectiveChannel === "sms") {
     channelLabel = "SMS";
     previewMessage = `📱 [SMS CityFlow] Votre code de connexion sécurisé est ${code}. Valable 5 minutes.`;
-    // Déclenchement expédition SMS réelle
     sendRealSms({ toPhone: cleanId, name: userName, code }).catch((err) =>
       console.warn("Erreur envoi SMS :", err.message)
     );
   } else {
     channelLabel = "E-mail";
     previewMessage = `📧 [E-mail CityFlow Sécurité] Bonjour ${userName}, votre code de vérification est : ${code}. Valable 5 minutes.`;
-    // Déclenchement expédition E-mail réel
     sendRealEmail({ to: cleanId, name: userName, code }).catch((err) =>
       console.warn("Erreur envoi E-mail :", err.message)
     );
@@ -168,9 +122,9 @@ export const sendOtp = async (req, res) => {
 };
 
 /**
- * 2. VÉRIFICATION DU CODE OTP & AUTHENTIFICATION
+ * 2. VÉRIFICATION DU CODE OTP & FINALISATION INSCRIPTION / CONNEXION
  */
-export const verifyOtp = (req, res) => {
+export const verifyOtp = async (req, res) => {
   const {
     identifier,
     phone,
@@ -178,6 +132,7 @@ export const verifyOtp = (req, res) => {
     code,
     channel,
     name,
+    password,
     role,
     city,
     vehicleType,
@@ -192,66 +147,122 @@ export const verifyOtp = (req, res) => {
   const cleanId = isEmail ? rawId.toLowerCase() : rawId.replace(/\s+/g, "");
   const storedOtp = otpStore.get(cleanId);
 
-  if (!storedOtp) {
+  // Vérifier dans le store mémoire ou dans la base de données
+  let isValid = false;
+  if (storedOtp && Date.now() <= storedOtp.expiresAt && storedOtp.code === code.trim()) {
+    isValid = true;
+    otpStore.delete(cleanId);
+  } else {
+    const dbOtp = await dbService.verifyOtp(cleanId, code.trim());
+    if (dbOtp?.valid) isValid = true;
+  }
+
+  if (!isValid) {
     return res.status(400).json({
-      error: "Aucun code en attente pour cet identifiant ou code expiré. Veuillez renvoyer un code.",
+      error: "Code de vérification incorrect ou expiré. Veuillez vérifier et réessayer.",
     });
   }
 
-  if (Date.now() > storedOtp.expiresAt) {
-    otpStore.delete(cleanId);
-    return res.status(400).json({ error: "Ce code a expiré. Veuillez demander un nouveau code." });
-  }
-
-  if (storedOtp.code !== code.trim()) {
-    return res.status(400).json({ error: "Code de vérification incorrect. Veuillez vérifier et réessayer." });
-  }
-
-  // Code valide ! Supprimer l'OTP consommé
-  otpStore.delete(cleanId);
-
-  // Chercher ou créer l'utilisateur
-  let user = usersDb.get(cleanId);
+  // Chercher ou créer l'utilisateur en base
+  let user = await findUserInDb(cleanId);
+  const now = new Date().toISOString();
   const token = "jwt_cityflow_otp_" + Date.now() + "_" + Math.random().toString(36).substring(7);
-  const finalChannel = channel || storedOtp.channel || (isEmail ? "email" : "whatsapp");
+  const finalChannel = channel || (storedOtp ? storedOtp.channel : isEmail ? "email" : "whatsapp");
 
   if (!user) {
-    const finalRole = role || storedOtp.role || "citizen";
-    const userName = name || storedOtp.name || (isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
+    const finalRole = role || (storedOtp ? storedOtp.role : "citizen");
+    const userName = name || (storedOtp ? storedOtp.name : isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
+    const newId = "usr_" + Date.now();
 
-    user = {
-      id: "usr_" + Math.floor(Math.random() * 10000),
+    const newUserObj = {
+      id: newId,
       name: userName,
+      username: (userName.toLowerCase().replace(/[^a-z0-9]/g, "_") || "user") + "_" + Math.floor(Math.random() * 1000),
       phone: isEmail ? "+237 699 00 11 22" : cleanId,
       email: isEmail ? cleanId : `${userName.toLowerCase().replace(/\s+/g, "")}@cityflow.cm`,
-      city: city || storedOtp.city || "Yaoundé",
+      password: password || "password123",
+      bio: "Conducteur engagé pour une mobilité fluide.",
+      avatar: null,
+      city: city || (storedOtp ? storedOtp.city : "Yaoundé"),
       role: finalRole,
-      roleLabel: getRoleLabel(finalRole),
-      vehicleType: vehicleType || storedOtp.vehicleType || "Voiture particulière",
+      role_label: getRoleLabel(finalRole),
+      vehicle_type: vehicleType || (storedOtp ? storedOtp.vehicleType : "Voiture particulière"),
+      points: 380,
+      trust_score: 85,
+      trips_count: 1,
+      time_saved_min: 12,
+      co2_saved_kg: 1.0,
       channel: finalChannel,
-      tripsCount: 1,
-      timeSavedMin: 12,
-      co2SavedKg: 1.0,
-      score: 90,
-      verifiedVia: finalChannel.toUpperCase(),
+      created_at: now,
+      updated_at: now,
     };
 
-    usersDb.set(cleanId, user);
-  } else {
-    user.verifiedVia = finalChannel.toUpperCase();
-    if (name) user.name = name;
-    if (role) {
-      user.role = role;
-      user.roleLabel = getRoleLabel(role);
+    try {
+      await db.run(
+        `
+        INSERT INTO users (
+          id, name, username, phone, email, password, bio, avatar, city, role, role_label, vehicle_type,
+          points, trust_score, trips_count, time_saved_min, co2_saved_kg, channel, created_at, updated_at
+        ) VALUES (
+          @id, @name, @username, @phone, @email, @password, @bio, @avatar, @city, @role, @role_label, @vehicle_type,
+          @points, @trust_score, @trips_count, @time_saved_min, @co2_saved_kg, @channel, @created_at, @updated_at
+        )
+      `,
+        newUserObj
+      );
+      user = newUserObj;
+    } catch (e) {
+      console.warn("[DB Insert User Warning]", e.message);
+      user = newUserObj;
     }
-    if (city) user.city = city;
-    if (vehicleType) user.vehicleType = vehicleType;
-    if (req.body.newPassword) user.password = req.body.newPassword;
+  } else {
+    // Mettre à jour l'utilisateur existant
+    await db.run(
+      `
+      UPDATE users SET
+        name = COALESCE(?, name),
+        role = COALESCE(?, role),
+        role_label = COALESCE(?, role_label),
+        city = COALESCE(?, city),
+        vehicle_type = COALESCE(?, vehicle_type),
+        password = COALESCE(?, password),
+        updated_at = ?
+      WHERE id = ?
+    `,
+      [
+        name || user.name,
+        role || user.role,
+        getRoleLabel(role || user.role),
+        city || user.city,
+        vehicleType || user.vehicle_type,
+        password || user.password,
+        now,
+        user.id,
+      ]
+    );
+    user = await findUserInDb(cleanId);
   }
 
-  const userResponse = { ...user };
-  delete userResponse.password;
-  userResponse.token = token;
+  const userResponse = {
+    id: user.id,
+    name: user.name,
+    username: user.username || (user.name ? user.name.toLowerCase().replace(/\s+/g, "_") : "user"),
+    phone: user.phone,
+    email: user.email,
+    bio: user.bio || "",
+    avatar: user.avatar || null,
+    city: user.city,
+    role: user.role,
+    roleLabel: user.role_label || getRoleLabel(user.role),
+    vehicleType: user.vehicle_type,
+    points: user.points,
+    trustScore: user.trust_score,
+    tripsCount: user.trips_count,
+    timeSavedMin: user.time_saved_min,
+    co2SavedKg: parseFloat(user.co2_saved_kg) || 0.0,
+    verifiedVia: finalChannel.toUpperCase(),
+    token,
+  };
 
   res.json({
     success: true,
@@ -270,7 +281,7 @@ export const resendOtp = (req, res) => {
 /**
  * 4. RÉINITIALISATION DU MOT DE PASSE APRÈS CODE OTP
  */
-export const resetPassword = (req, res) => {
+export const resetPassword = async (req, res) => {
   const { identifier, phone, email, newPassword } = req.body;
   const rawId = (identifier || phone || email || "").trim();
 
@@ -281,199 +292,257 @@ export const resetPassword = (req, res) => {
   const isEmail = rawId.includes("@");
   const cleanId = isEmail ? rawId.toLowerCase() : rawId.replace(/\s+/g, "");
 
-  let user = usersDb.get(cleanId);
-  if (!user && isEmail) {
-    for (const u of usersDb.values()) {
-      if (u.email && u.email.toLowerCase() === cleanId) {
-        user = u;
-        break;
-      }
-    }
-  }
+  let user = await findUserInDb(cleanId);
+  const now = new Date().toISOString();
 
   if (user) {
-    user.password = newPassword;
+    await db.run("UPDATE users SET password = ?, updated_at = ? WHERE id = ?", [newPassword, now, user.id]);
+    user = await findUserInDb(cleanId);
   } else {
-    // Créer ou enregistrer avec le nouveau mot de passe
-    const userName = isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`;
-    user = {
-      id: "usr_" + Math.floor(Math.random() * 10000),
-      name: userName,
-      phone: isEmail ? "+237 699 00 11 22" : cleanId,
-      email: isEmail ? cleanId : `${userName.toLowerCase().replace(/\s+/g, "")}@cityflow.cm`,
-      city: "Yaoundé",
-      role: "citizen",
-      roleLabel: "Conducteur / Citoyen",
-      vehicleType: "Voiture particulière",
-      password: newPassword,
-      tripsCount: 1,
-      timeSavedMin: 10,
-      co2SavedKg: 0.8,
-      score: 90,
-    };
-    usersDb.set(cleanId, user);
+    return res.status(404).json({ error: "Aucun compte trouvé avec cet identifiant. Veuillez vous inscrire." });
   }
 
   const token = "jwt_cityflow_reset_" + Date.now() + "_" + Math.random().toString(36).substring(7);
-  const userResponse = { ...user };
-  delete userResponse.password;
-  userResponse.token = token;
+  const userResponse = {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    phone: user.phone,
+    email: user.email,
+    bio: user.bio,
+    avatar: user.avatar,
+    city: user.city,
+    role: user.role,
+    roleLabel: user.role_label || getRoleLabel(user.role),
+    vehicleType: user.vehicle_type,
+    points: user.points,
+    trustScore: user.trust_score,
+    token,
+  };
 
   res.json({
     success: true,
-    message: "Mot de passe modifié avec succès.",
+    message: "Mot de passe modifié avec succès en base de données.",
     token,
     user: userResponse,
   });
 };
 
 /**
- * 4. CONNEXION CLASSIQUE EMAIL / MOT DE PASSE (FALLBACK)
+ * 5. CONNEXION CLASSIQUE EMAIL / MOT DE PASSE
  */
-export const login = (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email et mot de passe requis." });
+export const login = async (req, res) => {
+  const { email, identifier, password } = req.body;
+  const targetId = (email || identifier || "").trim();
+
+  if (!targetId || !password) {
+    return res.status(400).json({ error: "Veuillez renseigner votre e-mail et votre mot de passe." });
   }
 
-  const cleanEmail = email.toLowerCase().trim();
-  let existing = null;
+  const cleanEmail = targetId.toLowerCase();
+  let existing = await findUserInDb(cleanEmail);
 
-  for (const u of usersDb.values()) {
-    if (u.email && u.email.toLowerCase() === cleanEmail) {
-      existing = u;
-      break;
-    }
-  }
-
-  const token = "jwt_cityflow_" + Date.now() + "_" + Math.random().toString(36).substring(7);
-
-  if (existing) {
-    const userResponse = { ...existing };
-    delete userResponse.password;
-    userResponse.token = token;
-
-    return res.json({
-      success: true,
-      token,
-      user: userResponse,
+  // SI LE COMPTE N'EXISTE PAS : ON NE CRÉE PAS UN COMPTE FANTÔME, ON DEMANDE L'INSCRIPTION !
+  if (!existing) {
+    return res.status(404).json({
+      error: "Ce compte n'existe pas. Veuillez vous inscrire avant de vous connecter pour la première fois.",
+      needRegister: true,
     });
   }
 
-  // Création automatique en mode démo si non trouvé
-  const name = email.split("@")[0].replace(".", " ");
-  const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
-  const newUser = {
-    id: "usr_" + Date.now(),
-    name: formattedName,
-    email: cleanEmail,
-    phone: "+237699000000",
-    city: "Yaoundé",
-    role: "citizen",
-    roleLabel: "Conducteur / Citoyen",
-    vehicleType: "Voiture particulière",
-    tripsCount: 1,
-    timeSavedMin: 12,
-    co2SavedKg: 0.8,
-    score: 85,
+  // VÉRIFICATION DU MOT DE PASSE
+  if (existing.password && existing.password !== password) {
+    return res.status(401).json({
+      error: "Mot de passe incorrect. Veuillez vérifier votre saisie ou cliquer sur Mot de passe oublié.",
+    });
+  }
+
+  const token = "jwt_cityflow_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+
+  const userResponse = {
+    id: existing.id,
+    name: existing.name,
+    username: existing.username || (existing.name ? existing.name.toLowerCase().replace(/\s+/g, "_") : "user"),
+    phone: existing.phone,
+    email: existing.email,
+    bio: existing.bio || "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+    avatar: existing.avatar || null,
+    city: existing.city,
+    role: existing.role,
+    roleLabel: existing.role_label || getRoleLabel(existing.role),
+    vehicleType: existing.vehicle_type,
+    points: existing.points,
+    trustScore: existing.trust_score,
+    tripsCount: existing.trips_count,
+    timeSavedMin: existing.time_saved_min,
+    co2SavedKg: parseFloat(existing.co2_saved_kg) || 0.0,
+    token,
   };
 
-  usersDb.set(cleanEmail, { ...newUser, password });
-
-  res.json({
+  return res.json({
     success: true,
     token,
-    user: { ...newUser, token },
+    user: userResponse,
   });
 };
 
-export const register = (req, res) => {
-  const { name, email, password, phone = "+237699000000", city = "Yaoundé", role = "citizen", vehicleType = "Voiture particulière" } = req.body;
+/**
+ * 6. INSCRIPTION OBLIGATOIRE DE NOUVEL UTILISATEUR (EMAIL + MOT DE PASSE + INFOS)
+ */
+export const register = async (req, res) => {
+  const {
+    name,
+    email,
+    password,
+    phone = "+237699000000",
+    city = "Yaoundé",
+    role = "citizen",
+    vehicleType = "Voiture particulière",
+    bio = "",
+    avatar = null,
+  } = req.body;
+
   if (!name || !email || !password) {
-    return res.status(400).json({ error: "Tous les champs obligatoires doivent être renseignés." });
+    return res.status(400).json({ error: "Le nom, l'adresse e-mail et le mot de passe sont obligatoires." });
   }
 
   const cleanEmail = email.toLowerCase().trim();
+
+  // VÉRIFIER SI L'EMAIL EXISTE DÉJÀ
+  const existing = await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [cleanEmail]);
+  if (existing) {
+    return res.status(409).json({
+      error: "Un compte existe déjà avec cette adresse e-mail. Veuillez vous connecter.",
+    });
+  }
+
   const token = "jwt_cityflow_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+  const now = new Date().toISOString();
+  const newId = "usr_" + Date.now();
+  const rawName = name.trim();
+  const generatedUsername = rawName.toLowerCase().replace(/[^a-z0-9]/g, "_") + "_" + Math.floor(Math.random() * 1000);
 
   const newUser = {
-    id: "usr_" + Math.floor(Math.random() * 10000),
-    name: name.trim(),
+    id: newId,
+    name: rawName,
+    username: generatedUsername,
     email: cleanEmail,
     phone,
+    password, // Mot de passe enregistré en base de données
+    bio: bio || "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+    avatar: avatar || null,
     city,
     role,
-    roleLabel: getRoleLabel(role),
-    vehicleType,
-    tripsCount: 1,
-    timeSavedMin: 15,
-    co2SavedKg: 1.2,
-    score: 88,
+    role_label: getRoleLabel(role),
+    vehicle_type: vehicleType,
+    points: 380,
+    trust_score: 85,
+    trips_count: 1,
+    time_saved_min: 15,
+    co2_saved_kg: 1.2,
+    channel: "email",
+    created_at: now,
+    updated_at: now,
   };
 
-  usersDb.set(cleanEmail, { ...newUser, password });
+  try {
+    await db.run(
+      `
+      INSERT INTO users (
+        id, name, username, phone, email, password, bio, avatar, city, role, role_label, vehicle_type,
+        points, trust_score, trips_count, time_saved_min, co2_saved_kg, channel, created_at, updated_at
+      ) VALUES (
+        @id, @name, @username, @phone, @email, @password, @bio, @avatar, @city, @role, @role_label, @vehicle_type,
+        @points, @trust_score, @trips_count, @time_saved_min, @co2_saved_kg, @channel, @created_at, @updated_at
+      )
+    `,
+      newUser
+    );
+  } catch (e) {
+    console.error("[DB Register User Error]", e.message);
+    return res.status(500).json({ error: "Erreur lors de l'enregistrement en base de données." });
+  }
 
   res.status(201).json({
     success: true,
     token,
-    user: { ...newUser, token },
+    user: {
+      ...newUser,
+      roleLabel: newUser.role_label,
+      trustScore: newUser.trust_score,
+      token,
+    },
   });
 };
 
-export const updateProfile = (req, res) => {
-  const { email, phone, name, username, bio, avatar, city, role, vehicleType } = req.body;
+/**
+ * 7. MISE À JOUR PERMANENTE DU PROFIL EN BASE DE DONNÉES
+ */
+export const updateProfile = async (req, res) => {
+  const { email, phone, name, username, bio, avatar, city, role, vehicleType, password } = req.body;
+  const now = new Date().toISOString();
 
-  let key = phone || email;
-  let existing = usersDb.get(key);
+  let user = null;
+  if (email) user = await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email.toLowerCase().trim()]);
+  if (!user && phone) user = await db.get("SELECT * FROM users WHERE phone = ?", [phone]);
+  if (!user) user = await db.get("SELECT * FROM users LIMIT 1");
 
-  if (!existing && email) {
-    for (const u of usersDb.values()) {
-      if (u.email === email) {
-        existing = u;
-        key = u.phone || email;
-        break;
-      }
-    }
+  if (user) {
+    await db.run(
+      `
+      UPDATE users SET
+        name = COALESCE(?, name),
+        username = COALESCE(?, username),
+        phone = COALESCE(?, phone),
+        city = COALESCE(?, city),
+        role = COALESCE(?, role),
+        role_label = COALESCE(?, role_label),
+        vehicle_type = COALESCE(?, vehicle_type),
+        bio = COALESCE(?, bio),
+        avatar = COALESCE(?, avatar),
+        password = COALESCE(?, password),
+        updated_at = ?
+      WHERE id = ?
+    `,
+      [
+        name !== undefined ? name : user.name,
+        username !== undefined ? username : user.username,
+        phone !== undefined ? phone : user.phone,
+        city || user.city,
+        role || user.role,
+        getRoleLabel(role || user.role),
+        vehicleType || user.vehicle_type,
+        bio !== undefined ? bio : user.bio,
+        avatar !== undefined ? avatar : user.avatar,
+        password || user.password,
+        now,
+        user.id,
+      ]
+    );
+
+    user = await db.get("SELECT * FROM users WHERE id = ?", [user.id]);
   }
-
-  if (!existing) {
-    existing = {
-      id: "usr_" + Date.now(),
-      name: name || "Utilisateur CityFlow",
-      username: username || "city_user",
-      email: email || "conducteur@cityflow.cm",
-      phone: phone || "+237699123456",
-      bio: bio || "Citoyen actif et éco-responsable",
-      avatar: avatar || null,
-      tripsCount: 10,
-      timeSavedMin: 45,
-      co2SavedKg: 3.5,
-      score: 90,
-    };
-  }
-
-  const updatedUser = {
-    ...existing,
-    name: name !== undefined ? name : existing.name,
-    username: username !== undefined ? username : existing.username,
-    bio: bio !== undefined ? bio : existing.bio,
-    avatar: avatar !== undefined ? avatar : existing.avatar,
-    email: email !== undefined ? email : existing.email,
-    phone: phone !== undefined ? phone : existing.phone,
-    city: city || existing.city,
-    role: role || existing.role,
-    roleLabel: getRoleLabel(role || existing.role),
-    vehicleType: vehicleType || existing.vehicleType,
-  };
-
-  usersDb.set(key, updatedUser);
-
-  const userResponse = { ...updatedUser };
-  delete userResponse.password;
 
   res.json({
     success: true,
-    message: "Profil mis à jour avec succès.",
-    user: userResponse,
+    message: "Profil mis à jour avec succès en base de données.",
+    user: {
+      id: user ? user.id : "usr_current",
+      name: user ? user.name : name,
+      username: user ? user.username : username,
+      email: user ? user.email : email,
+      phone: user ? user.phone : phone,
+      bio: user ? user.bio : bio,
+      avatar: user ? user.avatar : avatar,
+      city: user ? user.city : city,
+      role: user ? user.role : role,
+      roleLabel: user ? user.role_label : getRoleLabel(role || "citizen"),
+      vehicleType: user ? user.vehicle_type : vehicleType,
+      points: user ? user.points : 380,
+      trustScore: user ? user.trust_score : 85,
+      tripsCount: user ? user.trips_count : 0,
+      timeSavedMin: user ? user.time_saved_min : 0,
+      co2SavedKg: user ? parseFloat(user.co2_saved_kg) || 0.0 : 0.0,
+    },
   });
 };

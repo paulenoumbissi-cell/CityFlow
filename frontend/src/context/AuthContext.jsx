@@ -8,30 +8,38 @@ export function AuthProvider({ children }) {
     const saved = localStorage.getItem("cityflow_user");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.email) {
+          return parsed;
+        }
       } catch (e) {
         console.error(e);
       }
     }
-    // Utilisateur initial par défaut
+    // Utilisateur initial connecté par défaut pour navigation fluide
     return {
-      id: "usr_001",
-      name: "Paule Noumbissi",
-      email: "conducteur@cityflow.cm",
-      phone: "+237 699 00 11 22",
+      id: "usr_current",
+      name: "Paul Enoumbissi",
+      username: "paul_237",
+      email: "paul.enoumbissi@cityflow.cm",
+      phone: "+237699123456",
+      bio: "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+      avatar: null,
       phoneVerified: true,
       authChannel: "whatsapp",
       role: "citizen",
       roleLabel: "Conducteur / Citoyen",
       city: "Yaoundé",
       vehicleType: "Voiture particulière",
-      initials: "PN",
+      initials: "PE",
       isAuthenticated: true,
       tripsCount: 47,
       timeSavedMin: 184,
       co2SavedKg: 14.2,
-      score: 92,
-      token: "jwt_cityflow_demo_default",
+      points: 380,
+      trustScore: 85,
+      score: 85,
+      token: "jwt_cityflow_default",
     };
   });
 
@@ -45,6 +53,15 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("cityflow_user");
     }
   }, [user]);
+
+  // Helper pour calculer les initiales
+  const getInitials = (name) => {
+    const clean = (name || "Citoyen").trim();
+    const parts = clean.split(" ");
+    return parts.length > 1
+      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      : clean.slice(0, 2).toUpperCase();
+  };
 
   // Envoi du code OTP via WhatsApp, SMS ou E-mail
   const sendOtpCode = async ({ identifier, phone, email, channel = "whatsapp", name, role, city, vehicleType }) => {
@@ -62,34 +79,22 @@ export function AuthProvider({ children }) {
   };
 
   // Validation du code OTP
-  const verifyOtpCode = async ({ identifier, phone, email, code, channel, name, role, city, vehicleType }) => {
+  const verifyOtpCode = async ({ identifier, phone, email, code, channel, name, password, role, city, vehicleType }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await verifyOtp({ identifier, phone, email, code, channel, name, role, city, vehicleType });
+      const res = await verifyOtp({ identifier, phone, email, code, channel, name, password, role, city, vehicleType });
       if (res && res.user) {
-        const names = (res.user.name || "Utilisateur").trim();
-        const parts = names.split(" ");
-        const initials = parts.length > 1
-          ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-          : names.slice(0, 2).toUpperCase();
-
         const fullUser = {
           ...res.user,
-          phone: res.user.phone || phone || "+237 699 00 11 22",
-          email: res.user.email || email || "conducteur@cityflow.cm",
-          phoneVerified: true,
-          authChannel: channel || res.user.channel || "whatsapp",
-          initials,
+          initials: getInitials(res.user.name),
           isAuthenticated: true,
           token: res.token || res.user.token,
-          tripsCount: user?.tripsCount || 1,
-          timeSavedMin: user?.timeSavedMin || 15,
-          co2SavedKg: user?.co2SavedKg || 1.2,
-          score: user?.score || 95,
+          score: res.user.trustScore || 85,
         };
 
         setUser(fullUser);
+        localStorage.setItem("cityflow_user", JSON.stringify(fullUser));
         setIsLoading(false);
         return { success: true, user: fullUser, message: res.message };
       }
@@ -123,52 +128,44 @@ export function AuthProvider({ children }) {
     try {
       const res = await loginUser(email, password);
       if (res && res.user) {
-        const names = (res.user.name || res.user.email.split("@")[0]).trim();
-        const parts = names.split(" ");
-        const initials = parts.length > 1
-          ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-          : names.slice(0, 2).toUpperCase();
-
         const fullUser = {
           ...res.user,
-          initials,
+          initials: getInitials(res.user.name),
           isAuthenticated: true,
           token: res.token || res.user.token,
+          score: res.user.trustScore || 85,
         };
 
         setUser(fullUser);
+        localStorage.setItem("cityflow_user", JSON.stringify(fullUser));
         setIsLoading(false);
         return { success: true, user: fullUser };
       }
       throw new Error("Réponse serveur invalide");
     } catch (err) {
-      setError(err.message || "Erreur d'authentification");
+      setError(err.message || "Identifiant ou mot de passe incorrect.");
       setIsLoading(false);
       throw err;
     }
   };
 
-  // Inscription email via le backend
+  // Inscription obligatoire avec email et mot de passe enregistrés
   const register = async (userData) => {
     setIsLoading(true);
     setError(null);
     try {
       const res = await registerUser(userData);
       if (res && res.user) {
-        const names = (res.user.name || res.user.email.split("@")[0]).trim();
-        const parts = names.split(" ");
-        const initials = parts.length > 1
-          ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-          : names.slice(0, 2).toUpperCase();
-
         const fullUser = {
           ...res.user,
-          initials,
+          initials: getInitials(res.user.name),
           isAuthenticated: true,
           token: res.token || res.user.token,
+          score: res.user.trustScore || 85,
         };
 
         setUser(fullUser);
+        localStorage.setItem("cityflow_user", JSON.stringify(fullUser));
         setIsLoading(false);
         return { success: true, user: fullUser };
       }
@@ -180,20 +177,15 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Mise à jour du profil (Nom, Username, Photo/Avatar, Contact, Véhicule, Ville, Bio)
+  // Mise à jour permanente du profil
   const updateProfile = async (profileData) => {
     setIsLoading(true);
     try {
       const newName = profileData.name || user?.name || "Utilisateur";
-      const parts = newName.trim().split(" ");
-      const initials = parts.length > 1
-        ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-        : newName.slice(0, 2).toUpperCase();
-
       let updatedUser = {
         ...user,
         ...profileData,
-        initials,
+        initials: getInitials(newName),
       };
 
       try {
@@ -206,11 +198,11 @@ export function AuthProvider({ children }) {
           updatedUser = {
             ...updatedUser,
             ...res.user,
-            initials,
+            initials: getInitials(res.user.name),
           };
         }
       } catch (apiErr) {
-        console.warn("[CityFlow] Backend update fallback to local:", apiErr);
+        console.warn("[CityFlow] Backend update fallback to local state:", apiErr);
       }
 
       setUser(updatedUser);
@@ -232,7 +224,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user?.isAuthenticated,
+        isAuthenticated: !!user && !!user?.isAuthenticated,
         role: user?.role || "citizen",
         roleLabel: user?.roleLabel || "Conducteur / Citoyen",
         isLoading,
@@ -261,4 +253,3 @@ export function useAuth() {
 }
 
 export default AuthContext;
-

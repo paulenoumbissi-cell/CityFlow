@@ -114,17 +114,18 @@ function AuthPage() {
 
     try {
       await login(loginIdentifier.trim(), loginPassword);
-      setSuccessMessage("✅ Connexion réussie ! Redirection en cours...");
+      setSuccessMessage("✅ Connexion réussie ! Redirection vers votre profil...");
       setTimeout(() => {
         navigate("/profil");
-      }, 800);
+      }, 700);
     } catch (err) {
-      setErrorMessage(err.message || "Identifiant ou mot de passe incorrect.");
+      const msg = err.message || "Identifiant ou mot de passe incorrect.";
+      setErrorMessage(msg);
     }
   };
 
   // -------------------------------------------------------------
-  // 2. ENVOI DU CODE OTP (Pour Inscription ou Mot de passe oublié)
+  // 2. ENVOI DU CODE OTP & VÉRIFICATION DES MOTS DE PASSE (Inscription)
   // -------------------------------------------------------------
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
@@ -134,9 +135,61 @@ function AuthPage() {
 
     const cleanId = identifier.trim();
     if (!cleanId || cleanId.length < 4) {
-      setErrorMessage("Veuillez entrer un numéro ou une adresse e-mail valide.");
+      setErrorMessage("Veuillez entrer une adresse e-mail ou un numéro de téléphone valide.");
       return;
     }
+
+    if (viewMode === "register") {
+      if (!name.trim()) {
+        setErrorMessage("Veuillez renseigner votre nom complet.");
+        return;
+      }
+      if (!newPassword || newPassword.length < 6) {
+        setErrorMessage("Le mot de passe doit comporter au moins 6 caractères.");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setErrorMessage("Les deux mots de passe saisis ne correspondent pas.");
+        return;
+      }
+    }
+
+    try {
+      let formattedId = cleanId;
+      if (!cleanId.includes("@")) {
+        const digits = cleanId.replace(/[^0-9]/g, "");
+        formattedId = digits.startsWith("237") ? `+${digits}` : `+237 ${digits}`;
+      }
+
+      const res = await sendOtpCode({
+        name: name.trim() || "Utilisateur CityFlow",
+        identifier: formattedId,
+        channel,
+        role,
+        city,
+      });
+
+      setOtpStep(2);
+      setTimerSeconds(300);
+      setIsTimerActive(true);
+      setOtpDigits(["", "", "", "", "", ""]);
+      setSuccessMessage(res.message || "Code de sécurité envoyé avec succès.");
+
+      if (res.previewCode) {
+        setPreviewToast({
+          channel,
+          code: res.previewCode,
+          target: formattedId,
+        });
+      }
+
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 300);
+    } catch (err) {
+      setErrorMessage(err.message || "Impossible d'envoyer le code.");
+    }
+  };
 
     try {
       let formattedId = cleanId;
@@ -324,12 +377,13 @@ function AuthPage() {
         await verifyOtpCode({
           name: name.trim(),
           identifier: formattedId,
+          password: newPassword,
           code: otpDigits.join(""),
           channel,
           role,
           city,
         });
-        setSuccessMessage("✅ Compte créé et vérifié avec succès ! Bienvenue.");
+        setSuccessMessage("✅ Compte créé avec mot de passe et enregistré avec succès !");
       }
 
       setTimeout(() => {
@@ -520,6 +574,52 @@ function AuthPage() {
                   </div>
                 </div>
 
+                <div className="glass-row-2">
+                  <div className="glass-field">
+                    <label htmlFor="reg-pass">Mot de passe secret</label>
+                    <div className="glass-input-wrapper">
+                      <Lock size={18} className="glass-field-icon" />
+                      <input
+                        id="reg-pass"
+                        type={showNewPass ? "text" : "password"}
+                        placeholder="Au moins 6 caractères"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="glass-eye-btn"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                      >
+                        {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="glass-field">
+                    <label htmlFor="reg-confirm-pass">Confirmer le mot de passe</label>
+                    <div className="glass-input-wrapper">
+                      <Lock size={18} className="glass-field-icon" />
+                      <input
+                        id="reg-confirm-pass"
+                        type={showConfirmPass ? "text" : "password"}
+                        placeholder="Retapez le mot de passe"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="glass-eye-btn"
+                        onClick={() => setShowConfirmPass(!showConfirmPass)}
+                      >
+                        {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Sélecteur de canal */}
                 <div className="glass-field">
                   <label>Recevoir le code de vérification par :</label>
@@ -570,7 +670,7 @@ function AuthPage() {
                 </div>
 
                 <button type="submit" className="glass-primary-btn" disabled={isLoading}>
-                  <span>{isLoading ? "Envoi du code..." : "Recevoir mon code →"}</span>
+                  <span>{isLoading ? "Envoi du code..." : "Valider mes informations et recevoir mon code →"}</span>
                 </button>
               </form>
             )}

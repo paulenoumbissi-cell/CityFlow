@@ -47,16 +47,32 @@ function ProfilePage() {
   const fileInputRef = useRef(null);
 
   const [editData, setEditData] = useState({
-    name: user?.name || "Paule Noumbissi",
-    username: user?.username || "paule_237",
-    email: user?.email || "conducteur@cityflow.cm",
-    phone: user?.phone || "+237 699 00 11 22",
-    bio: user?.bio || "Conductrice quotidienne engagée pour une mobilité fluide à Yaoundé et Douala.",
+    name: user?.name || "",
+    username: user?.username || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    bio: user?.bio || "",
     city: user?.city || "Yaoundé",
     role: user?.role || "citizen",
     vehicleType: user?.vehicleType || "Voiture particulière",
     avatar: user?.avatar || null,
   });
+
+  useEffect(() => {
+    if (user) {
+      setEditData({
+        name: user.name || "",
+        username: user.username || (user.name ? user.name.toLowerCase().replace(/\s+/g, "_") : "user"),
+        email: user.email || "",
+        phone: user.phone || "",
+        bio: user.bio || "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
+        city: user.city || "Yaoundé",
+        role: user.role || "citizen",
+        vehicleType: user.vehicleType || "Voiture particulière",
+        avatar: user.avatar || null,
+      });
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();

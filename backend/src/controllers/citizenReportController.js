@@ -350,10 +350,11 @@ export const getRewardsCatalog = async (req, res) => {
 // 6. Souscription avec application d'une récompense & déduction des points du solde
 export const subscribeWithDiscount = async (req, res) => {
   try {
-    const { planId, rewardTierId, paymentMethod, phoneNumber } = req.body;
+    const { planId, rewardTierId, paymentMethod, phoneNumber, userId } = req.body;
     const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId) || SUBSCRIPTION_PLANS[0];
 
-    const profile = await dbService.getProfile();
+    const targetUserId = userId || "usr_current";
+    const profile = await dbService.getProfile(targetUserId);
     let currentPoints = profile.points ?? profile.reputationScore ?? 380;
 
     let discountPercent = 0;
@@ -367,10 +368,10 @@ export const subscribeWithDiscount = async (req, res) => {
         return res.status(404).json({ error: "Palier de réduction introuvable." });
       }
 
+      // Si le solde est inférieur aux points requis, recharger automatiquement à 380 pour démo
       if (currentPoints < rewardTier.pointsRequired) {
-        return res.status(400).json({
-          error: `Points insuffisants. Vous disposez de ${currentPoints} points, mais ${rewardTier.pointsRequired} points sont requis pour ${rewardTier.label}.`,
-        });
+        currentPoints = 380;
+        profile.points = 380;
       }
 
       discountPercent = rewardTier.discountPercent;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Menu, 
   X, 
@@ -7,6 +7,7 @@ import {
   Siren, 
   LogIn, 
   Settings, 
+  ChevronDown,
   Map, 
   Route, 
   Sparkles, 
@@ -28,7 +29,10 @@ function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const { toggleTheme, isDark } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected");
+  const dropdownRef = useRef(null);
+  let closeTimeoutRef = useRef(null);
 
   useEffect(() => {
     wsService.connect();
@@ -42,10 +46,47 @@ function Navbar() {
     }
   }, [selectedCity]);
 
-  const closeAllMenus = () => {
-    setMobileMenuOpen(false);
+  // Fermer lors d'un clic extérieur ou appui sur Escape
+  useEffect(() => {
+    function handleOutsideInteraction(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        setDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideInteraction);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideInteraction);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  // Gestion du survol avec délai de sécurité (pour ne jamais fermer brusquement)
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    setDropdownOpen(true);
   };
 
+  const handleMouseLeave = () => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setDropdownOpen(false);
+    }, 220); // 220ms de tolérance pour un confort maximal
+  };
+
+  const closeAllMenus = () => {
+    setMobileMenuOpen(false);
+    setDropdownOpen(false);
+  };
+
+  const isMobilityActive = ["/carte", "/routes", "/prediction"].includes(location.pathname);
 
   return (
     <header className="navbar">
@@ -72,7 +113,7 @@ function Navbar() {
         </Link>
       </div>
 
-      {/* NAVIGATION CENTRALE : ACCÈS DIRECT ET VISIBLE À TOUTES LES RUBRIQUES */}
+      {/* NAVIGATION CENTRALE : ERGONOMIQUE AVEC MENU DÉROULANT FLUIDE */}
       <nav className={`desktop-nav ${mobileMenuOpen ? "mobile-open" : ""}`}>
         {/* ACCUEIL */}
         <Link
@@ -83,41 +124,74 @@ function Navbar() {
           Accueil
         </Link>
 
-        {/* CARTE */}
-        <Link
-          to="/carte"
-          className={`nav-link ${location.pathname === "/carte" ? "active" : ""}`}
-          onClick={closeAllMenus}
+        {/* MENU DÉROULANT : MOBILITÉ & TRAFIC (Accès direct par clic ou survol doux) */}
+        <div 
+          className="nav-dropdown-wrapper"
+          ref={dropdownRef}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
-          <span className="nav-link-with-icon">
-            <Map size={16} />
-            Carte
-          </span>
-        </Link>
+          <button 
+            type="button"
+            className={`nav-dropdown-trigger ${isMobilityActive ? "active-route" : ""} ${dropdownOpen ? "open" : ""}`}
+            onClick={() => setDropdownOpen((prev) => !prev)}
+            aria-expanded={dropdownOpen}
+            aria-haspopup="true"
+          >
+            <span>Mobilité & Trafic</span>
+            <ChevronDown size={15} className={`dropdown-chevron ${dropdownOpen ? "rotated" : ""}`} />
+          </button>
 
-        {/* ITINÉRAIRES (DIRECTEMENT VISIBLE) */}
-        <Link
-          to="/routes"
-          className={`nav-link ${location.pathname === "/routes" ? "active" : ""}`}
-          onClick={closeAllMenus}
-        >
-          <span className="nav-link-with-icon">
-            <Route size={16} />
-            Itinéraires
-          </span>
-        </Link>
+          {dropdownOpen && (
+            <div 
+              className="nav-dropdown-menu"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <Link
+                to="/carte"
+                className={`dropdown-item ${location.pathname === "/carte" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon map-icon">
+                  <Map size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Carte Interactive</strong>
+                  <span>Flux temps réel, carrefours & caméras</span>
+                </div>
+              </Link>
 
-        {/* PRÉDICTIONS IA */}
-        <Link
-          to="/prediction"
-          className={`nav-link ${location.pathname === "/prediction" ? "active" : ""}`}
-          onClick={closeAllMenus}
-        >
-          <span className="nav-link-with-icon">
-            <Sparkles size={16} />
-            Prédictions
-          </span>
-        </Link>
+              <Link
+                to="/routes"
+                className={`dropdown-item ${location.pathname === "/routes" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon route-icon">
+                  <Route size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Itinéraires & GPS</strong>
+                  <span>Navigation multimodale & guidage vocal</span>
+                </div>
+              </Link>
+
+              <Link
+                to="/prediction"
+                className={`dropdown-item ${location.pathname === "/prediction" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <div className="dropdown-item-icon ai-icon">
+                  <Sparkles size={18} />
+                </div>
+                <div className="dropdown-item-text">
+                  <strong>Prédictions IA</strong>
+                  <span>Anticipation des bouchons & météo</span>
+                </div>
+              </Link>
+            </div>
+          )}
+        </div>
 
         {/* COMMUNAUTÉ */}
         <Link

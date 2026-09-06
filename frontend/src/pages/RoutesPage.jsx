@@ -118,6 +118,9 @@ export default function RoutesPage() {
   const { selectedCity, setSelectedCity } = useCity();
   const rawCityLandmarks = CITY_LANDMARKS[selectedCity] || CITY_LANDMARKS["Yaoundé"] || [];
 
+  const dropdownRef = useRef(null);
+  const autoSimTimerRef = useRef(null);
+
   const [departure, setDeparture] = useState("Mvan (Gare Voyageurs)");
   const [destination, setDestination] = useState("Bastos (Ambassades)");
   const [departureCoords, setDepartureCoords] = useState(null);
@@ -138,6 +141,7 @@ export default function RoutesPage() {
   // Mode Navigation Pas-à-Pas (Google Maps HUD)
   const [isNavigating, setIsNavigating] = useState(false);
   const [navStepIndex, setNavStepIndex] = useState(0);
+
   const [navCompleted, setNavCompleted] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isAutoSimulating, setIsAutoSimulating] = useState(false);

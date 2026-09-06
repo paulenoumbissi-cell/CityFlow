@@ -479,20 +479,26 @@ export const register = async (req, res) => {
  * 7. MISE À JOUR PERMANENTE DU PROFIL EN BASE DE DONNÉES
  */
 export const updateProfile = async (req, res) => {
-  const { email, phone, name, username, bio, avatar, city, role, vehicleType, password } = req.body;
+  const { id, originalEmail, email, phone, name, username, bio, avatar, city, role, vehicleType, password } = req.body;
   const now = new Date().toISOString();
 
   let user = null;
-  if (email) user = await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email.toLowerCase().trim()]);
+  if (id) user = await db.get("SELECT * FROM users WHERE id = ?", [id]);
+  if (!user && originalEmail) user = await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [originalEmail.toLowerCase().trim()]);
+  if (!user && email) user = await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email.toLowerCase().trim()]);
   if (!user && phone) user = await db.get("SELECT * FROM users WHERE phone = ?", [phone]);
   if (!user) user = await db.get("SELECT * FROM users LIMIT 1");
 
   if (user) {
+    const targetEmail = email ? email.toLowerCase().trim() : user.email;
+    const targetPassword = (password && password.trim().length >= 4) ? password.trim() : user.password;
+
     await db.run(
       `
       UPDATE users SET
         name = COALESCE(?, name),
         username = COALESCE(?, username),
+        email = COALESCE(?, email),
         phone = COALESCE(?, phone),
         city = COALESCE(?, city),
         role = COALESCE(?, role),
@@ -505,16 +511,17 @@ export const updateProfile = async (req, res) => {
       WHERE id = ?
     `,
       [
-        name !== undefined ? name : user.name,
-        username !== undefined ? username : user.username,
-        phone !== undefined ? phone : user.phone,
+        name !== undefined && name !== "" ? name : user.name,
+        username !== undefined && username !== "" ? username : user.username,
+        targetEmail,
+        phone !== undefined && phone !== "" ? phone : user.phone,
         city || user.city,
         role || user.role,
         getRoleLabel(role || user.role),
         vehicleType || user.vehicle_type,
         bio !== undefined ? bio : user.bio,
         avatar !== undefined ? avatar : user.avatar,
-        password || user.password,
+        targetPassword,
         now,
         user.id,
       ]
@@ -527,7 +534,7 @@ export const updateProfile = async (req, res) => {
     success: true,
     message: "Profil mis à jour avec succès en base de données.",
     user: {
-      id: user ? user.id : "usr_current",
+      id: user ? user.id : (id || "usr_current"),
       name: user ? user.name : name,
       username: user ? user.username : username,
       email: user ? user.email : email,

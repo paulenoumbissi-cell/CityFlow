@@ -190,8 +190,10 @@ export function AuthProvider({ children }) {
 
       try {
         const res = await updateUserProfile({
-          email: user?.email,
-          phone: user?.phone,
+          id: user?.id,
+          originalEmail: user?.email,
+          email: profileData.email || user?.email,
+          phone: profileData.phone || user?.phone,
           ...profileData,
         });
         if (res && res.user) {

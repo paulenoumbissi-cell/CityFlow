@@ -22,6 +22,7 @@ import {
   Trash2,
   AtSign,
   FileText,
+  Lock,
   X
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -51,6 +52,7 @@ function ProfilePage() {
     username: user?.username || "",
     email: user?.email || "",
     phone: user?.phone || "",
+    password: "",
     bio: user?.bio || "",
     city: user?.city || "Yaoundé",
     role: user?.role || "citizen",
@@ -533,6 +535,17 @@ function ProfilePage() {
                     value={editData.bio}
                     onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
                     placeholder="Ex: Conductrice quotidienne sur l'axe Bastos - Centre-ville"
+                  />
+                </div>
+
+                {/* MODIFICATION DU MOT DE PASSE */}
+                <div className="edit-field-group" style={{ gridColumn: "1 / -1" }}>
+                  <label><Lock size={15} /> Nouveau mot de passe (laisser vide pour conserver l'actuel)</label>
+                  <input
+                    type="password"
+                    value={editData.password || ""}
+                    onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                    placeholder="Saisissez un nouveau mot de passe (ex: clem@nce)"
                   />
                 </div>
               </div>

@@ -155,9 +155,15 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
                               icon: const Icon(Icons.directions_rounded, color: Color(0xFF006666)),
                               tooltip: 'Lancer l\'itinéraire',
                               onPressed: () {
+                                provider.triggerRouteOverview(
+                                  originName: 'Ma position (GPS)',
+                                  destinationName: item.title,
+                                );
                                 provider.fetchSmartRoutes(
                                   origin: provider.userRealPosition ?? provider.currentCityCenter,
                                   destination: item.destinationPos,
+                                  destinationName: item.title,
+                                  showOverview: true,
                                 );
                                 Navigator.pop(context);
                                 widget.onNavigateTab?.call(0);

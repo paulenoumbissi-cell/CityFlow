@@ -297,12 +297,12 @@ class CityFlowDrawer extends StatelessWidget {
                     child: Divider(color: Color(0x22FFFFFF), height: 1),
                   ),
 
-                  _buildSectionTitle('COMMUNAUTÉ & IA'),
+                  _buildSectionTitle('COMMUNAUTÉ & PLANIFICATION'),
                   _buildDrawerTile(
                     context: context,
-                    icon: Icons.auto_awesome_rounded,
-                    title: 'Prédiction IA & Météo',
-                    subtitle: 'Horizons 30 min et heures de pointe',
+                    icon: Icons.event_note_rounded,
+                    title: 'Planifier & Météo',
+                    subtitle: 'Prédire votre trajet et la météo',
                     onTap: () {
                       Navigator.pop(context);
                       onNavigateTab?.call(1);
@@ -310,10 +310,10 @@ class CityFlowDrawer extends StatelessWidget {
                   ),
                   _buildDrawerTile(
                     context: context,
-                    icon: Icons.handshake_rounded,
-                    title: 'Entraide & Signalements',
-                    subtitle: 'Signalez bouchons, police et nids-de-poule',
-                    badge: '+15 XP',
+                    icon: Icons.campaign_rounded,
+                    title: 'Signaler & Communauté',
+                    subtitle: 'Signalez bouchons, police et alertes',
+                    badge: '+25 pts',
                     badgeColor: const Color(0xFFEA580C),
                     onTap: () {
                       Navigator.pop(context);

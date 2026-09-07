@@ -112,3 +112,35 @@ export const getLocalEvents = (req, res) => {
     events: Object.values(LOCAL_EVENTS),
   });
 };
+
+/**
+ * Endpoint de prédiction temporelle multi-horizons (OS1)
+ * POST ou GET /api/ai/predict-timeline
+ */
+export const predictTimelineRoute = async (req, res) => {
+  try {
+    const payload = req.method === "POST" ? req.body : req.query;
+    const history = payload.history;
+    const roadName = payload.road_name || payload.roadName || payload.road_segment_id || payload.roadSegmentId || "cet axe";
+    const roadSegmentId = payload.road_segment_id || payload.roadSegmentId || roadName;
+    const rainForecastMm = parseFloat(payload.rain_forecast_mm || payload.rainForecastMm || 0.0);
+    const hasEvent = Boolean(payload.has_event || payload.hasEvent || false);
+    const city = payload.city || "Yaoundé";
+    const departureHour = payload.departure_hour || payload.departureHour || new Date().getHours();
+
+    const timeline = await AiTrafficEngine.predictTimeline({
+      history,
+      rainForecastMm,
+      hasEvent,
+      roadName,
+      roadSegmentId,
+      city,
+      departureHour,
+    });
+
+    res.json(timeline);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur calcul timeline prédictive IA", details: error.message });
+  }
+};
+

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/city_flow_provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/city_data.dart';
 import '../core/services/api_service.dart';
 import '../widgets/city_selector.dart';
 
@@ -21,17 +22,97 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
   bool _isLoading = false;
   bool _isPredictingTrip = false;
 
-  // Simulateur prédictif de trajet futur (ex: Aller au CRADAT à 17h)
+  // Simulateur prédictif de trajet futur (dynamiquement ancré dans le futur)
   String _selectedTripOrigin = 'Poste Centrale';
-  String _selectedTripDestination = 'Carrefour CRADAT';
+  String _selectedTripDestination = '';
   double _selectedTripHour = 17.0;
+  bool _isTripTomorrow = false;
+  String _formattedDepartureTime = '';
+  TextEditingController? _destinationFieldController;
 
   String? _lastCity;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    final in15 = now.add(const Duration(minutes: 15));
+    _selectedTripHour = in15.hour + (in15.minute / 60.0);
+    _isTripTomorrow = in15.day != now.day;
+    _formattedDepartureTime = '${in15.hour.toString().padLeft(2, '0')}h${in15.minute.toString().padLeft(2, '0')} (Aujourd\'hui)';
     _loadAllAiData();
+  }
+
+  void _setRelativeDepartureTime(Duration offset, {bool isTomorrow = false}) {
+    final now = DateTime.now();
+    DateTime target = now.add(offset);
+    if (isTomorrow) {
+      target = DateTime(now.year, now.month, now.day + 1, target.hour, target.minute);
+    }
+    final hourVal = target.hour + (target.minute / 60.0);
+    final isTmw = isTomorrow || target.day != now.day;
+    final timeStr = '${target.hour.toString().padLeft(2, '0')}h${target.minute.toString().padLeft(2, '0')}';
+    final formatted = offset.inMinutes == 0 && !isTmw
+        ? 'Maintenant ($timeStr)'
+        : (isTmw ? '$timeStr (Demain)' : '$timeStr (Aujourd\'hui)');
+
+    setState(() {
+      _selectedTripHour = hourVal;
+      _isTripTomorrow = isTmw;
+      _formattedDepartureTime = formatted;
+    });
+    _runTripPrediction();
+  }
+
+  Future<void> _pickCustomTime() async {
+    final now = DateTime.now();
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: (now.hour + 1) % 24,
+        minute: 0,
+      ),
+      helpText: 'CHOISIR L\'HEURE DE DÉPART',
+      cancelText: 'ANNULER',
+      confirmText: 'SÉLECTIONNER',
+    );
+    if (picked != null) {
+      final hourVal = picked.hour + (picked.minute / 60.0);
+      final isPast = picked.hour < now.hour || (picked.hour == now.hour && picked.minute < now.minute);
+      final isTomorrow = isPast;
+      final timeStr = '${picked.hour.toString().padLeft(2, '0')}h${picked.minute.toString().padLeft(2, '0')}';
+      final formatted = isTomorrow ? '$timeStr (Demain)' : '$timeStr (Aujourd\'hui)';
+
+      setState(() {
+        _selectedTripHour = hourVal;
+        _isTripTomorrow = isTomorrow;
+        _formattedDepartureTime = formatted;
+      });
+
+      if (isPast && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF0F172A),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, color: Color(0xFF38BDF8), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '$timeStr étant déjà passée aujourd\'hui, l\'anticipation IA a été calculée pour Demain.',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      _runTripPrediction();
+    }
   }
 
   Future<void> _loadAllAiData() async {
@@ -73,20 +154,37 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
         _isLoading = false;
       });
 
-      // Lancement automatique du diagnostic prédictif de trajet
-      _runTripPrediction();
+      // Lancement automatique du diagnostic prédictif uniquement si une destination est définie
+      if (_selectedTripDestination.trim().isNotEmpty) {
+        _runTripPrediction();
+      }
     }
   }
 
   Future<void> _runTripPrediction() async {
+    if (_selectedTripDestination.trim().isEmpty) {
+      if (mounted) {
+        setState(() {
+          _tripPredictionResult = null;
+          _isPredictingTrip = false;
+        });
+      }
+      return;
+    }
+
     final provider = context.read<CityFlowProvider>();
     setState(() => _isPredictingTrip = true);
+
+    final targetDate = _isTripTomorrow
+        ? DateTime.now().add(const Duration(days: 1))
+        : DateTime.now();
 
     final res = await CityFlowMobileApiService.predictTrip(
       city: provider.selectedCity,
       origin: _selectedTripOrigin,
       destination: _selectedTripDestination,
       departureHour: _selectedTripHour,
+      departureDate: targetDate.toIso8601String(),
     );
 
     if (mounted) {
@@ -105,15 +203,13 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
     if (_lastCity != provider.selectedCity) {
       _lastCity = provider.selectedCity;
       _selectedTripOrigin = isYaounde ? 'Poste Centrale' : 'Boulevard de la Liberté';
-      _selectedTripDestination = isYaounde ? 'Carrefour CRADAT' : 'Carrefour Ndokoti';
+      _selectedTripDestination = '';
+      _tripPredictionResult = null;
+      _destinationFieldController?.clear();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _loadAllAiData();
       });
     }
-
-    final now = DateTime.now();
-    final hour = now.hour;
-    final isRushHour = (hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19);
 
     return PopScope(
       canPop: false,
@@ -201,37 +297,14 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                   const SizedBox(height: 16),
 
                   // =========================================================
-                  // 2. MODULE : ASSISTANT PRÉDICTIF DE TRAJET & OBSTACLES (EX: CRADAT À 17H)
+                  // 2. MODULE : ASSISTANT PRÉDICTIF DE TRAJET & OBSTACLES
                   // =========================================================
                   _buildTripPredictorSection(provider, isYaounde),
 
-                  const SizedBox(height: 18),
-
                   // =========================================================
-                  // 3. BANDEAU DE STATUT GLOBAL DE LA VILLE
+                  // 3. LISTE DES TRAJETS PLANIFIÉS ACTIFS AVEC RAPPELS IA
                   // =========================================================
-                  _buildDirectStatusBanner(provider, isRushHour),
-
-                  const SizedBox(height: 18),
-
-                  // =========================================================
-                  // 4. ÉVOLUTION HEURE PAR HEURE DU TRAFIC
-                  // =========================================================
-                  _buildHourlyEvolutionSection(hour),
-
-                  const SizedBox(height: 18),
-
-                  // =========================================================
-                  // 5. CARREFOURS CLÉS SOUS SURVEILLANCE IA
-                  // =========================================================
-                  _buildMonitoredNodesSection(provider, isYaounde),
-
-                  const SizedBox(height: 18),
-
-                  // =========================================================
-                  // 6. ZONES À ÉVITER & CONTOURNEMENTS CONSEILLÉS
-                  // =========================================================
-                  _buildTroubleSpotsAndDetoursSection(provider, isYaounde),
+                  _buildScheduledTripsSection(provider),
                 ],
               ),
       ),
@@ -405,34 +478,12 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
   // 2. ASSISTANT PRÉDICTIF DE TRAJET & OBSTACLES (EX: CRADAT À 17H)
   // =========================================================================
   Widget _buildTripPredictorSection(CityFlowProvider provider, bool isYaounde) {
-    final ydeOptions = [
-      'Carrefour CRADAT',
-      'Poste Centrale',
-      'Marché Mokolo',
-      'Rond-point Bastos',
-      'Carrefour Nlongkak',
-      'Carrefour Mvan',
-      'Carrefour Warda',
-      'Rond-point Express (Biyem-Assi)',
-    ];
-
-    final dlaOptions = [
-      'Carrefour Ndokoti',
-      'Rond-point Deido',
-      'Boulevard de la Liberté (Akwa)',
-      'Marché Mboppi',
-      'Plateau Administratif (Bonanjo)',
-      'Rond-point Bonabéri',
-      'Carrefour Bonamoussadi',
-    ];
-
-    final destinationList = isYaounde ? ydeOptions : dlaOptions;
-    if (!destinationList.contains(_selectedTripDestination)) {
-      _selectedTripDestination = destinationList.first;
-    }
-    if (!destinationList.contains(_selectedTripOrigin)) {
-      _selectedTripOrigin = destinationList.length > 1 ? destinationList[1] : destinationList.first;
-    }
+    final landmarks = CityData.getLandmarks(provider.selectedCity);
+    final nodes = provider.currentNodes.map((n) => n.name).toList();
+    final allPlaces = <String>{
+      ...landmarks.map((l) => l.name),
+      ...nodes,
+    }.toList();
 
     final res = _tripPredictionResult;
     final warnings = (res?['warnings'] as List<dynamic>?) ?? [];
@@ -491,95 +542,296 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Sélecteur Destination
-          Row(
-            children: [
-              const SizedBox(
-                width: 75,
-                child: Text(
-                  'Destination :',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedTripDestination,
-                      isExpanded: true,
-                      style: const TextStyle(color: AppColors.navy, fontWeight: FontWeight.w700, fontSize: 12.5),
-                      items: destinationList.map((dest) {
-                        return DropdownMenuItem<String>(
-                          value: dest,
-                          child: Text(dest, overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _selectedTripDestination = val);
-                          _runTripPrediction();
-                        }
+          // Zone de recherche Destination (Recherche libre + suggestions en direct)
+          const Text(
+            'Destination :',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
+          ),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Autocomplete<String>(
+                initialValue: TextEditingValue(text: _selectedTripDestination),
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  final query = textEditingValue.text.trim().toLowerCase();
+                  if (query.isEmpty) {
+                    return isYaounde
+                        ? ['Carrefour CRADAT', 'Marché Mokolo', 'Poste Centrale', 'Rond-point Bastos', 'Carrefour Nlongkak', 'Carrefour Mvan']
+                        : ['Carrefour Ndokoti', 'Rond-point Deido', 'Boulevard de la Liberté (Akwa)', 'Marché Mboppi', 'Plateau Administratif (Bonanjo)'];
+                  }
+                  return allPlaces.where((p) => p.toLowerCase().contains(query)).take(8);
+                },
+                onSelected: (String selection) {
+                  setState(() => _selectedTripDestination = selection);
+                  _runTripPrediction();
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  _destinationFieldController = controller;
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    style: const TextStyle(
+                      color: AppColors.navy,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher un lieu, carrefour, quartier...',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF0284C7), size: 20),
+                      suffixIcon: controller.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF94A3B8)),
+                              onPressed: () {
+                                controller.clear();
+                                setState(() {
+                                  _selectedTripDestination = '';
+                                  _tripPredictionResult = null;
+                                });
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: const Color(0xFFF1F5F9),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                      ),
+                    ),
+                    onSubmitted: (val) {
+                      if (val.trim().isNotEmpty) {
+                        setState(() => _selectedTripDestination = val.trim());
+                        _runTripPrediction();
+                      }
+                    },
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      child: Container(
+                        width: constraints.maxWidth,
+                        constraints: const BoxConstraints(maxHeight: 220),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            final landmark = CityData.findLandmark(provider.selectedCity, option);
+                            return ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              leading: const Icon(Icons.location_on_outlined, color: Color(0xFF0284C7), size: 18),
+                              title: Text(
+                                option,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.navy),
+                              ),
+                              subtitle: landmark != null && landmark.district.isNotEmpty
+                                  ? Text(landmark.district, style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)))
+                                  : null,
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+
+          // Raccourcis rapides de destinations
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: (isYaounde
+                      ? ['CRADAT', 'Mokolo', 'Bastos', 'Nlongkak', 'Mvan', 'Poste Centrale']
+                      : ['Ndokoti', 'Deido', 'Akwa', 'Mboppi', 'Bonanjo', 'Bonamoussadi'])
+                  .map((shortcut) {
+                final isMatch = _selectedTripDestination.toLowerCase().contains(shortcut.toLowerCase());
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: InkWell(
+                      onTap: () {
+                        final fullName = isYaounde
+                            ? (shortcut == 'CRADAT'
+                                ? 'Carrefour CRADAT'
+                                : (shortcut == 'Mokolo'
+                                    ? 'Marché Mokolo'
+                                    : (shortcut == 'Bastos'
+                                        ? 'Rond-point Bastos'
+                                        : (shortcut == 'Nlongkak'
+                                            ? 'Carrefour Nlongkak'
+                                            : (shortcut == 'Mvan'
+                                                ? 'Carrefour Mvan'
+                                                : 'Poste Centrale')))))
+                            : (shortcut == 'Ndokoti'
+                                ? 'Carrefour Ndokoti'
+                                : (shortcut == 'Deido'
+                                    ? 'Rond-point Deido'
+                                    : (shortcut == 'Akwa'
+                                        ? 'Boulevard de la Liberté (Akwa)'
+                                        : (shortcut == 'Mboppi'
+                                            ? 'Marché Mboppi'
+                                            : (shortcut == 'Bonanjo'
+                                                ? 'Plateau Administratif (Bonanjo)'
+                                                : 'Carrefour Bonamoussadi')))));
+                        _destinationFieldController?.text = fullName;
+                        setState(() => _selectedTripDestination = fullName);
+                        _runTripPrediction();
                       },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isMatch ? const Color(0xFF0284C7).withValues(alpha: 0.12) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isMatch ? const Color(0xFF0284C7) : const Color(0xFFE2E8F0),
+                          width: isMatch ? 1.2 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        shortcut,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isMatch ? FontWeight.w800 : FontWeight.w600,
+                          color: isMatch ? const Color(0xFF0284C7) : const Color(0xFF475569),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ],
+                );
+              }).toList(),
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
-          // Sélecteur Heure de départ
-          Row(
-            children: [
-              const SizedBox(
-                width: 75,
-                child: Text(
-                  'Heure :',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
-                ),
+          // Raccourcis rapides d'heures futures (ancrés dans le présent)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildTimeShortcutChip('⚡ Maintenant', const Duration(minutes: 0)),
+                _buildTimeShortcutChip('+15 min', const Duration(minutes: 15)),
+                _buildTimeShortcutChip('+30 min', const Duration(minutes: 30)),
+                _buildTimeShortcutChip('+1h', const Duration(hours: 1)),
+                _buildTimeShortcutChip('+2h', const Duration(hours: 2)),
+                _buildTimeShortcutChip('📅 Demain', const Duration(minutes: 0), isTomorrow: true),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Sélecteur Heure de départ personnalisée (choix direct par l'utilisateur)
+          InkWell(
+            onTap: _pickCustomTime,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [12.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0].map((h) {
-                      final isSelected = _selectedTripHour == h;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ChoiceChip(
-                          label: Text('${h.toInt()}h00'),
-                          selected: isSelected,
-                          selectedColor: const Color(0xFF0284C7),
-                          backgroundColor: const Color(0xFFF1F5F9),
-                          labelStyle: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? Colors.white : const Color(0xFF475569),
-                          ),
-                          onSelected: (_) {
-                            setState(() => _selectedTripHour = h);
-                            _runTripPrediction();
-                          },
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      );
-                    }).toList(),
+              child: Row(
+                children: [
+                  const Icon(Icons.access_time_rounded, size: 17, color: Color(0xFF0284C7)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _formattedDepartureTime.isNotEmpty
+                          ? 'Départ : $_formattedDepartureTime'
+                          : 'Départ : Choisir l\'heure...',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_calendar_rounded, size: 12, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Changer',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
 
           const SizedBox(height: 14),
 
           // Résultat du diagnostic IA
-          if (_isPredictingTrip)
+          if (_selectedTripDestination.trim().isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.touch_app_rounded, color: Color(0xFF0284C7), size: 22),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Choisissez ou saisissez une destination ci-dessus pour lancer l\'analyse prédictive IA.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (_isPredictingTrip)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
@@ -593,6 +845,13 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
               ),
             )
           else if (res != null) ...[
+            // 1. Alerte OS1 en Langage Naturel & Fiabilité
+            _buildPredictionAlertCard(
+              res['timeline']?['alert_message'] as String?,
+              (res['timeline']?['confidence'] as num?)?.toDouble() ?? 0.85,
+              (res['timeline']?['causes'] as List?)?.map((e) => e.toString()).toList() ?? [],
+            ),
+
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -657,7 +916,7 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Météo prévue à ${_selectedTripHour.toInt()}h : ${weatherAtHour['label']} (${weatherAtHour['temperature']}°C, ${weatherAtHour['precipitationProbability']}% de pluie)',
+                              'Météo prévue ${_isTripTomorrow ? 'demain' : 'aujourd\'hui'} à $_formattedDepartureTime : ${weatherAtHour['label']} (${weatherAtHour['temperature']}°C, ${weatherAtHour['precipitationProbability']}% de pluie)',
                               style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
                             ),
                           ),
@@ -667,38 +926,43 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
 
                   // Alertes événements détectées sur l'axe
                   if (warnings.isNotEmpty)
-                    ...warnings.map((w) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(w['icon'] ?? '⚠️', style: const TextStyle(fontSize: 15)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    w['title'] ?? '',
-                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF991B1B)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Column(
+                        children: warnings.map((w) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(w['icon'] ?? '⚠️', style: const TextStyle(fontSize: 15)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        w['title'] ?? '',
+                                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF991B1B)),
+                                      ),
+                                      Text(
+                                        w['description'] ?? '',
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    w['description'] ?? '',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      );
-                    }),
+                          );
+                        }).toList(),
+                      ),
+                    ),
 
                   // Recommandation de contournement
                   if (detour != null && detour.isNotEmpty)
                     Container(
-                      margin: const EdgeInsets.only(top: 6),
+                      margin: const EdgeInsets.only(top: 8),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -741,383 +1005,455 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
               ),
             ),
           ],
+
+          const SizedBox(height: 16),
+
+          // Bouton principal de confirmation & planification
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _selectedTripDestination.trim().isNotEmpty ? const Color(0xFF0284C7) : const Color(0xFF94A3B8),
+                foregroundColor: Colors.white,
+                elevation: _selectedTripDestination.trim().isNotEmpty ? 2 : 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+              label: const Text(
+                'Confirmer & Planifier ce trajet',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              ),
+              onPressed: _selectedTripDestination.trim().isNotEmpty ? () => _confirmAndSaveTrip(provider) : null,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // =========================================================================
-  // 3. BANDEAU DE STATUT IMMÉDIAT
-  // =========================================================================
-  Widget _buildDirectStatusBanner(CityFlowProvider provider, bool isRushHour) {
-    int congestion = 35;
-    if (_aiForecastData != null && _aiForecastData!['currentCongestion'] != null) {
-      congestion = (_aiForecastData!['currentCongestion'] as num).round();
-    } else if (provider.currentNodes.isNotEmpty) {
-      final total = provider.currentNodes.map((n) => n.congestionLevel).reduce((a, b) => a + b);
-      congestion = (total / provider.currentNodes.length).round();
+  void _confirmAndSaveTrip(CityFlowProvider provider) {
+    if (_selectedTripDestination.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez spécifier une destination')),
+      );
+      return;
     }
 
-    final isFluid = congestion < 40;
-    final isModerate = congestion >= 40 && congestion <= 75;
+    final originPos = provider.userRealPosition ?? provider.currentCityCenter;
+    final destLandmark = CityData.findLandmark(provider.selectedCity, _selectedTripDestination);
+    final destPos = destLandmark?.pos ??
+        (provider.selectedCity == 'Yaoundé' ? CityData.yaoundeCenter : CityData.doualaCenter);
 
-    final Color bgColor = isFluid
-        ? const Color(0xFF064E3B)
-        : isModerate
-            ? const Color(0xFF78350F)
-            : const Color(0xFF7C2D12);
+    final targetH = _selectedTripHour.floor();
+    final targetM = ((_selectedTripHour - targetH) * 60).round();
+    final targetTime = TimeOfDay(hour: targetH % 24, minute: targetM % 60);
 
-    final Color badgeColor = isFluid
-        ? const Color(0xFF10B981)
-        : isModerate
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFEA580C);
+    final targetDate = _isTripTomorrow
+        ? DateTime.now().add(const Duration(days: 1))
+        : DateTime.now();
 
-    final IconData icon = isFluid
-        ? Icons.check_circle_rounded
-        : isModerate
-            ? Icons.info_rounded
-            : Icons.warning_rounded;
+    provider.planTripWithAi(
+      title: 'Trajet vers $_selectedTripDestination',
+      originName: _selectedTripOrigin,
+      originPos: originPos,
+      destinationName: _selectedTripDestination,
+      destinationPos: destPos,
+      targetTime: targetTime,
+      date: targetDate,
+      isDepartureMode: true,
+      weather: 'auto',
+    );
 
-    final String title = isFluid
-        ? '🟢 CIRCULATION ACTUELLEMENT FLUIDE ($congestion%)'
-        : isModerate
-            ? '🟡 TRAFIC MODÉRÉ / RALENTISSEMENTS ($congestion%)'
-            : '🚨 GROS BOUCHONS / RÉSEAU SATURÉ ($congestion%)';
-
-    final String explanation = isFluid
-        ? 'Les grands axes et carrefours de ${provider.selectedCity} roulent bien en ce moment. Vous pouvez circuler librement.'
-        : isModerate
-            ? 'Ralentissements constatés sur plusieurs carrefours clés de ${provider.selectedCity}. Prévoyez 5 à 15 min supplémentaires ou empruntez les déviations.'
-            : 'Forte saturation constatée sur le réseau urbain de ${provider.selectedCity}. Pour éviter d\'être coincé, empruntez les axes secondaires recommandés ci-dessous.';
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13.5,
-                    letterSpacing: 0.3,
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF0F172A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Trajet vers $_selectedTripDestination planifié !',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
                   ),
-                ),
+                  Text(
+                    'Départ prévu à $_formattedDepartureTime • Rappel IA activé (15 min avant)',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            explanation,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12.5,
-              height: 1.4,
-              fontWeight: FontWeight.w500,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =========================================================================
-  // 4. ÉVOLUTION DU TRAFIC HEURE PAR HEURE
-  // =========================================================================
-  Widget _buildHourlyEvolutionSection(int currentHour) {
-    final forecastList = (_aiForecastData?['globalForecast'] as List<dynamic>?) ?? [];
-    final now = DateTime.now();
-
-    final displayHorizons = forecastList.isNotEmpty
-        ? forecastList.map((f) {
-            final int cong = (f['congestionPercentage'] as num?)?.round() ?? 40;
-            final isFluid = cong < 40;
-            final isMod = cong >= 40 && cong <= 75;
-            final offsetMin = (f['offsetMinutes'] as num?)?.toInt() ?? 60;
-
-            String timeLabel = f['time'] as String? ?? '';
-            if (timeLabel.isEmpty) {
-              final target = now.add(Duration(minutes: offsetMin));
-              timeLabel = '${target.hour}h${target.minute.toString().padLeft(2, '0')}';
-            }
-
-            return {
-              'time': timeLabel,
-              'horizon': f['horizon'] as String? ?? '+1h',
-              'congestion': cong,
-              'status': isFluid ? 'Fluide' : (isMod ? 'Modéré' : 'Bouché'),
-              'color': isFluid ? const Color(0xFF10B981) : (isMod ? const Color(0xFFF59E0B) : const Color(0xFFDC2626)),
-            };
-          }).toList()
-        : [
-            {'time': '${now.add(const Duration(minutes: 15)).hour}h${now.add(const Duration(minutes: 15)).minute.toString().padLeft(2, '0')}', 'horizon': '+15 min', 'congestion': 70, 'status': 'Modéré', 'color': const Color(0xFFF59E0B)},
-            {'time': '${now.add(const Duration(minutes: 30)).hour}h${now.add(const Duration(minutes: 30)).minute.toString().padLeft(2, '0')}', 'horizon': '+30 min', 'congestion': 74, 'status': 'Modéré', 'color': const Color(0xFFF59E0B)},
-            {'time': '${now.add(const Duration(hours: 1)).hour}h${now.add(const Duration(hours: 1)).minute.toString().padLeft(2, '0')}', 'horizon': '+1 heure', 'congestion': 84, 'status': 'Critique', 'color': const Color(0xFFDC2626)},
-            {'time': '${now.add(const Duration(hours: 2)).hour}h${now.add(const Duration(hours: 2)).minute.toString().padLeft(2, '0')}', 'horizon': '+2 heures', 'congestion': 89, 'status': 'Critique', 'color': const Color(0xFFDC2626)},
-          ];
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Évolution prévisionnelle du trafic',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.navy),
-              ),
-              Icon(Icons.timeline_rounded, color: Color(0xFF0284C7), size: 20),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: displayHorizons.take(4).map((h) {
-              final int cong = h['congestion'] as int;
-              final Color col = h['color'] as Color;
-              return Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-                  decoration: BoxDecoration(
-                    color: col.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: col.withValues(alpha: 0.3)),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        h['time'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppColors.navy),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        h['horizon'] as String,
-                        style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '$cong%',
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: col),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        h['status'] as String,
-                        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: col),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =========================================================================
-  // 5. CARREFOURS SOUS SURVEILLANCE
-  // =========================================================================
-  Widget _buildMonitoredNodesSection(CityFlowProvider provider, bool isYaounde) {
-    final nodes = provider.currentNodes;
-    if (nodes.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Carrefours clés sous surveillance',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.navy),
+          ],
         ),
-        const SizedBox(height: 10),
-        ...nodes.take(5).map((node) {
-          final isFluid = node.congestionLevel < 40;
-          final isMod = node.congestionLevel >= 40 && node.congestionLevel <= 75;
-          final col = isFluid ? const Color(0xFF10B981) : (isMod ? const Color(0xFFF59E0B) : const Color(0xFFDC2626));
+      ),
+    );
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
+    setState(() {});
+  }
+
+  Widget _buildPredictionAlertCard(String? alertMessage, double confidence, List<String> causes) {
+    final isWarning = alertMessage != null && alertMessage.isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isWarning ? const Color(0xFFFEF3C7).withValues(alpha: 0.6) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isWarning ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              color: isWarning ? const Color(0xFFF59E0B).withValues(alpha: 0.15) : const Color(0xFF10B981).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
-            child: Row(
+            child: Icon(
+              isWarning ? Icons.warning_amber_rounded : Icons.verified_user_rounded,
+              size: 18,
+              color: isWarning ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(color: col, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(node.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: AppColors.navy)),
-                      Text(
-                        'Vitesse moy : ${node.averageSpeedKmh.round()} km/h • Retard : +${node.estimatedDelayMinutes} min',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                      ),
-                    ],
+                Text(
+                  isWarning ? alertMessage : 'Aucun bouchon critique prévu',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: isWarning ? const Color(0xFF92400E) : const Color(0xFF166534),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: col.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                if (!isWarning)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Text(
+                      'La circulation devrait rester fluide sur les 2 prochaines heures.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF15803D), fontWeight: FontWeight.w600),
+                    ),
                   ),
+                if (isWarning && causes.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: causes.map((c) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFDE68A),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                c.contains('pluie') || c.contains('orage')
+                                    ? '🌧️'
+                                    : (c.contains('cours') || c.contains('amphi'))
+                                        ? '🎓'
+                                        : (c.contains('marché'))
+                                            ? '🛒'
+                                            : (c.contains('travaux'))
+                                                ? '🚧'
+                                                : (c.contains('cortège') || c.contains('deuil'))
+                                                    ? '⚰️'
+                                                    : (c.contains('évènement'))
+                                                        ? '📅'
+                                                        : '🕒',
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                c,
+                                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF92400E)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    '${node.congestionLevel}%',
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: col),
+                    'Fiabilité estimée du modèle IA : ${(confidence * 100).round()}%',
+                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                   ),
                 ),
               ],
             ),
-          );
-        }),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
-  // =========================================================================
-  // 6. ZONES À ÉVITER & CONTOURNEMENTS
-  // =========================================================================
-  Widget _buildTroubleSpotsAndDetoursSection(CityFlowProvider provider, bool isYaounde) {
-    final spots = isYaounde
-        ? [
-            {
-              'name': 'Carrefour CRADAT & Sortie Université',
-              'issue': 'Affluence massive sortie d\'amphis & stationnement de taxis',
-              'detour': 'Passer par le haut de Ngoa-Ekellé ou par Bastos / Dragages',
-              'timeSaved': '~25 min',
-            },
-            {
-              'name': 'Carrefour Nlongkak (Axe principal)',
-              'issue': 'Gros nœud de circulation & risque d\'inondation au bas-fond',
-              'detour': 'Contourner par le Boulevard de l\'URSS / Bastos',
-              'timeSaved': '~20 min',
-            },
-          ]
-        : [
-            {
-              'name': 'Carrefour Ndokoti (Total)',
-              'issue': 'Engorgement dense, motos-taxis & chaussée inondable',
-              'detour': 'Passer par la Cité des Palmiers ou Logbaba',
-              'timeSaved': '~30 min',
-            },
-            {
-              'name': 'Rond-point Deido (Accès Pont Wouri)',
-              'issue': 'Goulot d\'étranglement vers Bonabéri',
-              'detour': 'Emprunter le Boulevard de la République',
-              'timeSaved': '~25 min',
-            },
-          ];
+  Widget _buildTimeShortcutChip(String label, Duration offset, {bool isTomorrow = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: () => _setRelativeDepartureTime(offset, isTomorrow: isTomorrow),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFBAE6FD)),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0284C7),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduledTripsSection(CityFlowProvider provider) {
+    final scheduledTrips = provider.currentCityScheduledTrips;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Zones critiques & Déviations recommandées',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.navy),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Trajets Planifiés (${scheduledTrips.length})',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+                color: AppColors.navy,
+              ),
+            ),
+            Text(
+              'Heure locale',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
-        ...spots.map((spot) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
+        if (scheduledTrips.isEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.fmd_bad_rounded, color: Color(0xFFDC2626), size: 16),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        spot['name']!,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5, color: Color(0xFF991B1B)),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: const Color(0xFFDC2626).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                      child: const Text('À ÉVITER', style: TextStyle(color: Color(0xFFDC2626), fontSize: 10, fontWeight: FontWeight.w900)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  spot['issue']!,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFBBF7D0)),
+            child: const Center(
+              child: Column(
+                children: [
+                  Icon(Icons.event_available_rounded, size: 36, color: Color(0xFF94A3B8)),
+                  SizedBox(height: 8),
+                  Text(
+                    'Aucun trajet planifié pour le moment.',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
                   ),
-                  child: Row(
+                  SizedBox(height: 2),
+                  Text(
+                    'Cliquez sur "Confirmer & Planifier" ci-dessus pour activer un rappel intelligent.',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...scheduledTrips.map((trip) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.alt_route_rounded, color: Color(0xFF16A34A), size: 16),
-                      const SizedBox(width: 6),
                       Expanded(
-                        child: Text(
-                          '💡 ${spot['detour']!}',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF166534), fontWeight: FontWeight.w700),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0284C7).withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.event_note_rounded, color: Color(0xFF0284C7), size: 16),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                trip.title.isNotEmpty ? trip.title : trip.destinationName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13.5,
+                                  color: AppColors.navy,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                        tooltip: 'Supprimer ce trajet',
+                        onPressed: () {
+                          provider.removeScheduledTrip(trip.id);
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF64748B)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Départ : ${trip.formattedDepartureTime}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: trip.statusColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            trip.roadStatusLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: trip.statusColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          );
-        }),
+                  const SizedBox(height: 12),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        final destName = trip.destinationName.isNotEmpty ? trip.destinationName : trip.title;
+                        final origName = trip.originName.isNotEmpty ? trip.originName : 'Ma position (GPS)';
+                        provider.triggerRouteOverview(
+                          originName: origName,
+                          destinationName: destName,
+                        );
+                        provider.fetchSmartRoutes(
+                          origin: trip.originPos,
+                          destination: trip.destinationPos,
+                          originName: origName,
+                          destinationName: destName,
+                          showOverview: true,
+                        );
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+                        widget.onNavigateTab?.call(0);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.directions_rounded, size: 16, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Voir l\'itinéraire',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
       ],
     );
-  }}
+  }
+}

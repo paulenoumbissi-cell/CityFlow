@@ -380,9 +380,15 @@ class SavedPlacesScreen extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.directions_rounded, color: Color(0xFF006666), size: 24),
                       onPressed: () {
+                        provider.triggerRouteOverview(
+                          originName: 'Ma position (GPS)',
+                          destinationName: place.title,
+                        );
                         provider.fetchSmartRoutes(
                           origin: provider.userRealPosition ?? provider.currentCityCenter,
                           destination: place.position,
+                          destinationName: place.title,
+                          showOverview: true,
                         );
                         provider.addToTripHistory(
                           title: place.title,

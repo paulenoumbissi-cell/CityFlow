@@ -49,6 +49,9 @@ class CityFlowProvider extends ChangeNotifier {
   String _activeTravelMode = 'car';
   bool _isSmartRouteLoading = false;
   bool _isGpsNavigating = false;
+  bool _shouldShowRouteOverview = false;
+  String? _targetDestinationName;
+  String? _targetOriginName;
   int _navStepIndex = 0;
   int _navCoordinateIndex = 0;
   LatLng? _navUserPosition;
@@ -56,6 +59,21 @@ class CityFlowProvider extends ChangeNotifier {
   double _navSpeedKmh = 38.0;
   bool _navCompleted = false;
   StreamSubscription? _gpsStreamSub;
+
+  bool get shouldShowRouteOverview => _shouldShowRouteOverview;
+  String? get targetDestinationName => _targetDestinationName;
+  String? get targetOriginName => _targetOriginName;
+
+  void triggerRouteOverview({String? originName, String? destinationName}) {
+    _shouldShowRouteOverview = true;
+    if (destinationName != null) _targetDestinationName = destinationName;
+    if (originName != null) _targetOriginName = originName;
+    if (!_isDisposed) notifyListeners();
+  }
+
+  void clearRouteOverviewTrigger() {
+    _shouldShowRouteOverview = false;
+  }
 
   // Vocal Guidance & Simulation
   final FlutterTts _flutterTts = FlutterTts();
@@ -71,6 +89,17 @@ class CityFlowProvider extends ChangeNotifier {
   bool _hasDetourAlert = false;
   String? _detourReason;
   int? _detourTimeSavedMinutes;
+
+  // Détection Hors-Itinéraire & Recalcul Dynamique en Temps Réel
+  bool _isOffRoute = false;
+  double _distanceToRouteMeters = 0.0;
+  List<SmartRoute> _offRouteAlternatives = [];
+  bool _isRecalculatingOffRoute = false;
+  bool _autoRerouteEnabled = true;
+  DateTime? _lastOffRouteSpokenTime;
+  DateTime? _lastOffRouteRecalcTime;
+  LatLng? _lastOffRouteRecalcPos;
+  int _offRouteConsecutiveDetections = 0;
 
   TrafficNode? _selectedNode;
   PriorityRoute? _activePriorityRoute;
@@ -246,7 +275,6 @@ class CityFlowProvider extends ChangeNotifier {
     _detourTimeSavedMinutes = null;
     notifyListeners();
   }
-
   void acceptDetourRoute() {
     if (_smartRoutes.length > 1) {
       final alt = _smartRoutes.firstWhere(
@@ -261,6 +289,95 @@ class CityFlowProvider extends ChangeNotifier {
       }
     }
     dismissDetourAlert();
+  }
+
+  // Off-Route (Hors itinéraire) Getters & Handlers
+  bool get isOffRoute => _isOffRoute;
+  double get distanceToRouteMeters => _distanceToRouteMeters;
+  List<SmartRoute> get offRouteAlternatives => _offRouteAlternatives;
+  bool get isRecalculatingOffRoute => _isRecalculatingOffRoute;
+  bool get autoRerouteEnabled => _autoRerouteEnabled;
+
+  void toggleAutoReroute([bool? enable]) {
+    _autoRerouteEnabled = enable ?? !_autoRerouteEnabled;
+    notifyListeners();
+  }
+
+  void dismissOffRouteAlert() {
+    _isOffRoute = false;
+    _offRouteAlternatives.clear();
+    _offRouteConsecutiveDetections = 0;
+    notifyListeners();
+  }
+
+  Future<void> recalculateOffRouteRoutes({LatLng? fromPosition, bool force = false}) async {
+    if (_selectedSmartRoute == null || _selectedSmartRoute!.coordinates.isEmpty) return;
+    if (_isRecalculatingOffRoute && !force) return;
+
+    final origin = fromPosition ?? _userRealPosition ?? _navUserPosition ?? currentCityCenter;
+    final destination = _selectedSmartRoute!.coordinates.last;
+
+    _isRecalculatingOffRoute = true;
+    _lastOffRouteRecalcTime = DateTime.now();
+    _lastOffRouteRecalcPos = origin;
+    notifyListeners();
+
+    try {
+      final res = await CityFlowMobileApiService.calculateSmartRoutes(
+        city: _selectedCity,
+        origin: origin,
+        destination: destination,
+      );
+
+      if (!_isDisposed && res['routes'] != null) {
+        final List<SmartRoute> routes = (res['routes'] as List<SmartRoute>)
+            .where((r) => r.coordinates.isNotEmpty)
+            .toList();
+
+        if (routes.isNotEmpty) {
+          _offRouteAlternatives = routes;
+        }
+      }
+    } catch (e) {
+      debugPrint('Off-route recalculation error: $e');
+    } finally {
+      if (!_isDisposed) {
+        _isRecalculatingOffRoute = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void acceptAlternativeRoute(SmartRoute route) {
+    _selectedSmartRoute = route;
+    if (!_smartRoutes.any((r) => r.id == route.id)) {
+      _smartRoutes = [route, ..._smartRoutes];
+    }
+    _isOffRoute = false;
+    _offRouteAlternatives.clear();
+    _offRouteConsecutiveDetections = 0;
+    _distanceToRouteMeters = 0.0;
+    _navCoordinateIndex = 0;
+    _navStepIndex = 0;
+    if (route.coordinates.isNotEmpty) {
+      _navUserPosition = route.coordinates.first;
+    }
+
+    if (route.steps.isNotEmpty) {
+      final firstStep = route.steps.first;
+      speakInstruction('Nouvel itinéraire appliqué. ${firstStep.spokenText.isNotEmpty ? firstStep.spokenText : firstStep.instruction}');
+    } else {
+      speakInstruction('Nouvel itinéraire calculé avec succès.');
+    }
+    notifyListeners();
+  }
+
+  void simulateOffRouteDeviation() {
+    if (!_isGpsNavigating || _selectedSmartRoute == null || _selectedSmartRoute!.coordinates.isEmpty) return;
+    final currentPos = _navUserPosition ?? _selectedSmartRoute!.coordinates.first;
+    // Décaler artificiellement de ~120 mètres
+    final deviatedPos = LatLng(currentPos.latitude + 0.0011, currentPos.longitude - 0.0012);
+    updateRealGpsPosition(deviatedPos, speedKmh: 32.0);
   }
 
   // WebSocket Status Getters
@@ -643,13 +760,24 @@ class CityFlowProvider extends ChangeNotifier {
   }
 
   // --- ACTIONS ITINÉRAIRES MULTI-CRITÈRES, SEGMENTS YANGO & GUIDAGE VOCAL ---
-  Future<void> fetchSmartRoutes({dynamic origin, dynamic destination}) async {
+  Future<void> fetchSmartRoutes({
+    dynamic origin,
+    dynamic destination,
+    String? originName,
+    String? destinationName,
+    bool showOverview = false,
+  }) async {
     _isSmartRouteLoading = true;
     _isGpsNavigating = false;
     _isNavAutoSimulating = false;
     _navAutoSimTimer?.cancel();
     _navStepIndex = 0;
     _navCompleted = false;
+    if (showOverview) {
+      _shouldShowRouteOverview = true;
+      if (destinationName != null) _targetDestinationName = destinationName;
+      if (originName != null) _targetOriginName = originName;
+    }
     if (!_isDisposed) notifyListeners();
 
     // 1. Déterminer le point de départ : priorité absolue à la position GPS réelle
@@ -888,20 +1016,59 @@ class CityFlowProvider extends ChangeNotifier {
         closestIdx = i;
       }
     }
-    _navCoordinateIndex = closestIdx;
+    _distanceToRouteMeters = minDistance;
 
     // Vérification de l'arrivée à destination (< 30 mètres)
     final destPos = coords.last;
     final distToDest = const Distance().as(LengthUnit.Meter, newPos, destPos);
     if (distToDest <= 30.0 && !_navCompleted) {
       _navCompleted = true;
+      _isOffRoute = false;
+      _offRouteAlternatives.clear();
+      _offRouteConsecutiveDetections = 0;
       speakInstruction('Vous êtes arrivé à votre destination. Merci d\'avoir utilisé CityFlow.');
       notifyListeners();
       return;
     }
 
+    // Gestion intelligente de la détection Hors-Itinéraire (> 55 mètres)
+    if (minDistance > 55.0 && distToDest > 50.0) {
+      _offRouteConsecutiveDetections++;
+      if (_offRouteConsecutiveDetections >= 2 || minDistance > 80.0) {
+        _isOffRoute = true;
+
+        // Rappel vocal régulier avec cooldown de sécurité (14s)
+        final now = DateTime.now();
+        if (_lastOffRouteSpokenTime == null || now.difference(_lastOffRouteSpokenTime!).inSeconds >= 14) {
+          _lastOffRouteSpokenTime = now;
+          speakInstruction('Attention, vous avez quitté l\'itinéraire prévu. Recherche de nouveaux itinéraires depuis votre position.');
+        }
+
+        // Recalcul automatique et dynamique au fur et à mesure que le conducteur roule
+        final shouldRecalc = _lastOffRouteRecalcPos == null ||
+            _lastOffRouteRecalcTime == null ||
+            const Distance().as(LengthUnit.Meter, newPos, _lastOffRouteRecalcPos!) >= 25.0 ||
+            now.difference(_lastOffRouteRecalcTime!).inSeconds >= 6;
+
+        if (shouldRecalc && !_isRecalculatingOffRoute) {
+          recalculateOffRouteRoutes(fromPosition: newPos);
+        }
+      }
+    } else if (minDistance <= 30.0) {
+      // Retour sur la trajectoire nominale
+      _offRouteConsecutiveDetections = 0;
+      if (_isOffRoute) {
+        _isOffRoute = false;
+        _offRouteAlternatives.clear();
+        speakInstruction('Vous êtes de retour sur l\'itinéraire.');
+      }
+      _navCoordinateIndex = closestIdx;
+    } else {
+      _navCoordinateIndex = closestIdx;
+    }
+
     // Progression des étapes au fur et à mesure que le conducteur roule
-    if (steps.isNotEmpty && _navStepIndex < steps.length - 1) {
+    if (!_isOffRoute && steps.isNotEmpty && _navStepIndex < steps.length - 1) {
       int targetIdx = _navStepIndex;
       if (targetIdx == 0 && steps.length > 1) {
         targetIdx = 1;
@@ -975,6 +1142,11 @@ class CityFlowProvider extends ChangeNotifier {
     _navStepIndex = 0;
     _navCoordinateIndex = 0;
     _navCompleted = false;
+    _isOffRoute = false;
+    _offRouteAlternatives.clear();
+    _offRouteConsecutiveDetections = 0;
+    _distanceToRouteMeters = 0.0;
+    _isRecalculatingOffRoute = false;
     try {
       _flutterTts.stop();
     } catch (_) {}
@@ -1429,68 +1601,197 @@ class CityFlowProvider extends ChangeNotifier {
     required LatLng originPos,
     required String destinationName,
     required LatLng destinationPos,
-    required TimeOfDay targetArrivalTime,
+    TimeOfDay? targetTime,
+    TimeOfDay? targetArrivalTime,
     required DateTime date,
-    String weather = 'dry',
+    bool isDepartureMode = false,
+    String weather = 'auto',
     List<String>? activeEvents,
   }) {
-    // Calcul distance approximative
+    final effectiveTime = targetTime ?? targetArrivalTime ?? const TimeOfDay(hour: 8, minute: 30);
+
+    // 1. Calcul distance et durée nominale
     final dLat = (destinationPos.latitude - originPos.latitude).abs() * 111.0;
     final dLng = (destinationPos.longitude - originPos.longitude).abs() * 111.0;
     final distKm = sqrt(dLat * dLat + dLng * dLng);
+    final nominalDuration = max(10, (distKm * 2.6).round());
 
-    // Analyse IA de la congestion selon l'heure cible et le jour
-    final hour = targetArrivalTime.hour;
-    final weekday = date.weekday; // 1 = Lundi, 5 = Vendredi, 6 = Samedi
-    final isMorningPeak = hour >= 7 && hour <= 9;
-    final isEveningPeak = hour >= 16 && hour <= 20;
-    final isFridayFuneralPeak = (weekday == DateTime.friday && (hour >= 11 && hour <= 19)) || (weekday == DateTime.saturday && (hour >= 7 && hour <= 13));
+    // 2. Analyse temporelle (Heure & Jour)
+    final hour = effectiveTime.hour;
+    final minute = effectiveTime.minute;
+    final hDouble = hour + (minute / 60.0);
+    final weekday = date.weekday; // 1 = Lundi, 5 = Vendredi, 6 = Samedi, 7 = Dimanche
 
-    int baseDuration = max(10, (distKm * 2.8).round());
+    final isMorningPeak = hDouble >= 6.75 && hDouble <= 9.25;
+    final isMiddayPeak = hDouble >= 11.75 && hDouble <= 14.0;
+    final isEveningPeak = hDouble >= 15.75 && hDouble <= 19.5;
+    final isNight = hDouble >= 22.0 || hDouble < 5.5;
+    final isFridayFuneralPeak = (weekday == DateTime.friday && (hDouble >= 11.5 && hDouble <= 19.0)) ||
+        (weekday == DateTime.saturday && (hDouble >= 7.0 && hDouble <= 13.5));
+
+    // 3. Détection des carrefours et points chauds traversés
+    final fullPath = '${originName.toLowerCase()} ${destinationName.toLowerCase()}';
+    final isDestCradat = fullPath.contains('cradat') || fullPath.contains('ngoa') || fullPath.contains('chuy');
+    final isDestMokolo = fullPath.contains('mokolo') || fullPath.contains('mboppi') || fullPath.contains('marche');
+    final isDestNlongkak = fullPath.contains('nlongkak') || fullPath.contains('bastos') || fullPath.contains('omnisport');
+    final isDestNdokoti = fullPath.contains('ndokoti') || fullPath.contains('bassa') || fullPath.contains('village');
+    final isDestDeido = fullPath.contains('deido') || fullPath.contains('bonaberi') || fullPath.contains('wouri');
+    final isDestPosteCentrale = fullPath.contains('poste') || fullPath.contains('centrale') || fullPath.contains('akwa') || fullPath.contains('bonanjo');
+
+    int congestionPct = 25;
     int bufferMinutes = isMorningPeak ? 20 : (isEveningPeak ? 25 : 8);
     final factors = <String>[];
+    final warnings = <String>[];
 
-    if (isMorningPeak) {
-      baseDuration = (baseDuration * 1.45).round();
-      factors.add('🎒 Heure de pointe matinale (+20 min)');
-    } else if (isEveningPeak) {
-      baseDuration = (baseDuration * 1.6).round();
-      factors.add('🏢 Sorties de bureaux vespérales (+25 min)');
+    // Impact heure
+    if (isEveningPeak) {
+      congestionPct += 42;
+      factors.add('🏢 Pic vespéral & sorties bureaux (+25 min)');
+      warnings.add('Forte affluence à $hour h : saturation progressive des grands axes sortants.');
+    } else if (isMorningPeak) {
+      congestionPct += 38;
+      factors.add('🎒 Pic matinal (écoles & administrations) (+20 min)');
+      warnings.add('Trafic scolaire et pendulaire dense vers les centres-villes.');
+    } else if (isMiddayPeak) {
+      congestionPct += 18;
+      bufferMinutes += 4;
+      factors.add('🍽️ Déplacements de mi-journée (+12 min)');
+    } else if (isNight) {
+      congestionPct = max(10, congestionPct - 15);
+      bufferMinutes = max(0, bufferMinutes - 4);
+      factors.add('🌙 Trafic nocturne fluide');
     }
 
+    // Impact carrefours spécifiques
+    if (isDestCradat) {
+      congestionPct += (isEveningPeak ? 26 : 14);
+      factors.add('🎓 Goulet d\'étranglement Carrefour CRADAT');
+      warnings.add('Carrefour CRADAT : forte concentration de taxis et flux étudiants.');
+    }
+    if (isDestMokolo) {
+      congestionPct += 24;
+      factors.add('🛒 Affluence Marché Mokolo / Mboppi');
+      warnings.add('Zone commerciale dense : stationnements anarchiques et ralentissements.');
+    }
+    if (isDestNdokoti) {
+      congestionPct += 28;
+      factors.add('🚛 Rond-point Ndokoti (Motos & Poids-lourds)');
+      warnings.add('Rond-point Ndokoti : nœud critique de congestion grumiers / motos.');
+    }
+    if (isDestNlongkak) {
+      congestionPct += 18;
+      factors.add('🚦 Carrefour Nlongkak');
+    }
+    if (isDestDeido) {
+      congestionPct += 20;
+      factors.add('🌉 Carrefour Deido / Accès Pont');
+    }
+    if (isDestPosteCentrale) {
+      congestionPct += 15;
+      factors.add('🏛️ Cœur urbain & Poste Centrale');
+    }
+
+    // Impact météo
     if (weather == 'heavy_rain' || weather == 'flood') {
-      baseDuration = (baseDuration * 1.5).round();
-      bufferMinutes += 15;
-      factors.add('🌧️ Pluie tropicale / Inondation (+15 min)');
+      congestionPct += 30;
+      bufferMinutes += 16;
+      factors.add('🌧️ Pluie torrentielle / Risque inondation bas-fonds (+16 min)');
+      warnings.add('Alerte Météo : fortes pluies, chaussée inondée et visibilité très réduite.');
     } else if (weather == 'light_rain') {
-      baseDuration = (baseDuration * 1.2).round();
+      congestionPct += 14;
       bufferMinutes += 6;
       factors.add('🌦️ Chaussée glissante (+6 min)');
+      warnings.add('Averse modérée : ralentissement réflexe de sécurité.');
     }
 
+    // Événements actifs
     if (activeEvents != null && (activeEvents.contains('funeral_cortege') || isFridayFuneralPeak)) {
-      bufferMinutes += 14;
-      factors.add('⚰️ Cortèges de deuil & levées de corps (+14 min)');
+      congestionPct += 18;
+      bufferMinutes += 12;
+      factors.add('⚰️ Cortèges de deuil & levées de corps (+12 min)');
+      warnings.add('Ralentissements dus aux cortèges et bâches de deuil sur la chaussée.');
+    }
+    if (activeEvents != null && activeEvents.contains('police_checkpoint')) {
+      congestionPct += 12;
+      bufferMinutes += 6;
+      factors.add('👮 Contrôle Police & régulation (+6 min)');
+      warnings.add('Régulation manuelle et contrôles visibles signalés sur l\'axe.');
+    }
+    if (activeEvents != null && activeEvents.contains('roadworks')) {
+      congestionPct += 16;
+      bufferMinutes += 8;
+      factors.add('🚧 Travaux de voirie (+8 min)');
+      warnings.add('Chantier / voie rétrécie en cours sur l\'axe.');
     }
 
-    if (activeEvents != null && activeEvents.contains('market_day')) {
-      bufferMinutes += 12;
-      factors.add('🛒 Affluence grands marchés (+12 min)');
+    final delayMinutes = bufferMinutes;
+
+    // Calcul du statut de la route
+    congestionPct = min(98, max(12, congestionPct));
+    String roadStatus = 'FLUID';
+    String roadStatusLabel = 'Voie fluide et dégagée';
+    int speedKmh = 48;
+
+    if (congestionPct >= 80) {
+      roadStatus = 'BLOCKED_OR_JAMMED';
+      roadStatusLabel = 'Route saturée / Risque d\'axe bloqué';
+      speedKmh = 12;
+    } else if (congestionPct >= 60) {
+      roadStatus = 'HEAVY_CONGESTION';
+      roadStatusLabel = 'Forts ralentissements & engorgement';
+      speedKmh = 18;
+    } else if (congestionPct >= 35) {
+      roadStatus = 'MODERATE';
+      roadStatusLabel = 'Circulation modérée / Ralentissements';
+      speedKmh = 28;
+    }
+
+    // Conseil de déviation personnalisé
+    String? detourAdvice;
+    if (isDestCradat && congestionPct >= 60) {
+      detourAdvice = 'Déviation conseillée : Passer par Ngoa-Ekellé (Haut Plateau / CHU) ou Bastos pour éviter l\'entonnoir du Carrefour CRADAT.';
+    } else if (isDestMokolo && congestionPct >= 60) {
+      detourAdvice = 'Déviation conseillée : Emprunter le Boulevard Jean-Paul II ou le délestage par Madagascar.';
+    } else if (isDestNdokoti && congestionPct >= 60) {
+      detourAdvice = 'Déviation conseillée : Contourner par Bassa Zone Industrielle ou la pénétrante Est.';
+    } else if (isDestDeido && congestionPct >= 60) {
+      detourAdvice = 'Déviation conseillée : Emprunter le Boulevard de la République en amont.';
+    } else if (isDestNlongkak && congestionPct >= 60) {
+      detourAdvice = 'Déviation conseillée : Passer par Dragages / Bastos pour rejoindre le centre.';
+    }
+
+    final totalDurationMinutes = nominalDuration + delayMinutes;
+
+    // Calcul dates départ et arrivée selon isDepartureMode
+    DateTime departureDateTime;
+    DateTime arrivalDateTime;
+    TimeOfDay targetArrivalTimeFinal;
+
+    if (isDepartureMode) {
+      departureDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        effectiveTime.hour,
+        effectiveTime.minute,
+      );
+      arrivalDateTime = departureDateTime.add(Duration(minutes: totalDurationMinutes));
+      targetArrivalTimeFinal = TimeOfDay(hour: arrivalDateTime.hour, minute: arrivalDateTime.minute);
+    } else {
+      arrivalDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        effectiveTime.hour,
+        effectiveTime.minute,
+      );
+      departureDateTime = arrivalDateTime.subtract(Duration(minutes: totalDurationMinutes));
+      targetArrivalTimeFinal = effectiveTime;
     }
 
     String reasoning = factors.isEmpty
-        ? 'Trafic nominal fluide. Marge de sécurité de routine (+8 min).'
-        : 'Prise en compte IA : ${factors.join(" • ")} (Marge totale : +$bufferMinutes min).';
-
-    final totalLeadMinutes = baseDuration + bufferMinutes;
-    final arrivalDateTime = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      targetArrivalTime.hour,
-      targetArrivalTime.minute,
-    );
-    final recommendedDeparture = arrivalDateTime.subtract(Duration(minutes: totalLeadMinutes));
+        ? 'Trafic nominal fluide. Conditions de circulation idéales.'
+        : '${factors.join(" • ")} (Retard estimé : +$delayMinutes min).';
 
     final newTrip = ScheduledTrip(
       id: 'st_${DateTime.now().millisecondsSinceEpoch}',
@@ -1499,14 +1800,23 @@ class CityFlowProvider extends ChangeNotifier {
       originPos: originPos,
       destinationName: destinationName,
       destinationPos: destinationPos,
-      targetArrivalTime: targetArrivalTime,
+      targetArrivalTime: targetArrivalTimeFinal,
       scheduledDate: date,
-      recommendedDepartureTime: recommendedDeparture,
-      estimatedDurationMinutes: baseDuration,
-      trafficBufferMinutes: bufferMinutes,
+      recommendedDepartureTime: departureDateTime,
+      estimatedDurationMinutes: totalDurationMinutes,
+      trafficBufferMinutes: delayMinutes,
       isReminderActive: true,
       city: _selectedCity,
       aiReasoning: reasoning,
+      roadStatus: roadStatus,
+      roadStatusLabel: roadStatusLabel,
+      congestionPercentage: congestionPct,
+      averageSpeedKmh: speedKmh,
+      nominalDurationMinutes: nominalDuration,
+      delayMinutes: delayMinutes,
+      detourAdvice: detourAdvice,
+      warnings: warnings,
+      isDepartureMode: isDepartureMode,
     );
 
     _scheduledTrips.insert(0, newTrip);

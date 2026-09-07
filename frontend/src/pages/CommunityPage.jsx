@@ -446,11 +446,21 @@ export default function CommunityPage() {
           ) : filteredReports.length === 0 ? (
             <div className="empty-reports-card">
               <ShieldCheck size={48} color="#2563EB" />
-              <h3>Voies fluides ! Aucun incident actif</h3>
-              <p>Soyez le premier à avertir les autres conducteurs en cas de ralentissement.</p>
-              <button className="btn-empty-action" onClick={() => setShowModal(true)}>
-                <PlusCircle size={16} /> Signaler un aléa
-              </button>
+              <h3>{filterCategory !== "all" ? "Aucun incident pour cette catégorie" : "Voies fluides ! Aucun incident actif"}</h3>
+              <p>
+                {filterCategory !== "all"
+                  ? "Aucun incident ne correspond à ce filtre actuellement."
+                  : "Soyez le premier à avertir les autres conducteurs en cas de ralentissement."}
+              </p>
+              {filterCategory !== "all" ? (
+                <button className="btn-empty-action" onClick={() => setFilterCategory("all")}>
+                  <RotateCcw size={16} /> Réinitialiser les filtres
+                </button>
+              ) : (
+                <button className="btn-empty-action" onClick={() => setShowModal(true)}>
+                  <PlusCircle size={16} /> Signaler un aléa
+                </button>
+              )}
             </div>
           ) : (
             <div className="reports-grid">

@@ -168,6 +168,49 @@ const getDayOfWeekFactor = (dayIndex) => {
   }
 };
 
+export const LEVEL_THRESHOLDS = [
+  { threshold: 3.0, level: "fluide" },
+  { threshold: 5.5, level: "ralenti" },
+  { threshold: 7.5, level: "embouteillage" },
+  { threshold: 10.01, level: "bloque" },
+];
+
+export const scoreToLevel = (score) => {
+  for (const item of LEVEL_THRESHOLDS) {
+    if (score < item.threshold) {
+      return item.level;
+    }
+  }
+  return "bloque";
+};
+
+export const buildAlertMessage = (roadName, timeline) => {
+  const peak = timeline.peak;
+  if (!peak || (peak.level !== "embouteillage" && peak.level !== "bloque")) {
+    return null;
+  }
+  const nature = peak.level === "bloque" ? "un blocage important" : "un fort ralentissement";
+  
+  let horizonStr = `dans ${peak.horizon_minutes} min`;
+  if (peak.horizon_minutes === 0) {
+    horizonStr = "dès maintenant";
+  } else if (peak.horizon_minutes === 60) {
+    horizonStr = "dans 1h";
+  } else if (peak.horizon_minutes === 90) {
+    horizonStr = "dans 1h30";
+  } else if (peak.horizon_minutes === 120) {
+    horizonStr = "dans 2h";
+  } else if (peak.horizon_minutes >= 60 && peak.horizon_minutes % 60 === 0) {
+    horizonStr = `dans ${peak.horizon_minutes / 60}h`;
+  }
+
+  let message = `Il y aura ${nature} à ${roadName} ${horizonStr}`;
+  if (timeline.causes && timeline.causes.length > 0) {
+    message += " à cause de " + timeline.causes.join(" et ");
+  }
+  return message + ".";
+};
+
 export class AiTrafficEngine {
   /**
    * Calcul complet des prévisions multi-critères avec météo en direct automatique
@@ -372,12 +415,36 @@ export class AiTrafficEngine {
     const isDouala = city.toLowerCase().includes("douala");
     const allNodes = isDouala ? DOUALA_NODES : YAOUNDE_NODES;
 
-    const normalizedHour = Math.floor(departureHour) % 24;
-    const dateObj = new Date(departureDate);
-    const dayOfWeek = isNaN(dateObj.getDay()) ? new Date().getDay() : dateObj.getDay();
+    const now = new Date();
+    let dateObj = departureDate ? new Date(departureDate) : new Date();
+    if (isNaN(dateObj.getTime())) dateObj = new Date();
 
-    // 1. Météo exacte prévue à cette heure précise par Open-Meteo
-    const targetWeather = await getForecastForHour(city, normalizedHour);
+    const normalizedHour = Math.floor(departureHour) % 24;
+    const normalizedMinute = Math.round((departureHour % 1) * 60);
+
+    // Règle d'or : Toute prédiction doit être dans le futur (temps minimum = temps actuel).
+    // Si l'utilisateur choisit pour aujourd'hui une heure déjà écoulée, on bascule automatiquement sur demain.
+    const isToday = dateObj.toDateString() === now.toDateString();
+    let isPastTimeToday = false;
+    let isTomorrow = false;
+
+    if (isToday) {
+      const targetTimeMinutes = normalizedHour * 60 + normalizedMinute;
+      const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+      if (targetTimeMinutes < currentTimeMinutes) {
+        isPastTimeToday = true;
+        dateObj = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        isTomorrow = true;
+      }
+    } else if (dateObj > now) {
+      isTomorrow = dateObj.getDate() !== now.getDate();
+    }
+
+    const dayOfWeek = dateObj.getDay();
+    const formattedTime = `${normalizedHour.toString().padStart(2, "0")}h${normalizedMinute.toString().padStart(2, "0")}`;
+
+    // 1. Météo exacte prévue à cette heure précise par Open-Meteo pour la bonne date
+    const targetWeather = await getForecastForHour(city, normalizedHour, dateObj.toISOString());
 
     // 2. Recherche du nœud d'arrivée et de départ
     const findMatchingNode = (query) => {
@@ -513,12 +580,71 @@ export class AiTrafficEngine {
     const optimalDepartureHour = normalizedHour > 17 ? normalizedHour + 1.5 : normalizedHour - 0.75;
     const optimalHourText = `${Math.floor(optimalDepartureHour)}h${Math.round((optimalDepartureHour % 1) * 60).toString().padStart(2, "0")}`;
 
+    // Timeline multi-horizons (15/30/45/60/90/120 min)
+    const horizonsMin = [15, 30, 45, 60, 90, 120];
+    const isPeakHour = (normalizedHour >= 7 && normalizedHour <= 9) || (normalizedHour >= 16.5 && normalizedHour <= 19.5);
+    const rainAmount = targetWeather.rainMm || 0.0;
+    const hasEventOnRoute = matchedEvents.length > 0;
+    const isRoadDegraded = destNode.id.includes("mvan") || destNode.id.includes("mokolo") || destNode.id.includes("ndokoti") || destNode.id.includes("marche");
+
+    const timelinePoints = horizonsMin.map((h) => {
+      const hTarget = normalizedHour + (h / 60.0);
+      const hFactor = getHourlyBaseFactor(hTarget % 24);
+      const currentHFactor = getHourlyBaseFactor(normalizedHour % 24);
+
+      // Détection dynamique d'événements à cet horizon futur
+      const autoEventsAtH = this.autoDetectContextualEvents(hTarget % 24, dayOfWeek, targetWeather);
+      const matchedAtH = autoEventsAtH.filter((ev) => {
+        if (isDestCradat && (ev.id === "university_cradat_rush" || ev.id === "flash_flood_vulnerable")) return true;
+        if (isDestMokolo && ev.id === "market_day") return true;
+        return !ev.targetedNodes || ev.targetedNodes.some((id) => destNode.id.includes(id) || origNode.id.includes(id));
+      });
+      const eventBoostAtH = matchedAtH.reduce((acc, ev) => acc + ev.baseCongestionBoost, 0);
+
+      let horizonCongestion = Math.round(
+        (destNode.congestionValue * 0.5 + eventBoostAtH * 0.6) *
+          hFactor *
+          dayFactor *
+          targetWeather.congestionMultiplier
+      );
+      horizonCongestion = Math.min(99, Math.max(12, horizonCongestion));
+      const scoreScale = Math.min(10.0, Math.max(1.0, parseFloat((horizonCongestion / 10.0).toFixed(1))));
+
+      return {
+        horizon_minutes: h,
+        score: scoreScale,
+        level: scoreToLevel(scoreScale),
+        congestionPercentage: horizonCongestion,
+      };
+    });
+
+    const peak = timelinePoints.reduce((maxP, p) => (p.score > maxP.score ? p : maxP), timelinePoints[0]);
+    const causes = [];
+    if (rainAmount >= 2.0) causes.push(rainAmount >= 20 ? "un orage violent" : "la pluie");
+    if (isDestCradat && (normalizedHour >= 16.25 && normalizedHour <= 19.5)) causes.push("la sortie des cours et amphis");
+    if (isDestMokolo && (normalizedHour >= 10 && normalizedHour <= 17)) causes.push("l'affluence du grand marché");
+    if (hasEventOnRoute && causes.length === 0) causes.push("un évènement à proximité");
+    if (isPeakHour && causes.length === 0) causes.push("l'affluence de pointe");
+
+    // Calcul dynamique de la confiance IA (dépend de la précision temporelle et de la météo)
+    const peakMin = peak.horizon_minutes || 15;
+    let confidence = 0.88;
+    if (targetWeather && targetWeather.rainMm !== undefined) confidence += 0.04;
+    if (isPeakHour) confidence += 0.02;
+    confidence -= (peakMin / 120.0) * 0.08;
+    confidence = Math.min(0.94, Math.max(0.74, parseFloat(confidence.toFixed(2))));
+
+    const alertMessage = buildAlertMessage(destNode.name, { peak, causes });
+
     return {
       city: isDouala ? "Douala" : "Yaoundé",
       origin: origNode.name,
       destination: destNode.name,
       targetHour: normalizedHour,
-      targetDate: departureDate,
+      targetDate: dateObj.toISOString(),
+      isTomorrow,
+      isPastTimeAdjusted: isPastTimeToday,
+      departureTimeFormatted: formattedTime,
       weatherAtTargetHour: targetWeather,
       congestionScore: calculatedCongestion,
       roadStatus,
@@ -532,6 +658,20 @@ export class AiTrafficEngine {
       warnings: detailedWarnings,
       detourRecommendation: detourAdvice,
       bestDepartureAdvice: `Pour éviter ce pic de ${calculatedCongestion}% à ${normalizedHour}h, il est fortement conseillé de partir vers ${optimalHourText} (-${Math.max(15, delayMinutes - 5)} min économisées).`,
+      // Nouveaux enrichissements IA
+      timeline: {
+        points: timelinePoints,
+        peak,
+        confidence,
+        causes,
+        alert_message: alertMessage,
+        factors: {
+          isPeakHour,
+          rainMm: rainAmount,
+          hasEvent: hasEventOnRoute,
+          roadDegraded: isRoadDegraded,
+        },
+      },
     };
   }
 
@@ -725,5 +865,75 @@ export class AiTrafficEngine {
     }
 
     return recommendations;
+  }
+
+  /**
+   * Calcul d'une timeline de prédictions (15/30/45/60/90/120 min) et déduction du message d'alerte OS1
+   */
+  static async predictTimeline({
+    history = [],
+    rainForecastMm = 0.0,
+    hasEvent = false,
+    roadName = "cet axe",
+    roadSegmentId = null,
+    city = "Yaoundé",
+    departureHour = new Date().getHours(),
+  }) {
+    const horizonsMin = [15, 30, 45, 60, 90, 120];
+    const hour = typeof departureHour === "number" ? departureHour : parseFloat(departureHour) || new Date().getHours();
+    const isPeak = (hour >= 7 && hour <= 9) || (hour >= 16.5 && hour <= 19.5);
+    const rain = parseFloat(rainForecastMm) || 0.0;
+
+    let baseScore = 2.8;
+    if (Array.isArray(history) && history.length > 0) {
+      const avg = history.reduce((sum, h) => sum + (parseFloat(h.score) || 0), 0) / history.length;
+      baseScore = avg;
+    } else {
+      baseScore = isPeak ? 6.2 : 2.8;
+    }
+
+    const points = horizonsMin.map((h) => {
+      const targetH = hour + (h / 60.0);
+      const hourFactor = getHourlyBaseFactor(targetH % 24);
+      const rainImpact = rain > 10 ? 2.5 : rain > 2 ? 1.5 : 0;
+      const eventImpact = hasEvent ? 2.0 : 0;
+
+      let calculated = (baseScore * (hourFactor / getHourlyBaseFactor(hour % 24))) + rainImpact + eventImpact;
+      calculated = Math.min(10.0, Math.max(1.0, parseFloat(calculated.toFixed(1))));
+
+      return {
+        horizon_minutes: h,
+        score: calculated,
+        level: scoreToLevel(calculated),
+      };
+    });
+
+    const peak = points.reduce((maxP, p) => (p.score > maxP.score ? p : maxP), points[0]);
+
+    const causes = [];
+    if (rain >= 2.0) causes.push("la pluie");
+    if (hasEvent) causes.push("un évènement à proximité");
+    if (isPeak && causes.length === 0) causes.push("l'affluence de pointe");
+
+    const confidence = history.length >= 30 ? 0.85 : 0.85;
+
+    const timeline = {
+      road_segment_id: roadSegmentId || roadName,
+      road_name: roadName,
+      points,
+      peak,
+      confidence,
+      causes,
+      factors: {
+        isPeakHour: isPeak,
+        rainMm: rain,
+        hasEvent: Boolean(hasEvent),
+        roadDegraded: roadName.toLowerCase().includes("mvan") || roadName.toLowerCase().includes("mokolo") || roadName.toLowerCase().includes("ndokoti"),
+      },
+    };
+
+    timeline.alert_message = buildAlertMessage(roadName, timeline);
+
+    return timeline;
   }
 }

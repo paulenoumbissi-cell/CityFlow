@@ -17,6 +17,15 @@ class ScheduledTrip {
   final List<int> repeatDays; // 1 = Lundi, 7 = Dimanche
   final String city;
   final String aiReasoning;
+  final String roadStatus; // 'FLUID', 'MODERATE', 'HEAVY_CONGESTION', 'BLOCKED_OR_JAMMED'
+  final String roadStatusLabel;
+  final int congestionPercentage;
+  final int averageSpeedKmh;
+  final int nominalDurationMinutes;
+  final int delayMinutes;
+  final String? detourAdvice;
+  final List<String> warnings;
+  final bool isDepartureMode; // true = "Partir à", false = "Arriver à"
 
   ScheduledTrip({
     required this.id,
@@ -34,6 +43,15 @@ class ScheduledTrip {
     this.repeatDays = const [],
     required this.city,
     required this.aiReasoning,
+    this.roadStatus = 'MODERATE',
+    this.roadStatusLabel = 'Circulation modérée',
+    this.congestionPercentage = 45,
+    this.averageSpeedKmh = 25,
+    this.nominalDurationMinutes = 15,
+    this.delayMinutes = 8,
+    this.detourAdvice,
+    this.warnings = const [],
+    this.isDepartureMode = false,
   });
 
   String get formattedArrivalTime {
@@ -56,6 +74,34 @@ class ScheduledTrip {
 
   bool get isPast => totalMinutesBeforeDeparture < 0;
 
+  Color get statusColor {
+    switch (roadStatus) {
+      case 'FLUID':
+        return const Color(0xFF10B981);
+      case 'MODERATE':
+        return const Color(0xFFF59E0B);
+      case 'HEAVY_CONGESTION':
+        return const Color(0xFFEA580C);
+      case 'BLOCKED_OR_JAMMED':
+      default:
+        return const Color(0xFFDC2626);
+    }
+  }
+
+  IconData get statusIcon {
+    switch (roadStatus) {
+      case 'FLUID':
+        return Icons.check_circle_rounded;
+      case 'MODERATE':
+        return Icons.speed_rounded;
+      case 'HEAVY_CONGESTION':
+        return Icons.traffic_rounded;
+      case 'BLOCKED_OR_JAMMED':
+      default:
+        return Icons.warning_amber_rounded;
+    }
+  }
+
   ScheduledTrip copyWith({
     String? id,
     String? title,
@@ -72,6 +118,15 @@ class ScheduledTrip {
     List<int>? repeatDays,
     String? city,
     String? aiReasoning,
+    String? roadStatus,
+    String? roadStatusLabel,
+    int? congestionPercentage,
+    int? averageSpeedKmh,
+    int? nominalDurationMinutes,
+    int? delayMinutes,
+    String? detourAdvice,
+    List<String>? warnings,
+    bool? isDepartureMode,
   }) {
     return ScheduledTrip(
       id: id ?? this.id,
@@ -89,6 +144,15 @@ class ScheduledTrip {
       repeatDays: repeatDays ?? this.repeatDays,
       city: city ?? this.city,
       aiReasoning: aiReasoning ?? this.aiReasoning,
+      roadStatus: roadStatus ?? this.roadStatus,
+      roadStatusLabel: roadStatusLabel ?? this.roadStatusLabel,
+      congestionPercentage: congestionPercentage ?? this.congestionPercentage,
+      averageSpeedKmh: averageSpeedKmh ?? this.averageSpeedKmh,
+      nominalDurationMinutes: nominalDurationMinutes ?? this.nominalDurationMinutes,
+      delayMinutes: delayMinutes ?? this.delayMinutes,
+      detourAdvice: detourAdvice ?? this.detourAdvice,
+      warnings: warnings ?? this.warnings,
+      isDepartureMode: isDepartureMode ?? this.isDepartureMode,
     );
   }
 
@@ -112,6 +176,15 @@ class ScheduledTrip {
       'repeatDays': repeatDays,
       'city': city,
       'aiReasoning': aiReasoning,
+      'roadStatus': roadStatus,
+      'roadStatusLabel': roadStatusLabel,
+      'congestionPercentage': congestionPercentage,
+      'averageSpeedKmh': averageSpeedKmh,
+      'nominalDurationMinutes': nominalDurationMinutes,
+      'delayMinutes': delayMinutes,
+      'detourAdvice': detourAdvice,
+      'warnings': warnings,
+      'isDepartureMode': isDepartureMode,
     };
   }
 
@@ -145,6 +218,15 @@ class ScheduledTrip {
       repeatDays: (json['repeatDays'] as List<dynamic>?)?.map((e) => e as int).toList() ?? [],
       city: (json['city'] as String?) ?? 'Yaoundé',
       aiReasoning: (json['aiReasoning'] as String?) ?? 'Calculé selon le flux moyen de circulation.',
+      roadStatus: (json['roadStatus'] as String?) ?? 'MODERATE',
+      roadStatusLabel: (json['roadStatusLabel'] as String?) ?? 'Circulation modérée',
+      congestionPercentage: json['congestionPercentage'] as int? ?? 45,
+      averageSpeedKmh: json['averageSpeedKmh'] as int? ?? 25,
+      nominalDurationMinutes: json['nominalDurationMinutes'] as int? ?? 15,
+      delayMinutes: json['delayMinutes'] as int? ?? 8,
+      detourAdvice: json['detourAdvice'] as String?,
+      warnings: (json['warnings'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      isDepartureMode: json['isDepartureMode'] as bool? ?? false,
     );
   }
 }

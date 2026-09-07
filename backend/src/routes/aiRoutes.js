@@ -6,6 +6,7 @@ import {
   getLocalEvents,
   getLiveWeather,
   predictTrip,
+  predictTimelineRoute,
 } from "../controllers/aiController.js";
 
 const router = express.Router();
@@ -19,6 +20,10 @@ router.get("/forecast", getAiForecast);
 // POST ou GET /api/ai/predict-trip (Analyse intelligente d'un trajet et prédiction d'obstacles / météo à une heure future)
 router.get("/predict-trip", predictTrip);
 router.post("/predict-trip", predictTrip);
+
+// POST ou GET /api/ai/predict-timeline (Timeline 15m-2h, pic et alerte en langage naturel OS1)
+router.get("/predict-timeline", predictTimelineRoute);
+router.post("/predict-timeline", predictTimelineRoute);
 
 // GET /api/ai/anomalies?city=Yaoundé
 router.get("/anomalies", getAiAnomalies);

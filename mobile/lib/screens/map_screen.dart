@@ -10,6 +10,7 @@ import '../core/constants/app_colors.dart';
 import '../core/constants/city_data.dart';
 import '../widgets/pulsing_traffic_marker.dart';
 import '../widgets/cityflow_drawer.dart';
+import '../widgets/waze_report_modal.dart';
 import 'saved_places_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -1167,40 +1168,46 @@ class _MapScreenState extends State<MapScreen> {
   void _showVehicleInfoModal(BuildContext context, CityFlowProvider provider) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.directions_car_rounded, color: Color(0xFF0099FF), size: 24),
-                    SizedBox(width: 10),
-                    Text('Informations Véhicule', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1E2024))),
+                    const Row(
+                      children: [
+                        Icon(Icons.directions_car_rounded, color: Color(0xFF0099FF), size: 24),
+                        SizedBox(width: 10),
+                        Text('Informations Véhicule', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1E2024))),
+                      ],
+                    ),
+                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
-                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                const Divider(),
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(backgroundColor: Color(0xFFE0F2FE), child: Icon(Icons.eco_rounded, color: Color(0xFF0284C7))),
+                  title: Text('Mode de conduite IA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: Text('CityFlow Eco-Traffic activé (-25% carburant)', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(backgroundColor: Color(0xFFDCFCE7), child: Icon(Icons.speed_rounded, color: Color(0xFF16A34A))),
+                  title: Text('Vitesse moyenne actuelle : ${provider.averageSpeed.toStringAsFixed(0)} km/h', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: Text('Régulation active à ${provider.selectedCity}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                ),
               ],
             ),
-            const Divider(),
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(backgroundColor: Color(0xFFE0F2FE), child: Icon(Icons.eco_rounded, color: Color(0xFF0284C7))),
-              title: Text('Mode de conduite IA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: Text('CityFlow Eco-Traffic activé (-25% carburant)', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(backgroundColor: Color(0xFFDCFCE7), child: Icon(Icons.speed_rounded, color: Color(0xFF16A34A))),
-              title: Text('Vitesse moyenne actuelle : ${provider.averageSpeed.toStringAsFixed(0)} km/h', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: Text('Régulation active à ${provider.selectedCity}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1248,72 +1255,42 @@ class _MapScreenState extends State<MapScreen> {
   void _showQuickCitizenReportSheet(BuildContext context, CityFlowProvider provider) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 26),
-                    SizedBox(width: 10),
-                    Text('Signaler un incident (+15 pts)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1E2024))),
-                  ],
-                ),
-                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _buildReportTypeButton(ctx, provider, 'Accident', Icons.car_crash_rounded, const Color(0xFFEF4444)),
-                _buildReportTypeButton(ctx, provider, 'Bouchon', Icons.traffic_rounded, const Color(0xFFF59E0B)),
-                _buildReportTypeButton(ctx, provider, 'Travaux', Icons.construction_rounded, const Color(0xFF3B82F6)),
-                _buildReportTypeButton(ctx, provider, 'Danger', Icons.warning_rounded, const Color(0xFFDC2626)),
-                _buildReportTypeButton(ctx, provider, 'Nid de poule', Icons.remove_road_rounded, const Color(0xFF8B5CF6)),
-                _buildReportTypeButton(ctx, provider, 'Inondation', Icons.water_damage_rounded, const Color(0xFF0284C7)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => WazeReportGridModal(
+        selectedCity: provider.selectedCity,
+        onReportSubmitted: (category, severity, title, location) async {
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          final pos = provider.userRealPosition ?? provider.currentCityCenter;
 
-  Widget _buildReportTypeButton(BuildContext ctx, CityFlowProvider provider, String label, IconData icon, Color color) {
-    return GestureDetector(
-      onTap: () async {
-        Navigator.pop(ctx);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Signalement "$label" envoyé ! +15 points citoyen gagnés.'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      },
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
-          ],
-        ),
+          await provider.addCitizenReport(
+            title: title,
+            locationDescription: location,
+            category: category,
+            severity: severity,
+            position: pos,
+          );
+
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Signalement "$title" envoyé ! +25 points citoyen gagnés.',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        },
       ),
     );
   }

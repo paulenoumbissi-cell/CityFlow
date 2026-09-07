@@ -1034,29 +1034,207 @@ class CityFlowMobileApiService {
     return true;
   }
 
+  // Cache en mémoire pour la météo directe
+  static final Map<String, Map<String, dynamic>> _weatherCache = {};
+  static final Map<String, DateTime> _weatherCacheExpiry = {};
+
+  /// Traduction des codes WMO météorologiques standard
+  static Map<String, dynamic> _parseWmoCode(int code, double rainMm) {
+    if (rainMm >= 25 || code == 95 || code == 96 || code == 99) {
+      return {
+        'conditionKey': rainMm >= 40 ? 'flood' : 'heavy_rain',
+        'label': rainMm >= 40 ? 'Inondation / Chaussée submergée' : 'Orage tropical violent',
+        'icon': rainMm >= 40 ? '🌊' : '⛈️',
+        'speedFactor': rainMm >= 40 ? 0.32 : 0.55,
+        'congestionMultiplier': rainMm >= 40 ? 2.35 : 1.75,
+        'description': rainMm >= 40
+            ? 'Bas-fonds inondés, caniveaux débordés. Franchissement critique ou déviations.'
+            : 'Violentes averses, visibilité réduite, flaques profondes et risque d\'aquaplaning.',
+      };
+    }
+
+    if (code >= 80 && code <= 82) {
+      return {
+        'conditionKey': 'heavy_rain',
+        'label': 'Averses orageuses soutenues',
+        'icon': '🌧️',
+        'speedFactor': 0.60,
+        'congestionMultiplier': 1.65,
+        'description': 'Averses denses, chaussée détrempée et trafic ralenti.',
+      };
+    }
+
+    if ((code >= 51 && code <= 65) || rainMm > 0) {
+      return {
+        'conditionKey': 'light_rain',
+        'label': 'Pluie fine / Bruine humide',
+        'icon': '🌦️',
+        'speedFactor': 0.82,
+        'congestionMultiplier': 1.25,
+        'description': 'Chaussée glissante, visibilité réduite, freinage anticipé.',
+      };
+    }
+
+    if (code == 45 || code == 48) {
+      return {
+        'conditionKey': 'dry',
+        'label': 'Brume matinale',
+        'icon': '🌫️',
+        'speedFactor': 0.90,
+        'congestionMultiplier': 1.10,
+        'description': 'Légère brume, adhérence normale.',
+      };
+    }
+
+    if (code == 1 || code == 2 || code == 3) {
+      return {
+        'conditionKey': 'dry',
+        'label': 'Nuageux / Temps clément',
+        'icon': '⛅',
+        'speedFactor': 1.0,
+        'congestionMultiplier': 1.0,
+        'description': 'Couverture nuageuse sans intempéries. Circulation normale.',
+      };
+    }
+
+    return {
+      'conditionKey': 'dry',
+      'label': 'Temps sec / Ensoleillé',
+      'icon': '☀️',
+      'speedFactor': 1.0,
+      'congestionMultiplier': 1.0,
+      'description': 'Conditions de circulation optimales et adhérence routière maximale.',
+    };
+  }
+
+  /// Récupération directe haute fidélité depuis l'API Open-Meteo mondiale (satellite & stations)
+  static Future<Map<String, dynamic>?> _fetchDirectOpenMeteo(String city) async {
+    final isDouala = city.toLowerCase().contains('douala');
+    final lat = isDouala ? 4.0511 : 3.8480;
+    final lng = isDouala ? 9.7679 : 11.5021;
+    final cityName = isDouala ? 'Douala' : 'Yaoundé';
+
+    final cacheKey = cityName.toLowerCase();
+    final now = DateTime.now();
+    if (_weatherCache.containsKey(cacheKey) &&
+        _weatherCacheExpiry[cacheKey] != null &&
+        _weatherCacheExpiry[cacheKey]!.isAfter(now)) {
+      return _weatherCache[cacheKey];
+    }
+
+    try {
+      final uri = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lng&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,precipitation,rain,weather_code&timezone=auto&forecast_days=2',
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final current = (json['current'] as Map<String, dynamic>?) ?? {};
+        final hourly = (json['hourly'] as Map<String, dynamic>?) ?? {};
+
+        final currentRain = (current['rain'] as num?)?.toDouble() ??
+            (current['precipitation'] as num?)?.toDouble() ??
+            0.0;
+        final currentWmo = (current['weather_code'] as num?)?.toInt() ?? 0;
+        final parsed = _parseWmoCode(currentWmo, currentRain);
+
+        final hourlyList = <Map<String, dynamic>>[];
+        final times = (hourly['time'] as List<dynamic>?) ?? [];
+        final temps = (hourly['temperature_2m'] as List<dynamic>?) ?? [];
+        final rains = (hourly['rain'] as List<dynamic>?) ?? [];
+        final probs = (hourly['precipitation_probability'] as List<dynamic>?) ?? [];
+        final codes = (hourly['weather_code'] as List<dynamic>?) ?? [];
+
+        for (int i = 0; i < times.length && i < 24; i++) {
+          final timeStr = times[i].toString();
+          final parsedDate = DateTime.tryParse(timeStr) ?? now;
+          final h = parsedDate.hour;
+          final r = i < rains.length ? (rains[i] as num?)?.toDouble() ?? 0.0 : 0.0;
+          final p = i < probs.length ? (probs[i] as num?)?.toInt() ?? 0 : 0;
+          final t = i < temps.length ? (temps[i] as num?)?.toDouble() ?? 25.0 : 25.0;
+          final c = i < codes.length ? (codes[i] as num?)?.toInt() ?? 0 : 0;
+          final hp = _parseWmoCode(c, r);
+
+          hourlyList.add({
+            'time': timeStr,
+            'hour': h,
+            'temperature': t.round(),
+            'rainMm': (r * 10).round() / 10,
+            'precipitationProbability': p,
+            'weatherCode': c,
+            'conditionKey': hp['conditionKey'],
+            'label': hp['label'],
+            'icon': hp['icon'],
+            'description': hp['description'],
+          });
+        }
+
+        final result = {
+          'city': cityName,
+          'coordinates': {'latitude': lat, 'longitude': lng},
+          'timestamp': now.toIso8601String(),
+          'isLive': true,
+          'current': {
+            'temperature': ((current['temperature_2m'] as num?)?.toDouble() ?? 26.0).round(),
+            'apparentTemperature': ((current['apparent_temperature'] as num?)?.toDouble() ?? 27.0).round(),
+            'humidity': ((current['relative_humidity_2m'] as num?)?.toInt() ?? 75),
+            'rainMm': (currentRain * 10).round() / 10,
+            'windSpeedKmh': (((current['wind_speed_10m'] as num?)?.toDouble() ?? 8.0) * 10).round() / 10,
+            'weatherCode': currentWmo,
+            'conditionKey': parsed['conditionKey'],
+            'label': parsed['label'],
+            'icon': parsed['icon'],
+            'description': parsed['description'],
+            'speedFactor': parsed['speedFactor'],
+            'congestionMultiplier': parsed['congestionMultiplier'],
+          },
+          'hourly': hourlyList,
+        };
+
+        _weatherCache[cacheKey] = result;
+        _weatherCacheExpiry[cacheKey] = now.add(const Duration(minutes: 10));
+        return result;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Récupération de la météo temps réel issue d'Open-Meteo pour Yaoundé ou Douala
   static Future<Map<String, dynamic>?> fetchLiveWeather(String city) async {
+    // 1. Tenter via le backend CityFlow si joignable
     final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
     for (final host in hostsToTry) {
       try {
         final uri = Uri.parse('$host/ai/live-weather?city=${Uri.encodeComponent(city)}');
-        final response = await http.get(uri).timeout(const Duration(seconds: 3));
+        final response = await http.get(uri).timeout(const Duration(seconds: 2));
 
         if (response.statusCode == 200) {
           _activeBaseUrl = host;
-          return json.decode(response.body) as Map<String, dynamic>;
+          final data = json.decode(response.body) as Map<String, dynamic>;
+          final cacheKey = (city.toLowerCase().contains('douala') ? 'douala' : 'yaounde');
+          _weatherCache[cacheKey] = data;
+          _weatherCacheExpiry[cacheKey] = DateTime.now().add(const Duration(minutes: 10));
+          return data;
         }
       } catch (_) {}
     }
 
-    // Données de repli réalistes
+    // 2. Connexion directe haute précision à l'API Open-Meteo (satellite & stations réelles)
+    final directResult = await _fetchDirectOpenMeteo(city);
+    if (directResult != null) {
+      return directResult;
+    }
+
+    // 3. Repli dynamique basé sur l'heure locale si aucune connexion internet
     final isDouala = city.toLowerCase().contains('douala');
+    final hour = DateTime.now().hour;
+    final isWarmHour = hour >= 12 && hour <= 16;
     return {
       'city': isDouala ? 'Douala' : 'Yaoundé',
       'isLive': false,
       'current': {
-        'temperature': 25,
-        'humidity': 80,
+        'temperature': isDouala ? (isWarmHour ? 30 : 27) : (isWarmHour ? 27 : 24),
+        'humidity': isDouala ? 85 : 75,
         'rainMm': 0.0,
         'windSpeedKmh': 8.0,
         'label': 'Temps sec / Ensoleillé',
@@ -1205,6 +1383,123 @@ class CityFlowMobileApiService {
     final estimatedMin = nominalMin + delayMin;
     final isRainyHour = h >= 15 && h <= 18;
 
+    final cacheKey = (city.toLowerCase().contains('douala') ? 'douala' : 'yaounde');
+    final cachedW = _weatherCache[cacheKey];
+    Map<String, dynamic>? weatherAtHour;
+    if (cachedW != null && cachedW['hourly'] is List) {
+      final list = cachedW['hourly'] as List;
+      final targetH = departureHour.round() % 24;
+      final match = list.firstWhere(
+        (it) => it is Map && it['hour'] == targetH,
+        orElse: () => null,
+      );
+      if (match != null) {
+        weatherAtHour = Map<String, dynamic>.from(match as Map);
+      }
+    }
+
+    final effectiveWeather = weatherAtHour ?? {
+      'hour': departureHour.round(),
+      'temperature': isRainyHour ? 23 : (h >= 11 && h <= 14 ? 27 : 24),
+      'rainMm': isRainyHour ? 1.5 : 0.0,
+      'precipitationProbability': isRainyHour ? 82 : 20,
+      'conditionKey': isRainyHour ? 'light_rain' : 'dry',
+      'label': isRainyHour ? 'Pluie fine / Averse d\'après-midi' : 'Temps sec / Ensoleillé',
+      'icon': isRainyHour ? '🌦️' : '☀️',
+      'description': isRainyHour ? 'Chaussée glissante, freinage anticipé' : 'Adhérence normale',
+    };
+
+    final horizonsMin = [15, 30, 45, 60, 90, 120];
+    final isPeakHour = (h >= 7 && h <= 9) || (h >= 16.5 && h <= 19.5);
+    final rainAmount = (effectiveWeather['rainMm'] as num?)?.toDouble() ?? 0.0;
+    final hasEvent = warnings.isNotEmpty;
+    final isRoadDegraded = destination.toLowerCase().contains('mvan') || destination.toLowerCase().contains('mokolo') || destination.toLowerCase().contains('ndokoti');
+
+    // Courbe d'affluence horaire 24h
+    double getHourlyFactor(double hour) {
+      final normH = (hour % 24 + 24) % 24;
+      if (normH >= 6.5 && normH < 8.75) return 1.70; // Pointe matinale (06h30 - 08h45)
+      if (normH >= 8.75 && normH < 11.5) return 1.05; // Matinée
+      if (normH >= 11.5 && normH < 13.75) return 1.35; // Midi & sorties scolaires
+      if (normH >= 13.75 && normH < 16.25) return 1.15; // Après-midi
+      if (normH >= 16.25 && normH < 19.75) return 1.90; // Pointe vespérale (16h15 - 19h45)
+      if (normH >= 19.75 && normH < 22.0) return 1.15; // Soirée
+      if (normH >= 22.0 || normH < 6.0) return 0.35; // Nuit
+      return 0.85;
+    }
+
+    final currentHFactor = getHourlyFactor(h);
+
+    final timelinePoints = horizonsMin.map((min) {
+      final hTarget = h + (min / 60.0);
+      final targetHFactor = getHourlyFactor(hTarget);
+
+      // Évolution dynamique du score selon l'heure future
+      double scoreScale = (congestion / 10.0) * (targetHFactor / currentHFactor);
+
+      // Contextuel aux axes spécifiques
+      if (isDestCradat && (hTarget >= 16.5 && hTarget <= 19.0)) {
+        scoreScale += 1.2;
+      }
+      if (isDestMokolo && (hTarget >= 10.0 && hTarget <= 16.5)) {
+        scoreScale += 0.8;
+      }
+      if (isRainyHour && (hTarget >= 15.0 && hTarget <= 18.0)) {
+        scoreScale += 1.0;
+      }
+
+      scoreScale = scoreScale.clamp(1.0, 10.0);
+
+      String lvl = 'fluide';
+      if (scoreScale >= 7.5) {
+        lvl = 'bloque';
+      } else if (scoreScale >= 5.5) {
+        lvl = 'embouteillage';
+      } else if (scoreScale >= 3.0) {
+        lvl = 'ralenti';
+      }
+      return {
+        'horizon_minutes': min,
+        'score': double.parse(scoreScale.toStringAsFixed(1)),
+        'level': lvl,
+      };
+    }).toList();
+
+    final peak = timelinePoints.reduce((maxP, p) => (p['score'] as double) > (maxP['score'] as double) ? p : maxP);
+    final causes = <String>[];
+    if (rainAmount >= 2.0) causes.add(rainAmount >= 20 ? 'un orage violent' : 'la pluie');
+    if (isDestCradat && (h >= 16.25 && h <= 19.5)) causes.add('la sortie des cours et amphis');
+    if (isDestMokolo && (h >= 10 && h <= 17)) causes.add('l\'affluence du grand marché');
+    if (hasEvent && causes.isEmpty) causes.add('un évènement à proximité');
+    if (isPeakHour && causes.isEmpty) causes.add('l\'affluence de pointe');
+
+    String horizonText(int minutes) {
+      if (minutes <= 0) return 'dès maintenant';
+      if (minutes < 60) return 'dans $minutes min';
+      if (minutes == 60) return 'dans 1h';
+      if (minutes == 90) return 'dans 1h30';
+      if (minutes == 120) return 'dans 2h';
+      return 'dans $minutes min';
+    }
+
+    String? alertMsg;
+    if (peak['level'] == 'embouteillage' || peak['level'] == 'bloque') {
+      final nature = peak['level'] == 'bloque' ? 'un blocage important' : 'un fort ralentissement';
+      final hTxt = horizonText(peak['horizon_minutes'] as int);
+      alertMsg = 'Il y aura $nature à $destination $hTxt';
+      if (causes.isNotEmpty) {
+        alertMsg += ' à cause de ${causes.join(' et ')}';
+      }
+      alertMsg += '.';
+    }
+
+    final peakMin = (peak['horizon_minutes'] as int?) ?? 15;
+    double calculatedConfidence = 0.88;
+    if (weatherAtHour != null) calculatedConfidence += 0.04;
+    if (isPeakHour) calculatedConfidence += 0.02;
+    calculatedConfidence -= (peakMin / 120.0) * 0.08;
+    calculatedConfidence = calculatedConfidence.clamp(0.74, 0.94);
+
     return {
       'city': city,
       'origin': origin,
@@ -1219,19 +1514,23 @@ class CityFlowMobileApiService {
       'estimatedDurationMinutes': estimatedMin,
       'delayMinutes': delayMin,
       'isRoadBlocked': congestion >= 80,
-      'weatherAtTargetHour': {
-        'hour': departureHour.round(),
-        'temperature': isRainyHour ? 23 : (h >= 11 && h <= 14 ? 27 : 24),
-        'rainMm': isRainyHour ? 1.5 : 0.0,
-        'precipitationProbability': isRainyHour ? 82 : 20,
-        'conditionKey': isRainyHour ? 'light_rain' : 'dry',
-        'label': isRainyHour ? 'Pluie fine / Averse d\'après-midi' : 'Temps sec / Ensoleillé',
-        'icon': isRainyHour ? '🌦️' : '☀️',
-        'description': isRainyHour ? 'Chaussée glissante, freinage anticipé' : 'Adhérence normale',
-      },
+      'weatherAtTargetHour': effectiveWeather,
       'warnings': warnings,
       'detourRecommendation': detour,
       'bestDepartureAdvice': bestAdvice,
+      'timeline': {
+        'points': timelinePoints,
+        'peak': peak,
+        'confidence': double.parse(calculatedConfidence.toStringAsFixed(2)),
+        'causes': causes,
+        'alert_message': alertMsg,
+        'factors': {
+          'isPeakHour': isPeakHour,
+          'rainMm': rainAmount,
+          'hasEvent': hasEvent,
+          'roadDegraded': isRoadDegraded,
+        },
+      },
     };
   }
 

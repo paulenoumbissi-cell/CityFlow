@@ -130,11 +130,11 @@ export async function fetchLiveWeatherData(cityName = "Yaoundé") {
     const currentWmo = current.weather_code ?? 0;
     const parsedCurrent = parseWmoCode(currentWmo, currentRain);
 
-    // Construction de la série horaire
+    // Construction de la série horaire sur 48h
     const hourlyList = [];
     if (hourly.time && Array.isArray(hourly.time)) {
       const times = hourly.time;
-      for (let i = 0; i < Math.min(times.length, 24); i++) {
+      for (let i = 0; i < Math.min(times.length, 48); i++) {
         const timeStr = times[i];
         const dateObj = new Date(timeStr);
         const hour = dateObj.getHours();
@@ -146,6 +146,7 @@ export async function fetchLiveWeatherData(cityName = "Yaoundé") {
 
         hourlyList.push({
           time: timeStr,
+          date: dateObj,
           hour,
           temperature: Math.round(temp),
           rainMm: Math.round(rainMm * 10) / 10,
@@ -211,11 +212,12 @@ export async function fetchLiveWeatherData(cityName = "Yaoundé") {
         speedFactor: fallbackParsed.speedFactor,
         congestionMultiplier: fallbackParsed.congestionMultiplier,
       },
-      hourly: Array.from({ length: 12 }, (_, idx) => {
+      hourly: Array.from({ length: 48 }, (_, idx) => {
         const h = (currentHour + idx) % 24;
         const willRain = h >= 15 && h <= 18;
         return {
           time: new Date(Date.now() + idx * 3600000).toISOString(),
+          date: new Date(Date.now() + idx * 3600000),
           hour: h,
           temperature: willRain ? 23 : 26,
           rainMm: willRain ? 4.0 : 0,
@@ -232,13 +234,28 @@ export async function fetchLiveWeatherData(cityName = "Yaoundé") {
 }
 
 /**
- * Récupère la météo exacte prévue pour une heure précise (ex: 17h)
+ * Récupère la météo exacte prévue pour une heure précise et une date donnée (ex: Demain à 17h)
  */
-export async function getForecastForHour(cityName = "Yaoundé", targetHour = new Date().getHours()) {
+export async function getForecastForHour(cityName = "Yaoundé", targetHour = new Date().getHours(), targetDate = null) {
   const weatherData = await fetchLiveWeatherData(cityName);
   const normalizedHour = Math.floor(targetHour) % 24;
 
-  const foundHourly = weatherData.hourly.find((item) => item.hour === normalizedHour);
+  let foundHourly = null;
+  if (targetDate) {
+    const targetDateObj = new Date(targetDate);
+    if (!isNaN(targetDateObj.getTime())) {
+      foundHourly = weatherData.hourly.find((item) => {
+        if (!item.date && !item.time) return false;
+        const itemDate = item.date ? new Date(item.date) : new Date(item.time);
+        return itemDate.getDate() === targetDateObj.getDate() && item.hour === normalizedHour;
+      });
+    }
+  }
+
+  if (!foundHourly) {
+    foundHourly = weatherData.hourly.find((item) => item.hour === normalizedHour);
+  }
+
   if (foundHourly) {
     return {
       hour: normalizedHour,

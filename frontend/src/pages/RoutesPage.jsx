@@ -219,6 +219,13 @@ export default function RoutesPage() {
   const [isAutoSimulating, setIsAutoSimulating] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(42);
 
+  // Détection Hors-Itinéraire & Recalcul d'Itinéraires Alternatifs en Direct
+  const [isOffRoute, setIsOffRoute] = useState(false);
+  const [offRouteAlternatives, setOffRouteAlternatives] = useState([]);
+  const [isRecalculatingOffRoute, setIsRecalculatingOffRoute] = useState(false);
+  const [deviatedPosition, setDeviatedPosition] = useState(null);
+  const [offRouteDistance, setOffRouteDistance] = useState(0);
+
   const [emergencyMission, setEmergencyMission] = useState(null);
 
   // Synchronisation du fond de carte avec le thème
@@ -470,6 +477,94 @@ export default function RoutesPage() {
       setNavCompleted(true);
       speakInstruction("Vous êtes arrivé à destination.", voiceEnabled);
     }
+  };
+
+  // Pause / Reprise de la simulation
+  const handleToggleAutoSimulate = () => {
+    setIsAutoSimulating(!isAutoSimulating);
+  };
+
+  // Arrêter la navigation
+  const handleStopNavigation = () => {
+    setIsNavigating(false);
+    setIsAutoSimulating(false);
+    setNavStepIndex(0);
+    setNavCompleted(false);
+    setIsOffRoute(false);
+    setOffRouteAlternatives([]);
+    setDeviatedPosition(null);
+    setOffRouteDistance(0);
+    if (autoSimTimerRef.current) clearInterval(autoSimTimerRef.current);
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  // Simulation de déviation / sortie de route
+  const handleSimulateOffRoute = async () => {
+    if (!selectedRoute || !selectedRoute.coordinates?.length) return;
+
+    const currentCoord = deviatedPosition || selectedRoute.coordinates[navStepIndex] || selectedRoute.coordinates[0];
+    const newDeviated = [currentCoord[0] + 0.0018, currentCoord[1] - 0.0019];
+    setDeviatedPosition(newDeviated);
+    setIsOffRoute(true);
+    setOffRouteDistance(125);
+    setIsRecalculatingOffRoute(true);
+
+    speakInstruction("Attention, vous avez quitté l'itinéraire prévu. Recherche de nouveaux trajets depuis votre position.", voiceEnabled);
+
+    try {
+      const destCoord = selectedRoute.coordinates[selectedRoute.coordinates.length - 1];
+      const res = await apiService.calculateSmartRoutes({
+        city: selectedCity === "all" ? "Yaoundé" : selectedCity,
+        originCoords: newDeviated,
+        destinationCoords: destCoord,
+      });
+
+      if (res && res.routes && res.routes.length > 0) {
+        setOffRouteAlternatives(res.routes);
+      }
+    } catch (e) {
+      console.error("Erreur recalcul hors route :", e);
+    } finally {
+      setIsRecalculatingOffRoute(false);
+    }
+  };
+
+  // Recalcul manuel depuis la position courante
+  const handleRecalculateOffRoute = async () => {
+    if (!selectedRoute) return;
+    setIsRecalculatingOffRoute(true);
+    const originPos = deviatedPosition || selectedRoute.coordinates[navStepIndex] || selectedRoute.coordinates[0];
+    const destCoord = selectedRoute.coordinates[selectedRoute.coordinates.length - 1];
+
+    try {
+      const res = await apiService.calculateSmartRoutes({
+        city: selectedCity === "all" ? "Yaoundé" : selectedCity,
+        originCoords: originPos,
+        destinationCoords: destCoord,
+      });
+
+      if (res && res.routes && res.routes.length > 0) {
+        setOffRouteAlternatives(res.routes);
+      }
+    } catch (e) {
+      console.error("Erreur recalcul hors route :", e);
+    } finally {
+      setIsRecalculatingOffRoute(false);
+    }
+  };
+
+  // Accepter un itinéraire alternatif proposé
+  const handleAcceptAlternativeRoute = (altRoute) => {
+    setSelectedRoute(altRoute);
+    setIsOffRoute(false);
+    setOffRouteAlternatives([]);
+    setDeviatedPosition(null);
+    setNavStepIndex(0);
+    setNavCompleted(false);
+    const firstStep = altRoute.steps?.[0];
+    speakInstruction(`Nouvel itinéraire appliqué. ${firstStep?.spokenText || firstStep?.instruction || ""}`, voiceEnabled);
   };
 
   // Filtrage des suggestions pour le Dropdown
@@ -868,6 +963,17 @@ export default function RoutesPage() {
               <ChevronRight size={18} />
             </button>
 
+            {/* BOUTON TEST SORTIE DE ROUTE */}
+            <button
+              type="button"
+              className={`nav-ctrl-btn ${isOffRoute ? "offroute-btn-active" : ""}`}
+              onClick={handleSimulateOffRoute}
+              title="Simuler une déviation / sortie de route"
+              style={{ background: isOffRoute ? "#fee2e2" : undefined, color: isOffRoute ? "#dc2626" : undefined }}
+            >
+              <RotateCcw size={18} />
+            </button>
+
             {/* QUITTER LE GUIDAGE */}
             <button
               type="button"
@@ -878,6 +984,65 @@ export default function RoutesPage() {
               <X size={18} />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* BANDEAU ALERTE HORS-ITINÉRAIRE & PROPOSITIONS ALTERNATIVES */}
+      {isNavigating && isOffRoute && (
+        <div className="offroute-alert-banner">
+          <div className="offroute-banner-header">
+            <div className="offroute-icon-badge">
+              <AlertCircle size={22} />
+            </div>
+            <div className="offroute-info">
+              <h4>⚠️ Attention : Hors de l'itinéraire prévu</h4>
+              <p>Écart détecté de ~{offRouteDistance} m par rapport au tracé initial.</p>
+            </div>
+            <div className="offroute-header-actions">
+              <button
+                type="button"
+                className="btn-offroute-recalc"
+                onClick={handleRecalculateOffRoute}
+                disabled={isRecalculatingOffRoute}
+              >
+                {isRecalculatingOffRoute ? "Recalcul en cours..." : "Recalculer depuis ma position"}
+              </button>
+              <button
+                type="button"
+                className="btn-offroute-dismiss"
+                onClick={() => setIsOffRoute(false)}
+                title="Ignorer l'alerte"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* LISTE DES ITINÉRAIRES ALTERNATIFS PROPOSÉS */}
+          {offRouteAlternatives.length > 0 && (
+            <div className="offroute-alternatives-list">
+              <span className="offroute-alternatives-title">
+                Itinéraires alternatifs recalculés depuis votre position actuelle :
+              </span>
+              <div className="offroute-cards-row">
+                {offRouteAlternatives.map((alt) => (
+                  <div key={alt.id} className="offroute-alt-card">
+                    <div className="offroute-alt-header">
+                      <span className="offroute-alt-name">{alt.name || alt.title || "Alternative"}</span>
+                      <span className="offroute-alt-time">{alt.durationMinutes} min ({alt.distanceKm} km)</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-accept-alt-route"
+                      onClick={() => handleAcceptAlternativeRoute(alt)}
+                    >
+                      Suivre cet itinéraire
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1404,36 +1569,51 @@ export default function RoutesPage() {
                   </CircleMarker>
 
                   {/* VÉHICULE EN MOUVEMENT PENDANT LA NAVIGATION GPS HUD */}
-                  {isNavigating && selectedRoute.coordinates[navStepIndex] && (
+                  {isNavigating && (deviatedPosition || selectedRoute.coordinates[navStepIndex]) && (
                     <>
                       <CircleMarker
-                        center={selectedRoute.coordinates[navStepIndex]}
+                        center={deviatedPosition || selectedRoute.coordinates[navStepIndex]}
                         radius={22}
                         pathOptions={{
-                          color: "#3B82F6",
-                          fillColor: "#60A5FA",
-                          fillOpacity: 0.3,
+                          color: isOffRoute ? "#EF4444" : "#3B82F6",
+                          fillColor: isOffRoute ? "#F87171" : "#60A5FA",
+                          fillOpacity: 0.35,
                           weight: 1,
                           className: "radar-marker-pulse",
                         }}
                       />
                       <CircleMarker
-                        center={selectedRoute.coordinates[navStepIndex]}
+                        center={deviatedPosition || selectedRoute.coordinates[navStepIndex]}
                         radius={11}
                         pathOptions={{
-                          fillColor: "#2563EB",
+                          fillColor: isOffRoute ? "#DC2626" : "#2563EB",
                           color: "#ffffff",
                           weight: 3.5,
                           fillOpacity: 1,
                         }}
                       >
                         <Popup>
-                          <strong>🚗 Votre véhicule en déplacement</strong>
+                          <strong>{isOffRoute ? "⚠️ Véhicule hors itinéraire" : "🚗 Votre véhicule en déplacement"}</strong>
                           <div>Vitesse : {currentSpeed} km/h</div>
+                          {isOffRoute && <div>Écart : ~{offRouteDistance} m</div>}
                         </Popup>
                       </CircleMarker>
                     </>
                   )}
+
+                  {/* ITINÉRAIRES ALTERNATIFS LORS D'UNE SORTIE DE ROUTE */}
+                  {isNavigating && isOffRoute && offRouteAlternatives.map((alt) => (
+                    <Polyline
+                      key={`offroute_alt_${alt.id}`}
+                      positions={alt.coordinates}
+                      pathOptions={{
+                        color: "#0284C7",
+                        weight: 6,
+                        opacity: 0.85,
+                        dashArray: "8, 8",
+                      }}
+                    />
+                  ))}
                 </>
               )}
             </MapContainer>

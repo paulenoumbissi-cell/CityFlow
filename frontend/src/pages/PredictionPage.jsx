@@ -21,6 +21,9 @@ import {
 } from "lucide-react";
 import { useCity } from "../context/CityContext";
 import { apiService } from "../services/api";
+import PredictionAlert from "../components/PredictionAlert";
+import PredictionFactors from "../components/PredictionFactors";
+import PredictionTimeline from "../components/PredictionTimeline";
 import "./PredictionPage.css";
 
 function getLevelClass(value) {
@@ -43,12 +46,99 @@ function PredictionPage() {
   const [liveWeather, setLiveWeather] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Assistant de trajet prédictif (Ex: CRADAT à 17h)
+  // Assistant de trajet prédictif (Heure minimale = Heure actuelle)
   const [tripOrigin, setTripOrigin] = useState("Poste Centrale");
-  const [tripDestination, setTripDestination] = useState("Carrefour CRADAT");
-  const [tripHour, setTripHour] = useState(17);
+  const [tripDestination, setTripDestination] = useState("");
+  const [tripSlotKey, setTripSlotKey] = useState("in15");
   const [tripResult, setTripResult] = useState(null);
   const [isTripPredicting, setIsTripPredicting] = useState(false);
+
+  // Génération dynamique des créneaux de prédiction (tous ancrés dans le futur)
+  const getDepartureSlots = () => {
+    const now = new Date();
+    const currentH = now.getHours();
+    const currentM = now.getMinutes();
+
+    const formatH = (d) => `${d.getHours().toString().padStart(2, "0")}h${d.getMinutes().toString().padStart(2, "0")}`;
+
+    const slots = [
+      {
+        key: "now",
+        label: `⚡ Maintenant (${formatH(now)})`,
+        hour: currentH + currentM / 60,
+        isTomorrow: false,
+        date: now.toISOString(),
+      },
+      {
+        key: "in15",
+        label: `⏱️ Dans 15 min (${formatH(new Date(now.getTime() + 15 * 60000))})`,
+        hour: new Date(now.getTime() + 15 * 60000).getHours() + new Date(now.getTime() + 15 * 60000).getMinutes() / 60,
+        isTomorrow: new Date(now.getTime() + 15 * 60000).getDate() !== now.getDate(),
+        date: new Date(now.getTime() + 15 * 60000).toISOString(),
+      },
+      {
+        key: "in30",
+        label: `⏱️ Dans 30 min (${formatH(new Date(now.getTime() + 30 * 60000))})`,
+        hour: new Date(now.getTime() + 30 * 60000).getHours() + new Date(now.getTime() + 30 * 60000).getMinutes() / 60,
+        isTomorrow: new Date(now.getTime() + 30 * 60000).getDate() !== now.getDate(),
+        date: new Date(now.getTime() + 30 * 60000).toISOString(),
+      },
+      {
+        key: "in60",
+        label: `⏱️ Dans 1 heure (${formatH(new Date(now.getTime() + 60 * 60000))})`,
+        hour: new Date(now.getTime() + 60 * 60000).getHours() + new Date(now.getTime() + 60 * 60000).getMinutes() / 60,
+        isTomorrow: new Date(now.getTime() + 60 * 60000).getDate() !== now.getDate(),
+        date: new Date(now.getTime() + 60 * 60000).toISOString(),
+      },
+      {
+        key: "in120",
+        label: `⏱️ Dans 2 heures (${formatH(new Date(now.getTime() + 120 * 60000))})`,
+        hour: new Date(now.getTime() + 120 * 60000).getHours() + new Date(now.getTime() + 120 * 60000).getMinutes() / 60,
+        isTomorrow: new Date(now.getTime() + 120 * 60000).getDate() !== now.getDate(),
+        date: new Date(now.getTime() + 120 * 60000).toISOString(),
+      },
+    ];
+
+    // Créneaux préconfigurés pour demain
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60000);
+    const tomorrowDateStr = tomorrow.toISOString().split("T")[0];
+
+    slots.push(
+      {
+        key: "tmw_08",
+        label: `📅 Demain à 08h00 (Pointe matinale)`,
+        hour: 8.0,
+        isTomorrow: true,
+        date: `${tomorrowDateStr}T08:00:00.000Z`,
+      },
+      {
+        key: "tmw_12",
+        label: `📅 Demain à 12h30 (Midi)`,
+        hour: 12.5,
+        isTomorrow: true,
+        date: `${tomorrowDateStr}T12:30:00.000Z`,
+      },
+      {
+        key: "tmw_17",
+        label: `📅 Demain à 17h00 (Pointe vespérale)`,
+        hour: 17.0,
+        isTomorrow: true,
+        date: `${tomorrowDateStr}T17:00:00.000Z`,
+      },
+      {
+        key: "tmw_19",
+        label: `📅 Demain à 19h30 (Soirée)`,
+        hour: 19.5,
+        isTomorrow: true,
+        date: `${tomorrowDateStr}T19:30:00.000Z`,
+      }
+    );
+
+    return slots;
+  };
+
+  const currentSlots = getDepartureSlots();
+  const selectedSlot = currentSlots.find((s) => s.key === tripSlotKey) || currentSlots[1];
 
   const [selectedZoneFilter, setSelectedZoneFilter] = useState("all");
 
@@ -102,6 +192,12 @@ function PredictionPage() {
 
   // Exécution automatique de la prédiction de trajet pour la destination sélectionnée
   useEffect(() => {
+    if (!tripDestination) {
+      setTripResult(null);
+      setIsTripPredicting(false);
+      return;
+    }
+
     let isMounted = true;
     setIsTripPredicting(true);
 
@@ -110,7 +206,8 @@ function PredictionPage() {
         city: selectedCity,
         origin: tripOrigin,
         destination: tripDestination,
-        departureHour: tripHour,
+        departureHour: selectedSlot.hour,
+        departureDate: selectedSlot.date,
       })
       .then((res) => {
         if (isMounted && res) {
@@ -125,7 +222,7 @@ function PredictionPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedCity, tripOrigin, tripDestination, tripHour]);
+  }, [selectedCity, tripOrigin, tripDestination, tripSlotKey]);
 
   const predictions = forecastData?.globalForecast || [
     { horizon: "+15 min", congestionPercentage: 45, status: "Modéré (Ralentissement)" },
@@ -334,6 +431,7 @@ function PredictionPage() {
                 color: "#0f172a",
               }}
             >
+              <option value="">-- Choisir une destination cible --</option>
               {currentDestinations.map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -347,8 +445,8 @@ function PredictionPage() {
               Heure prévue de départ :
             </label>
             <select
-              value={tripHour}
-              onChange={(e) => setTripHour(parseFloat(e.target.value))}
+              value={tripSlotKey}
+              onChange={(e) => setTripSlotKey(e.target.value)}
               style={{
                 width: "100%",
                 padding: "10px 14px",
@@ -360,23 +458,40 @@ function PredictionPage() {
                 color: "#0f172a",
               }}
             >
-              <option value={12}>12h00 (Midi)</option>
-              <option value={15}>15h00 (Après-midi)</option>
-              <option value={16}>16h00 (Début de pointe)</option>
-              <option value={17}>17h00 (Pointe estudiantine & bureaux)</option>
-              <option value={18}>18h00 (Pointe vespérale)</option>
-              <option value={19}>19h00 (Soirée)</option>
-              <option value={20}>20h00 (Nuit)</option>
+              {currentSlots.map((slot) => (
+                <option key={slot.key} value={slot.key}>
+                  {slot.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
         {/* Résultat du diagnostic IA */}
-        {isTripPredicting ? (
+        {!tripDestination ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "32px 20px",
+              background: "#f8fafc",
+              borderRadius: "16px",
+              border: "1px dashed #cbd5e1",
+              color: "#64748b",
+            }}
+          >
+            <MapPin size={28} style={{ color: "#0284c7", marginBottom: "8px" }} />
+            <p style={{ margin: 0, fontSize: "13.5px", fontWeight: "700", color: "#334155" }}>
+              Veuillez sélectionner une destination cible ci-dessus
+            </p>
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>
+              L'IA CityFlow calculera instantanément l'analyse météo, le risque d'engorgement et le temps de trajet optimal.
+            </p>
+          </div>
+        ) : isTripPredicting ? (
           <div style={{ textAlign: "center", padding: "24px 0", color: "#64748b" }}>
             <Sparkles className="spin" size={24} style={{ marginBottom: "8px" }} />
             <p style={{ margin: 0, fontSize: "13px", fontWeight: "600" }}>
-              Analyse en direct de l'axe {tripDestination} à {tripHour}h00...
+              Analyse en direct de l'axe {tripDestination} ({selectedSlot.label})...
             </p>
           </div>
         ) : tripResult ? (
@@ -388,6 +503,15 @@ function PredictionPage() {
               padding: "18px 20px",
             }}
           >
+            {/* 1. Alerte synthétique en langage naturel OS1 & Fiabilité */}
+            {tripResult.timeline && (
+              <PredictionAlert
+                message={tripResult.timeline.alert_message}
+                confidence={tripResult.timeline.confidence}
+                causes={tripResult.timeline.causes}
+              />
+            )}
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <ShieldAlert size={22} color={tripResult.isRoadBlocked ? "#dc2626" : "#16a34a"} />
@@ -412,13 +536,28 @@ function PredictionPage() {
             {/* Météo à l'heure H */}
             {tripResult.weatherAtTargetHour && (
               <div style={{ fontSize: "13px", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>
-                {tripResult.weatherAtTargetHour.icon} Météo prévue à {tripHour}h : {tripResult.weatherAtTargetHour.label} ({tripResult.weatherAtTargetHour.temperature}°C, {tripResult.weatherAtTargetHour.precipitationProbability}% de risque de pluie)
+                {tripResult.weatherAtTargetHour.icon} Météo prévue {tripResult.isTomorrow ? "demain" : "aujourd'hui"} à {tripResult.departureTimeFormatted || selectedSlot.label} : {tripResult.weatherAtTargetHour.label} ({tripResult.weatherAtTargetHour.temperature}°C, {tripResult.weatherAtTargetHour.precipitationProbability}% de risque de pluie)
               </div>
+            )}
+
+            {/* 2. Timeline multi-horizons (15m, 30m, 45m, 1h, 1h30, 2h) */}
+            {tripResult.timeline?.points && (
+              <PredictionTimeline points={tripResult.timeline.points} />
+            )}
+
+            {/* 3. Grille des facteurs déterminants (XAI) */}
+            {tripResult.timeline?.factors && (
+              <PredictionFactors
+                isPeakHour={tripResult.timeline.factors.isPeakHour}
+                rainMm={tripResult.timeline.factors.rainMm}
+                hasEvent={tripResult.timeline.factors.hasEvent}
+                roadDegraded={tripResult.timeline.factors.roadDegraded}
+              />
             )}
 
             {/* Alertes d'événements */}
             {tripResult.warnings && tripResult.warnings.map((w, idx) => (
-              <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginTop: "6px" }}>
+              <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginTop: "10px" }}>
                 <span style={{ fontSize: "16px" }}>{w.icon}</span>
                 <div>
                   <strong style={{ fontSize: "12.5px", color: "#991b1b" }}>{w.title} : </strong>

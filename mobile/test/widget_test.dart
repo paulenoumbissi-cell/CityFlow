@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,11 +9,177 @@ import 'package:cityflow/models/incident_alert.dart';
 import 'package:cityflow/models/saved_place.dart';
 import 'package:cityflow/core/constants/city_data.dart';
 import 'package:cityflow/core/services/api_service.dart';
+import 'package:cityflow/screens/priority_routing_screen.dart';
+import 'package:provider/provider.dart';
+
+class _MockHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return _MockHttpClient();
+  }
+}
+
+class _MockHttpClient implements HttpClient {
+  @override
+  bool autoUncompress = true;
+  @override
+  Duration idleTimeout = const Duration(seconds: 15);
+  @override
+  Duration? connectionTimeout;
+  @override
+  int? maxConnectionsPerHost;
+  @override
+  String? userAgent;
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> putUrl(Uri url) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> deleteUrl(Uri url) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> patchUrl(Uri url) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> headUrl(Uri url) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> open(String method, String host, int port, String path) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> get(String host, int port, String path) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> post(String host, int port, String path) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> put(String host, int port, String path) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> delete(String host, int port, String path) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> patch(String host, int port, String path) async => _MockHttpClientRequest();
+
+  @override
+  Future<HttpClientRequest> head(String host, int port, String path) async => _MockHttpClientRequest();
+
+  @override
+  void addCredentials(Uri url, String realm, HttpClientCredentials credentials) {}
+
+  @override
+  void addProxyCredentials(String host, int port, String realm, HttpClientCredentials credentials) {}
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _MockHttpClientRequest implements HttpClientRequest {
+  @override
+  final HttpHeaders headers = _MockHttpHeaders();
+
+  @override
+  Future<HttpClientResponse> close() async => _MockHttpClientResponse();
+
+  @override
+  void add(List<int> data) {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future addStream(Stream<List<int>> stream) async {}
+
+  @override
+  Future flush() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _MockHttpHeaders implements HttpHeaders {
+  @override
+  void add(String name, Object value, {bool preserveHeaderCase = false}) {}
+
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
+
+  @override
+  void remove(String name, Object value) {}
+
+  @override
+  void removeAll(String name) {}
+
+  @override
+  List<String>? operator [](String name) => null;
+
+  @override
+  String? value(String name) => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _MockHttpClientResponse extends Stream<List<int>> implements HttpClientResponse {
+  @override
+  final HttpHeaders headers = _MockHttpHeaders();
+
+  static final List<int> _kTransparentImage = [
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+    0x42, 0x60, 0x82,
+  ];
+
+  @override
+  int get statusCode => 200;
+
+  @override
+  String get reasonPhrase => 'OK';
+
+  @override
+  bool get isRedirect => false;
+
+  @override
+  bool get persistentConnection => true;
+
+  @override
+  List<RedirectInfo> get redirects => const [];
+
+  @override
+  int get contentLength => _kTransparentImage.length;
+
+  @override
+  HttpClientResponseCompressionState get compressionState => HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(void Function(List<int> event)? onData,
+      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+    return Stream.value(_kTransparentImage).listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
+    HttpOverrides.global = _MockHttpOverrides();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(const MethodChannel('flutter_tts'), (MethodCall methodCall) async {
       return 1;
@@ -232,6 +400,60 @@ void main() {
       provider.dispose();
     });
 
+    test('Detects Off-Route Deviation, Triggers Alert and Recalculates Alternative Routes Dynamically', () async {
+      final provider = CityFlowProvider();
+      final landmarks = CityData.getLandmarks('Yaoundé');
+      final start = landmarks.first;
+      final dest = landmarks[5];
+
+      await provider.fetchSmartRoutes(
+        origin: start.pos,
+        destination: dest.pos,
+      );
+
+      expect(provider.selectedSmartRoute, isNotNull);
+      final initialRoute = provider.selectedSmartRoute!;
+
+      await provider.startGpsNavigation();
+      expect(provider.isGpsNavigating, true);
+      expect(provider.isOffRoute, false);
+
+      // Simuler une position sur la route initiale (à 5m du départ)
+      provider.updateRealGpsPosition(initialRoute.coordinates.first, speedKmh: 25.0);
+      expect(provider.isOffRoute, false);
+
+      // 1. Simuler une déviation significative hors du tracé (> 100 mètres)
+      final startPos = initialRoute.coordinates.first;
+      final deviatedPos = LatLng(startPos.latitude + 0.0025, startPos.longitude - 0.0025);
+      
+      // Première et deuxième détection consécutive
+      provider.updateRealGpsPosition(deviatedPos, speedKmh: 30.0);
+      provider.updateRealGpsPosition(deviatedPos, speedKmh: 32.0);
+
+      expect(provider.isOffRoute, true);
+      expect(provider.distanceToRouteMeters > 55.0, true);
+
+      // 2. Recalcul d'itinéraires alternatifs depuis la position déviée
+      await provider.recalculateOffRouteRoutes(fromPosition: deviatedPos, force: true);
+      expect(provider.offRouteAlternatives.isNotEmpty, true);
+
+      // 3. Choix et adoption d'un itinéraire alternatif proposé
+      final chosenAlternative = provider.offRouteAlternatives.first;
+      provider.acceptAlternativeRoute(chosenAlternative);
+
+      expect(provider.isOffRoute, false);
+      expect(provider.offRouteAlternatives.isEmpty, true);
+      expect(provider.selectedSmartRoute?.id, chosenAlternative.id);
+      expect(provider.navStepIndex, 0);
+
+      // 4. Arrêt de la navigation et nettoyage
+      provider.stopGpsNavigation();
+      expect(provider.isGpsNavigating, false);
+      expect(provider.isOffRoute, false);
+
+      provider.dispose();
+    });
+
     test('Loads comprehensive landmarks and roads for both Yaoundé and Douala', () {
       final ydeLandmarks = CityData.getLandmarks('Yaoundé');
       final dlaLandmarks = CityData.getLandmarks('Douala');
@@ -403,6 +625,55 @@ void main() {
 
       final floodPcts = (floodForecast['globalForecast'] as List).map((f) => f['congestionPercentage'] as int).toList();
       expect(floodPcts.any((pct) => pct > 60), true);
+    });
+
+    testWidgets('Renders PriorityRoutingScreen and validates 4-step Waze workflow UI elements', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final provider = CityFlowProvider();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<CityFlowProvider>.value(
+          value: provider,
+          child: const MaterialApp(
+            home: PriorityRoutingScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. Étape 1 : Accueil Waze (Explore)
+      expect(find.text('Où va-t-on ?'), findsOneWidget);
+      expect(find.text('Domicile'), findsOneWidget);
+      expect(find.text('Travail'), findsOneWidget);
+      expect(find.text('Nouveau'), findsOneWidget);
+      expect(find.text('Récemment'), findsOneWidget);
+      expect(find.text('Infos véhicule'), findsOneWidget);
+      expect(find.byIcon(Icons.warning_amber_rounded), findsWidgets);
+
+      // 2. Étape 2 : Clic sur une destination récente -> Fiche Destination
+      final firstRecent = find.text(provider.currentCityLandmarks.first.name);
+      if (firstRecent.evaluate().isNotEmpty) {
+        await tester.tap(firstRecent.first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Voir les itinéraires'), findsOneWidget);
+        expect(find.byIcon(Icons.directions_car_rounded), findsWidgets);
+
+        // 3. Étape 3 : Clic sur "Voir les itinéraires" -> Comparateur Waze
+        await tester.tap(find.text('Voir les itinéraires'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Éviter'), findsOneWidget);
+        expect(find.text('Partir plus tard'), findsOneWidget);
+        expect(find.text('Y aller'), findsOneWidget);
+      }
+
+      provider.dispose();
+      await tester.pump(const Duration(seconds: 5));
     });
   });
 }

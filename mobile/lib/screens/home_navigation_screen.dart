@@ -77,20 +77,20 @@ class _HomeNavigationScreenState extends State<HomeNavigationScreen> {
                     isEmergency: provider.isEmergencyModeActive,
                   ),
 
-                  // TAB 2: PRÉDICTION IA (MÉTÉO, HORIZONS & TENDANCES)
+                  // TAB 2: PLANIFIER (TRAJET FUTUR, MÉTÉO & ANTICIPATION)
                   _buildNavItem(
                     index: 1,
-                    icon: Icons.auto_awesome_outlined,
-                    activeIcon: Icons.auto_awesome_rounded,
-                    label: 'Prédiction',
+                    icon: Icons.event_note_outlined,
+                    activeIcon: Icons.event_note_rounded,
+                    label: 'Planifier',
                   ),
 
-                  // TAB 3: ENTRAIDE (SIGNALEMENT CITOYEN & RÉCOMPENSES)
+                  // TAB 3: SIGNALER (SIGNALEMENT CITOYEN & SÉCURITÉ)
                   _buildNavItem(
                     index: 2,
-                    icon: Icons.handshake_outlined,
-                    activeIcon: Icons.handshake_rounded,
-                    label: 'Entraide',
+                    icon: Icons.campaign_outlined,
+                    activeIcon: Icons.campaign_rounded,
+                    label: 'Signaler',
                     isPill: true,
                   ),
                 ],

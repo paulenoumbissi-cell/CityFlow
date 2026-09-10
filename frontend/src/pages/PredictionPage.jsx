@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
@@ -18,13 +18,41 @@ import {
   CloudLightning,
   CornerDownRight,
   Route,
+  ArrowUpDown,
+  Search,
+  CheckCircle2,
+  Building,
+  History,
+  Zap,
+  Leaf,
+  X,
 } from "lucide-react";
 import { useCity } from "../context/CityContext";
 import { apiService } from "../services/api";
+import { searchLandmarks, CITY_LANDMARKS } from "../data/cityData";
 import PredictionAlert from "../components/PredictionAlert";
 import PredictionFactors from "../components/PredictionFactors";
 import PredictionTimeline from "../components/PredictionTimeline";
+import { useTrafficAlerts, ToastContainer } from "../hooks/useTrafficAlerts.jsx";
 import "./PredictionPage.css";
+
+function getCategoryIcon(category) {
+  switch (category) {
+    case "university":
+      return "🎓";
+    case "hospital":
+      return "🏥";
+    case "mall":
+      return "🛒";
+    case "transport":
+      return "🚌";
+    case "hotel":
+      return "🏨";
+    case "landmark":
+    default:
+      return "🚦";
+  }
+}
 
 function getLevelClass(value) {
   if (value >= 75) return "dense";
@@ -46,12 +74,77 @@ function PredictionPage() {
   const [liveWeather, setLiveWeather] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // === NOUVELLES FONCTIONNALITÉS ===
+  // 1. Historique des trajets (localStorage)
+  const [tripHistory, setTripHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cityflow_trip_history");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+
+  // 2. Préférence de route : vitesse vs confort (routes bitumées)
+  const [routeMode, setRouteMode] = useState("comfort"); // "speed" | "comfort"
+
+  // 3. Alertes / Notifications toast
+  const { toasts, dismissAlert, alertCongestion, alertWeather, alertSuccess } = useTrafficAlerts();
+
   // Assistant de trajet prédictif (Heure minimale = Heure actuelle)
   const [tripOrigin, setTripOrigin] = useState("Poste Centrale");
   const [tripDestination, setTripDestination] = useState("");
   const [tripSlotKey, setTripSlotKey] = useState("in15");
   const [tripResult, setTripResult] = useState(null);
   const [isTripPredicting, setIsTripPredicting] = useState(false);
+
+  // Gestion des suggestions interactives et de l'autocomplete
+  const [isOriginFocused, setIsOriginFocused] = useState(false);
+  const [isDestFocused, setIsDestFocused] = useState(false);
+  const originWrapperRef = useRef(null);
+  const destWrapperRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (originWrapperRef.current && !originWrapperRef.current.contains(e.target)) {
+        setIsOriginFocused(false);
+      }
+      if (destWrapperRef.current && !destWrapperRef.current.contains(e.target)) {
+        setIsDestFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const popularShortcuts = isYaounde
+    ? [
+        "Carrefour CRADAT (Université Yaoundé I)",
+        "Collège Vogt (Mvolyé)",
+        "Carrefour Biyem-Assi (Rond-point Express)",
+        "Carrefour Mendong",
+        "Marché Mokolo",
+        "Bastos (Ambassades)",
+        "Carrefour Nlongkak",
+        "Carrefour Etoudi (Palais de l'Unité)",
+        "Mvan (Gare Voyageurs)",
+        "Carrefour Melen",
+      ]
+    : [
+        "Carrefour Akwa (Boulevard Liberté)",
+        "Carrefour Ndokoti (Axe Lourd)",
+        "Rond-point Deido",
+        "Rond-point Bonamoussadi (Maetur)",
+        "Carrefour Makepe (Missoke)",
+        "Carrefour Kotto",
+        "Bonanjo (Zone Administrative)",
+        "Carrefour Yassa (Grand Stade)",
+        "Marché Mboppi",
+      ];
+
+  const originSuggestions = searchLandmarks(tripOrigin, selectedCity);
+  const destSuggestions = searchLandmarks(tripDestination, selectedCity);
 
   // Génération dynamique des créneaux de prédiction (tous ancrés dans le futur)
   const getDepartureSlots = () => {
@@ -142,29 +235,6 @@ function PredictionPage() {
 
   const [selectedZoneFilter, setSelectedZoneFilter] = useState("all");
 
-  const ydeDestinations = [
-    "Carrefour CRADAT",
-    "Poste Centrale",
-    "Marché Mokolo",
-    "Rond-point Bastos",
-    "Carrefour Nlongkak",
-    "Carrefour Mvan",
-    "Carrefour Warda",
-    "Rond-point Express (Biyem-Assi)",
-  ];
-
-  const dlaDestinations = [
-    "Carrefour Ndokoti",
-    "Rond-point Deido",
-    "Boulevard de la Liberté (Akwa)",
-    "Marché Mboppi",
-    "Plateau Administratif (Bonanjo)",
-    "Rond-point Bonabéri",
-    "Carrefour Bonamoussadi",
-  ];
-
-  const currentDestinations = isYaounde ? ydeDestinations : dlaDestinations;
-
   // Charger la météo automatique en direct et les prévisions IA
   useEffect(() => {
     let isMounted = true;
@@ -208,11 +278,54 @@ function PredictionPage() {
         destination: tripDestination,
         departureHour: selectedSlot.hour,
         departureDate: selectedSlot.date,
+        routeMode, // Nouveau : transmet la préférence vitesse/confort
       })
       .then((res) => {
         if (isMounted && res) {
           setTripResult(res);
           setIsTripPredicting(false);
+
+          // === Sauvegarde dans l'historique ===
+          const historyEntry = {
+            id: Date.now(),
+            origin: tripOrigin,
+            destination: tripDestination,
+            city: selectedCity,
+            slotLabel: selectedSlot.label,
+            routeMode,
+            congestionScore: res.congestionScore,
+            estimatedDuration: res.estimatedDurationMinutes,
+            timestamp: new Date().toISOString(),
+          };
+          setTripHistory((prev) => {
+            const updated = [historyEntry, ...prev.filter(
+              (h) => !(h.origin === tripOrigin && h.destination === tripDestination && h.city === selectedCity)
+            )].slice(0, 8); // Max 8 entrées
+            try { localStorage.setItem("cityflow_trip_history", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+
+          // === Alertes automatiques ===
+          if (res.congestionScore >= 75) {
+            alertCongestion({
+              zone: tripDestination,
+              score: res.congestionScore,
+              eta: res.estimatedDurationMinutes ? `${res.estimatedDurationMinutes} min` : null,
+            });
+          } else if (res.congestionScore < 40) {
+            alertSuccess({
+              title: "Trajet fluide prévu",
+              message: `${tripOrigin} → ${tripDestination} — ~${res.estimatedDurationMinutes} min. Bonne route !`,
+            });
+          }
+
+          // Alerte météo si pluie
+          if (res.weatherAtTargetHour && res.weatherAtTargetHour.rainMm > 5) {
+            alertWeather({
+              condition: res.weatherAtTargetHour.label,
+              impact: `Ralentissements attendus. Chaussée glissante sur l'axe ${tripDestination}.`,
+            });
+          }
         }
       })
       .catch(() => {
@@ -222,7 +335,7 @@ function PredictionPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedCity, tripOrigin, tripDestination, tripSlotKey]);
+  }, [selectedCity, tripOrigin, tripDestination, tripSlotKey, routeMode]);
 
   const predictions = forecastData?.globalForecast || [
     { horizon: "+15 min", congestionPercentage: 45, status: "Modéré (Ralentissement)" },
@@ -256,6 +369,8 @@ function PredictionPage() {
 
   return (
     <main className="prediction-page">
+      {/* TOAST NOTIFICATIONS */}
+      <ToastContainer toasts={toasts} onDismiss={dismissAlert} />
       {/* HEADER */}
       <section className="prediction-page-header">
         <div>
@@ -278,8 +393,8 @@ function PredictionPage() {
               onChange={(event) => {
                 const newCity = event.target.value;
                 setSelectedCity(newCity);
-                setTripOrigin(newCity === "Yaoundé" ? "Poste Centrale" : "Boulevard de la Liberté");
-                setTripDestination(newCity === "Yaoundé" ? "Carrefour CRADAT" : "Carrefour Ndokoti");
+                setTripOrigin(newCity === "Yaoundé" ? "Poste Centrale" : "Carrefour Akwa (Boulevard Liberté)");
+                setTripDestination("");
               }}
             >
               <option value="Yaoundé">📍 Yaoundé (Centre)</option>
@@ -287,20 +402,44 @@ function PredictionPage() {
             </select>
           </div>
 
+          {/* Bouton historique des trajets */}
+          {tripHistory.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="btn-secondary"
+              style={{ gap: "6px", fontSize: "12px", padding: "8px 13px", position: "relative" }}
+              title="Voir les recherches récentes"
+            >
+              <History size={15} />
+              Historique
+              <span style={{
+                background: "linear-gradient(135deg, #1a3a6b, #22a832)",
+                color: "#fff",
+                borderRadius: "50%",
+                width: "18px",
+                height: "18px",
+                fontSize: "10px",
+                fontWeight: "900",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                {tripHistory.length}
+              </span>
+            </button>
+          )}
+
           <Link
             to="/routes"
+            className="btn-primary"
             style={{
-              display: "flex",
-              alignItems: "center",
               gap: "6px",
               padding: "9px 14px",
-              background: "#00875A",
-              color: "#ffffff",
-              borderRadius: "10px",
-              fontWeight: "700",
               fontSize: "13px",
               textDecoration: "none",
-              boxShadow: "0 2px 10px rgba(0, 135, 90, 0.2)",
+              borderRadius: "10px",
+              background: "linear-gradient(135deg, #00875A, #005f3e)",
             }}
           >
             <Navigation size={15} />
@@ -360,7 +499,112 @@ function PredictionPage() {
         </div>
       </section>
 
-      {/* ASSISTANT PRÉDICTIF DE TRAJET & D'OBSTACLES (EX: CRADAT À 17H) */}
+      {/* === PANNEAU HISTORIQUE DES TRAJETS === */}
+      {showHistory && tripHistory.length > 0 && (
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e2e8f0",
+            borderRadius: "16px",
+            padding: "16px 20px",
+            marginBottom: "20px",
+            boxShadow: "0 4px 18px rgba(0, 0, 0, 0.04)",
+            animation: "fadeSlideIn 0.3s ease",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ padding: "6px", background: "linear-gradient(135deg, #1a3a6b, #22a832)", borderRadius: "8px", color: "#fff" }}>
+                <History size={16} />
+              </div>
+              <div>
+                <strong style={{ fontSize: "14px", color: "#0f172a" }}>Recherches récentes</strong>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>Cliquez pour recharger un trajet</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setTripHistory([]);
+                  localStorage.removeItem("cityflow_trip_history");
+                  setShowHistory(false);
+                }}
+                style={{ background: "none", border: "none", fontSize: "11px", color: "#94a3b8", cursor: "pointer", padding: "4px 8px", borderRadius: "6px" }}
+              >
+                Effacer tout
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHistory(false)}
+                style={{ background: "#f1f5f9", border: "none", borderRadius: "8px", padding: "4px 8px", cursor: "pointer", color: "#475569" }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {tripHistory.map((h) => {
+              const scoreColor = h.congestionScore >= 75 ? "#dc2626" : h.congestionScore >= 40 ? "#f59e0b" : "#10b981";
+              const isCurrentCity = h.city === selectedCity;
+              return (
+                <div
+                  key={h.id}
+                  onClick={() => {
+                    if (isCurrentCity) {
+                      setTripOrigin(h.origin);
+                      setTripDestination(h.destination);
+                      setRouteMode(h.routeMode || "comfort");
+                      setShowHistory(false);
+                    }
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "8px 12px",
+                    borderRadius: "10px",
+                    background: isCurrentCity ? "#f8fafc" : "#f1f5f9",
+                    border: "1px solid #e2e8f0",
+                    cursor: isCurrentCity ? "pointer" : "default",
+                    opacity: isCurrentCity ? 1 : 0.55,
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => isCurrentCity && (e.currentTarget.style.background = "#f0fdf4")}
+                  onMouseLeave={(e) => isCurrentCity && (e.currentTarget.style.background = "#f8fafc")}
+                  title={isCurrentCity ? "Cliquer pour recharger ce trajet" : `Trajet de ${h.city} — changez de ville pour accéder`}
+                >
+                  <span style={{ fontSize: "14px" }}>🏁</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "12.5px", fontWeight: "700", color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {h.origin} → {h.destination}
+                    </div>
+                    <div style={{ fontSize: "10.5px", color: "#64748b" }}>
+                      {h.city} • {h.slotLabel?.replace(/[⚡⏱️📅]/g, "").trim()} • {h.routeMode === "speed" ? "⚡ Vitesse" : "🛣️ Confort"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                    <span style={{
+                      background: scoreColor,
+                      color: "#fff",
+                      borderRadius: "6px",
+                      padding: "2px 7px",
+                      fontSize: "10px",
+                      fontWeight: "800",
+                    }}>
+                      {h.congestionScore}%
+                    </span>
+                    <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>~{h.estimatedDuration} min</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ASSISTANT PRÉDICTIF DE TRAJET & D'OBSTACLES */}
       <section
         style={{
           background: "#ffffff",
@@ -371,75 +615,229 @@ function PredictionPage() {
           boxShadow: "0 4px 18px rgba(0, 0, 0, 0.04)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-          <div style={{ padding: "8px", background: "rgba(0, 135, 90, 0.1)", borderRadius: "10px", color: "#00875A" }}>
-            <Route size={20} />
-          </div>
-          <div>
-            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "900", color: "#0f172a" }}>
-              Assistant Prédictif de Trajet & d'Obstacles Futurs
-            </h3>
-            <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#64748b" }}>
-              Exemple : Prédire l'état de la route, la météo et les blocages pour aller au <strong>CRADAT à 17h</strong>
-            </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ padding: "8px", background: "rgba(0, 135, 90, 0.1)", borderRadius: "10px", color: "#00875A" }}>
+              <Route size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "900", color: "#0f172a" }}>
+                Assistant Prédictif de Trajet & d'Obstacles Futurs
+              </h3>
+              <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#64748b" }}>
+                Reconnaissance universelle de tous les lieux (lycées, carrefours, hôpitaux, marchés) et prédiction d'obstacles
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Formulaire interactif */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "20px" }}>
-          <div>
+        {/* Formulaire interactif avec recherche & autocomplétion */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr 1fr", gap: "12px", alignItems: "flex-end", marginBottom: "14px" }}>
+          {/* Point de départ */}
+          <div ref={originWrapperRef} style={{ position: "relative" }}>
             <label style={{ display: "block", fontSize: "12px", fontWeight: "800", color: "#334155", marginBottom: "6px" }}>
               Point de départ :
             </label>
-            <select
-              value={tripOrigin}
-              onChange={(e) => setTripOrigin(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "10px",
-                border: "1px solid #cbd5e1",
-                background: "#f8fafc",
-                fontWeight: "700",
-                fontSize: "13px",
-                color: "#0f172a",
-              }}
-            >
-              {currentDestinations.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                value={tripOrigin}
+                onChange={(e) => {
+                  setTripOrigin(e.target.value);
+                  setIsOriginFocused(true);
+                }}
+                onFocus={() => setIsOriginFocused(true)}
+                placeholder="Ex: Poste Centrale, Vogt, Bastos..."
+                style={{
+                  width: "100%",
+                  padding: "10px 14px 10px 34px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  fontWeight: "700",
+                  fontSize: "13px",
+                  color: "#0f172a",
+                  boxSizing: "border-box",
+                }}
+              />
+              <MapPin size={15} color="#00875A" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+            </div>
+
+            {/* Dropdown suggestions Départ */}
+            {isOriginFocused && originSuggestions.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 50,
+                  marginTop: "4px",
+                  background: "#ffffff",
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                  maxHeight: "220px",
+                  overflowY: "auto",
+                }}
+              >
+                {originSuggestions.slice(0, 8).map((item, idx) => (
+                  <div
+                    key={idx}
+                    onMouseDown={() => {
+                      setTripOrigin(item.name);
+                      setIsOriginFocused(false);
+                    }}
+                    style={{
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      borderBottom: "1px solid #f1f5f9",
+                      fontSize: "12.5px",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <span>{getCategoryIcon(item.category)}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: "700", color: "#1e293b" }}>{item.name}</div>
+                      <div style={{ fontSize: "11px", color: "#64748b" }}>{item.district} • {item.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div>
+          {/* Bouton Swap */}
+          <div style={{ paddingBottom: "2px" }}>
+            <button
+              type="button"
+              onClick={() => {
+                const prevOrigin = tripOrigin;
+                const prevDest = tripDestination;
+                setTripOrigin(prevDest || "Poste Centrale");
+                setTripDestination(prevOrigin);
+              }}
+              title="Inverser départ et destination"
+              style={{
+                background: "#f1f5f9",
+                border: "1px solid #cbd5e1",
+                borderRadius: "10px",
+                padding: "10px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#334155",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#e2e8f0")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+            >
+              <ArrowUpDown size={16} />
+            </button>
+          </div>
+
+          {/* Destination cible */}
+          <div ref={destWrapperRef} style={{ position: "relative" }}>
             <label style={{ display: "block", fontSize: "12px", fontWeight: "800", color: "#334155", marginBottom: "6px" }}>
               Destination cible :
             </label>
-            <select
-              value={tripDestination}
-              onChange={(e) => setTripDestination(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "10px",
-                border: "1px solid #cbd5e1",
-                background: "#f8fafc",
-                fontWeight: "700",
-                fontSize: "13px",
-                color: "#0f172a",
-              }}
-            >
-              <option value="">-- Choisir une destination cible --</option>
-              {currentDestinations.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                value={tripDestination}
+                onChange={(e) => {
+                  setTripDestination(e.target.value);
+                  setIsDestFocused(true);
+                }}
+                onFocus={() => setIsDestFocused(true)}
+                placeholder="Tapez un lieu (CRADAT, Vogt, Ndokoti...)"
+                style={{
+                  width: "100%",
+                  padding: "10px 14px 10px 34px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  fontWeight: "700",
+                  fontSize: "13px",
+                  color: "#0f172a",
+                  boxSizing: "border-box",
+                }}
+              />
+              <Search size={15} color="#0284c7" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+              {tripDestination && (
+                <button
+                  type="button"
+                  onClick={() => setTripDestination("")}
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    color: "#94a3b8",
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Dropdown suggestions Destination */}
+            {isDestFocused && destSuggestions.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 50,
+                  marginTop: "4px",
+                  background: "#ffffff",
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                  maxHeight: "220px",
+                  overflowY: "auto",
+                }}
+              >
+                {destSuggestions.slice(0, 8).map((item, idx) => (
+                  <div
+                    key={idx}
+                    onMouseDown={() => {
+                      setTripDestination(item.name);
+                      setIsDestFocused(false);
+                    }}
+                    style={{
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      borderBottom: "1px solid #f1f5f9",
+                      fontSize: "12.5px",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <span>{getCategoryIcon(item.category)}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: "700", color: "#1e293b" }}>{item.name}</div>
+                      <div style={{ fontSize: "11px", color: "#64748b" }}>{item.district} • {item.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Heure prévue de départ */}
           <div>
             <label style={{ display: "block", fontSize: "12px", fontWeight: "800", color: "#334155", marginBottom: "6px" }}>
               Heure prévue de départ :
@@ -465,6 +863,95 @@ function PredictionPage() {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Raccourcis rapides */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "16px" }}>
+          <span style={{ fontSize: "11px", fontWeight: "800", color: "#64748b" }}>Raccourcis rapides :</span>
+          {popularShortcuts.map((sc, idx) => {
+            const isSelected = tripDestination === sc;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setTripDestination(sc)}
+                style={{
+                  background: isSelected ? "linear-gradient(135deg, #1a3a6b, #22a832)" : "#f1f5f9",
+                  color: isSelected ? "#ffffff" : "#334155",
+                  border: `1px solid ${isSelected ? "#1a3a6b" : "#e2e8f0"}`,
+                  padding: "4px 10px",
+                  borderRadius: "20px",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                {sc.split("(")[0].trim()}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* === TOGGLE MODE ROUTE : Vitesse vs Confort === */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "20px",
+          padding: "10px 14px",
+          background: "#f8fafc",
+          borderRadius: "12px",
+          border: "1px solid #e2e8f0",
+        }}>
+          <span style={{ fontSize: "11px", fontWeight: "800", color: "#475569", whiteSpace: "nowrap" }}>Priorité de route :</span>
+          <button
+            type="button"
+            onClick={() => setRouteMode("comfort")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "6px 12px",
+              borderRadius: "8px",
+              border: routeMode === "comfort" ? "none" : "1px solid #e2e8f0",
+              background: routeMode === "comfort" ? "linear-gradient(135deg, #1a3a6b, #22a832)" : "#ffffff",
+              color: routeMode === "comfort" ? "#ffffff" : "#64748b",
+              fontSize: "12px",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              boxShadow: routeMode === "comfort" ? "0 3px 10px rgba(26,58,107,0.25)" : "none",
+            }}
+          >
+            <Leaf size={13} />
+            Confort (Routes bitumées)
+          </button>
+          <button
+            type="button"
+            onClick={() => setRouteMode("speed")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "6px 12px",
+              borderRadius: "8px",
+              border: routeMode === "speed" ? "none" : "1px solid #e2e8f0",
+              background: routeMode === "speed" ? "linear-gradient(135deg, #b45309, #f59e0b)" : "#ffffff",
+              color: routeMode === "speed" ? "#ffffff" : "#64748b",
+              fontSize: "12px",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              boxShadow: routeMode === "speed" ? "0 3px 10px rgba(245,158,11,0.3)" : "none",
+            }}
+          >
+            <Zap size={13} />
+            Vitesse (Plus rapide)
+          </button>
+          <span style={{ fontSize: "10.5px", color: "#94a3b8", marginLeft: "auto" }}>
+            {routeMode === "comfort" ? "🛣️ Favorise les voies bitumées" : "⚡ Favorise le chemin le plus court"}
+          </span>
         </div>
 
         {/* Résultat du diagnostic IA */}
@@ -543,6 +1030,197 @@ function PredictionPage() {
             {/* 2. Timeline multi-horizons (15m, 30m, 45m, 1h, 1h30, 2h) */}
             {tripResult.timeline?.points && (
               <PredictionTimeline points={tripResult.timeline.points} />
+            )}
+
+            {/* Diagnostic étape par étape des carrefours traversés */}
+            {tripResult.corridorWaypoints && tripResult.corridorWaypoints.length > 0 && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  background: "#ffffff",
+                  padding: "16px",
+                  borderRadius: "14px",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                  <Route size={18} color="#0284c7" />
+                  <div>
+                    <strong style={{ fontSize: "14px", color: "#0f172a" }}>
+                      Diagnostic étape par étape & Meilleur itinéraire
+                    </strong>
+                    <div style={{ fontSize: "11.5px", color: "#64748b" }}>
+                      Heures de passage exactes, qualité de la chaussée et obstacles détectés
+                    </div>
+                  </div>
+                </div>
+
+                {/* Synthèse de la meilleure route bitumée */}
+                {tripResult.bestRouteOverview && (
+                  <div
+                    style={{
+                      background: "#f0fdf4",
+                      border: "1px solid #bbf7d0",
+                      borderRadius: "10px",
+                      padding: "10px 12px",
+                      marginBottom: "12px",
+                      fontSize: "12px",
+                      color: "#166534",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <span style={{ fontWeight: "800", color: "#15803d" }}>
+                        🛣️ {tripResult.bestRouteOverview.recommendedRouteName}
+                      </span>
+                      <span
+                        style={{
+                          background: "#dcfce7",
+                          color: "#166534",
+                          padding: "2px 8px",
+                          borderRadius: "6px",
+                          fontWeight: "800",
+                          fontSize: "11px",
+                        }}
+                      >
+                        {tripResult.bestRouteOverview.averageRoadQualityScore}% Qualité Bitume
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "11.5px", color: "#166534", opacity: 0.95 }}>
+                      ✨ <strong>Avantage de l'axe :</strong> {tripResult.bestRouteOverview.whyBestRoute}
+                    </div>
+                    {tripResult.bestRouteOverview.alternativeDegradedRoute && (
+                      <div style={{ fontSize: "11px", color: "#b45309", marginTop: "4px", paddingTop: "4px", borderTop: "1px dashed #cbd5e1" }}>
+                        ⚠️ <strong>Évitement conseillé :</strong> {tripResult.bestRouteOverview.alternativeDegradedRoute.name} ({tripResult.bestRouteOverview.alternativeDegradedRoute.warning})
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {tripResult.criticalBottleneck && tripResult.criticalBottleneck.congestionScore >= 65 && (
+                  <div
+                    style={{
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: "10px",
+                      padding: "10px 12px",
+                      marginBottom: "14px",
+                      fontSize: "12.5px",
+                      color: "#991b1b",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span style={{ fontSize: "16px" }}>🚨</span>
+                    <div>
+                      <strong>Point critique du parcours : </strong>
+                      <u>{tripResult.criticalBottleneck.nodeName}</u> atteint vers <b>{tripResult.criticalBottleneck.etaFormatted}</b> ({tripResult.criticalBottleneck.mainReason}).
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {tripResult.corridorWaypoints.map((wp, wIdx) => {
+                    const isOrigin = wp.isOrigin;
+                    const isDest = wp.isDestination;
+                    const score = wp.congestionScore || 50;
+                    const badgeColor = score >= 85 ? "#dc2626" : score >= 68 ? "#ea580c" : score >= 40 ? "#f59e0b" : "#10b981";
+
+                    return (
+                      <div
+                        key={wp.id || wIdx}
+                        style={{
+                          borderLeft: `3px solid ${badgeColor}`,
+                          paddingLeft: "12px",
+                          paddingTop: "2px",
+                          paddingBottom: "2px",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontWeight: isOrigin || isDest ? "900" : "800", fontSize: "13px", color: "#1e293b" }}>
+                            {isOrigin ? "🏁 " : isDest ? "📍 " : "🚦 "}
+                            {wp.name}
+                          </span>
+                          <span
+                            style={{
+                              background: "#f1f5f9",
+                              color: "#0284c7",
+                              padding: "2px 8px",
+                              borderRadius: "6px",
+                              fontWeight: "800",
+                              fontSize: "11px",
+                            }}
+                          >
+                            🕒 {wp.estimatedArrival}
+                          </span>
+                        </div>
+
+                        {/* Indication de la route empruntée et qualité du bitume */}
+                        {wp.roadName && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px", fontSize: "11.5px" }}>
+                            <span style={{ color: "#0369a1", fontWeight: "700" }}>
+                              🛣️ {wp.roadName}
+                            </span>
+                            {wp.pavementStatus && (
+                              <span
+                                style={{
+                                  background: "#f8fafc",
+                                  border: "1px solid #e2e8f0",
+                                  color: "#475569",
+                                  padding: "1px 6px",
+                                  borderRadius: "4px",
+                                  fontSize: "10.5px",
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {wp.pavementStatus}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px", fontSize: "11px" }}>
+                          <span style={{ color: badgeColor, fontWeight: "700" }}>
+                            ● {wp.statusLabel} ({score}%)
+                          </span>
+                          {wp.delayAtNodeMin > 0 && (
+                            <span style={{ color: "#64748b" }}>
+                              (+{wp.delayAtNodeMin} min de ralentissement)
+                            </span>
+                          )}
+                        </div>
+
+                        {wp.obstacles && wp.obstacles.length > 0 && (
+                          <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {wp.obstacles.map((obs, oIdx) => (
+                              <div
+                                key={oIdx}
+                                style={{
+                                  background: obs.severity === "critical" ? "#fef2f2" : "#fffbeb",
+                                  border: `1px solid ${obs.severity === "critical" ? "#fecaca" : "#fde68a"}`,
+                                  borderRadius: "8px",
+                                  padding: "6px 10px",
+                                  fontSize: "11.5px",
+                                  color: obs.severity === "critical" ? "#991b1b" : "#92400e",
+                                  display: "flex",
+                                  gap: "6px",
+                                  alignItems: "flex-start",
+                                }}
+                              >
+                                <span>{obs.icon || "⚠️"}</span>
+                                <div>
+                                  <strong>{obs.title}</strong>
+                                  <div style={{ fontSize: "11px", opacity: 0.9 }}>{obs.description}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             {/* 3. Grille des facteurs déterminants (XAI) */}

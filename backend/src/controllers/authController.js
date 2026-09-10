@@ -580,3 +580,39 @@ export const deleteAccount = async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la suppression du compte." });
   }
 };
+
+/**
+ * 9. MISE À JOUR DU TOKEN FCM POUR LES NOTIFICATIONS PUSH
+ */
+export const updateFcmToken = async (req, res) => {
+  const { id, email, phone, fcmToken } = req.body;
+
+  if (!fcmToken) {
+    return res.status(400).json({ error: "Le token FCM est requis." });
+  }
+
+  let user = null;
+  if (id) user = await db.get("SELECT * FROM users WHERE id = ?", [id]);
+  if (!user && email) user = await db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email.toLowerCase().trim()]);
+  if (!user && phone) user = await db.get("SELECT * FROM users WHERE phone = ?", [phone]);
+
+  if (!user) {
+    return res.status(404).json({ error: "Utilisateur non trouvé." });
+  }
+
+  try {
+    const now = new Date().toISOString();
+    await db.run("UPDATE users SET fcm_token = ?, updated_at = ? WHERE id = ?", [fcmToken, now, user.id]);
+    
+    console.log(`[FCM] 📲 Token Push mis à jour pour ${user.name || user.email}`);
+    
+    res.json({
+      success: true,
+      message: "Token FCM enregistré avec succès.",
+    });
+  } catch (err) {
+    console.error("[Update FCM Token Error]", err.message);
+    res.status(500).json({ error: "Erreur lors de l'enregistrement du token FCM." });
+  }
+};
+

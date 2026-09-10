@@ -3,8 +3,11 @@ import {
   broadcastReportVote,
   broadcastRadioMessage,
   broadcastSosAlert,
+  broadcastReportToAffectedDrivers,
 } from "../services/websocketServer.js";
 import dbService from "../services/dbService.js";
+import { sendPushNotification } from "../services/pushService.js";
+import db from "../services/database.js";
 
 // ==========================================================================
 // 1. LES ABONNEMENTS PREMIUM (Barème Définitif)
@@ -205,8 +208,31 @@ export const createCitizenReport = async (req, res) => {
     profile.reportsCount = (profile.reportsCount || 0) + 1;
     await dbService.saveProfile(profile);
 
-    // Diffusion push WebSockets
+    // Diffusion push WebSockets — à tous les clients de la ville
     broadcastNewReport(newReport);
+
+    // ★ Notification ciblée — uniquement aux conducteurs dont le trajet actif
+    // passe à moins de 200m du lieu de l'incident
+    broadcastReportToAffectedDrivers(newReport);
+
+    // ★ Push Notification FCM (Arrière-plan)
+    // On notifie les utilisateurs de la même ville si la sévérité est élevée
+    if (severity === "high" || severity === "critical" || catKey === "accident" || catKey === "roadworks") {
+      try {
+        const usersInCity = await db.all("SELECT fcm_token FROM users WHERE LOWER(city) = LOWER(?) AND fcm_token IS NOT NULL", [city || "Yaoundé"]);
+        const tokens = usersInCity.map(u => u.fcm_token).filter(t => t);
+        if (tokens.length > 0) {
+          sendPushNotification(
+            tokens,
+            `🚨 CityFlow Alert: ${title}`,
+            `${locationDescription} - Signalez votre présence si vous êtes dans la zone.`,
+            { reportId: newReport.id, type: "report" }
+          );
+        }
+      } catch (pushErr) {
+        console.error("[FCM Trigger Error]", pushErr.message);
+      }
+    }
 
     res.status(201).json({
       success: true,

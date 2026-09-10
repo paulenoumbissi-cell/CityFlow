@@ -423,18 +423,134 @@ class CityData {
   }
 
   static CityLandmark? findLandmark(String city, String name) {
+    if (name.trim().isEmpty) return null;
     final list = getLandmarks(city);
+    final clean = name.trim().toLowerCase();
+
+    // 1. Dictionnaire d'alias et acronymes (CFTA, Vogt, CRADAT, etc.)
+    final Map<String, LatLng> quickAliases = {
+      'cfta': const LatLng(3.8455, 11.5350),
+      'college cfta': const LatLng(3.8455, 11.5350),
+      'carrefour cfta': const LatLng(3.8455, 11.5350),
+      'cfta ekounou': const LatLng(3.8455, 11.5350),
+      'nkolndongo': const LatLng(3.8510, 11.5360),
+      'anguissa': const LatLng(3.8480, 11.5300),
+      'mvog-ada': const LatLng(3.8640, 11.5320),
+      'mvog ada': const LatLng(3.8640, 11.5320),
+      'belibi': const LatLng(3.8620, 11.5300),
+      'fouda': const LatLng(3.8710, 11.5360),
+      'ekie': const LatLng(3.8280, 11.5490),
+      'nkomo': const LatLng(3.8290, 11.5620),
+      'awae': const LatLng(3.8340, 11.5720),
+      'biteng': const LatLng(3.8120, 11.5780),
+      'etoug-ebe': const LatLng(3.8420, 11.4820),
+      'etoug ebe': const LatLng(3.8420, 11.4820),
+      'vogt': const LatLng(3.8520, 11.5080),
+      'college vogt': const LatLng(3.8520, 11.5080),
+      'mvolye': const LatLng(3.8520, 11.5080),
+      'cradat': const LatLng(3.8560, 11.5030),
+      'express': const LatLng(3.8420, 11.4920),
+      'biyem-assi': const LatLng(3.8420, 11.4920),
+      'biyem assi': const LatLng(3.8420, 11.4920),
+      'mendong': const LatLng(3.8340, 11.4880),
+      'mokolo': const LatLng(3.8730, 11.5030),
+      'bastos': const LatLng(3.8890, 11.5120),
+      'poste centrale': const LatLng(3.8667, 11.5167),
+      'ndokoti': const LatLng(4.0450, 9.7420),
+      'deido': const LatLng(4.0667, 9.7006),
+      'bonamoussadi': const LatLng(4.0867, 9.7350),
+      'makepe': const LatLng(4.0780, 9.7450),
+      'kotto': const LatLng(4.0920, 9.7480),
+      'bonanjo': const LatLng(4.0430, 9.6910),
+      'bonaberi': const LatLng(4.0714, 9.6712),
+      'yassa': const LatLng(3.9850, 9.7890),
+      'supptic': const LatLng(3.8615, 11.5035),
+      'supp\'tic': const LatLng(3.8615, 11.5035),
+      'enspt': const LatLng(3.8615, 11.5035),
+      'enam': const LatLng(3.8670, 11.5120),
+      'esstic': const LatLng(3.8560, 11.5030),
+      'ens': const LatLng(3.8600, 11.5020),
+      'ens yaounde': const LatLng(3.8600, 11.5020),
+      'fmsb': const LatLng(3.8640, 11.4980),
+      'cuss': const LatLng(3.8640, 11.4980),
+      'st jean': const LatLng(3.8790, 11.4620),
+      'saint jean': const LatLng(3.8790, 11.4620),
+      'iut': const LatLng(4.0580, 9.7420),
+      'iut douala': const LatLng(4.0580, 9.7420),
+      'essec': const LatLng(4.0590, 9.7410),
+      'enset': const LatLng(4.0570, 9.7430),
+      'minpostel': const LatLng(3.8650, 11.5140),
+      'immeuble ministeriel': const LatLng(3.8660, 11.5140),
+    };
+
     for (final l in list) {
-      if (l.name.toLowerCase() == name.toLowerCase()) {
+      if (l.name.toLowerCase() == clean) {
         return l;
       }
     }
     for (final l in list) {
-      if (l.name.toLowerCase().contains(name.toLowerCase()) || name.toLowerCase().contains(l.name.toLowerCase())) {
+      if (l.name.toLowerCase().contains(clean) || clean.contains(l.name.toLowerCase())) {
         return l;
       }
     }
+    final otherCity = city == 'Douala' ? 'Yaoundé' : 'Douala';
+    for (final l in getLandmarks(otherCity)) {
+      if (l.name.toLowerCase().contains(clean) || clean.contains(l.name.toLowerCase())) {
+        return l;
+      }
+    }
+
+    // Match dans la table d'alias
+    for (final entry in quickAliases.entries) {
+      if (clean.contains(entry.key) || entry.key.contains(clean)) {
+        return CityLandmark(
+          name: name,
+          pos: entry.value,
+          category: 'landmark',
+          district: city == 'Douala' ? 'Douala' : 'Yaoundé',
+          desc: 'Repère urbain géolocalisé',
+        );
+      }
+    }
+
     return null;
+  }
+
+  static List<CityLandmark> searchPlaces(String query, String city) {
+    final clean = query.trim().toLowerCase();
+    final landmarks = getLandmarks(city);
+    if (clean.isEmpty) {
+      return landmarks.take(12).toList();
+    }
+
+    final exactMatches = <CityLandmark>[];
+    final startsWithMatches = <CityLandmark>[];
+    final containsMatches = <CityLandmark>[];
+
+    for (final l in landmarks) {
+      final nameLow = l.name.toLowerCase();
+      final distLow = l.district.toLowerCase();
+      final descLow = l.desc.toLowerCase();
+
+      if (nameLow == clean) {
+        exactMatches.add(l);
+      } else if (nameLow.startsWith(clean) || distLow.startsWith(clean)) {
+        startsWithMatches.add(l);
+      } else if (nameLow.contains(clean) || distLow.contains(clean) || descLow.contains(clean)) {
+        containsMatches.add(l);
+      }
+    }
+
+    if (exactMatches.isEmpty && startsWithMatches.isEmpty && containsMatches.isEmpty) {
+      final otherCity = city == 'Douala' ? 'Yaoundé' : 'Douala';
+      for (final l in getLandmarks(otherCity)) {
+        if (l.name.toLowerCase().contains(clean) || l.district.toLowerCase().contains(clean)) {
+          containsMatches.add(l);
+        }
+      }
+    }
+
+    return [...exactMatches, ...startsWithMatches, ...containsMatches];
   }
 
   static const List<CityLandmark> yaoundeLandmarks = [
@@ -538,6 +654,13 @@ class CityData {
       desc: 'Zone commerciale dense & Carrefour Acacias',
     ),
     CityLandmark(
+      name: 'Carrefour Acacias (Biyem-Assi)',
+      pos: LatLng(3.8400, 11.4900),
+      category: 'landmark',
+      district: 'Biyem-Assi',
+      desc: 'Marché aux fruits, commerces & liaison Express',
+    ),
+    CityLandmark(
       name: 'Carrefour Etoudi (Palais de l\'Unité)',
       pos: LatLng(3.9180, 11.5320),
       category: 'landmark',
@@ -566,6 +689,13 @@ class CityData {
       desc: 'Zone résidentielle & Liaison vers la route de Kribi',
     ),
     CityLandmark(
+      name: 'Carrefour Jouvence',
+      pos: LatLng(3.8240, 11.4820),
+      category: 'landmark',
+      district: 'Jouvence',
+      desc: 'Liaison Biyem-Assi, Mendong et Simbock',
+    ),
+    CityLandmark(
       name: 'Carrefour Ekounou',
       pos: LatLng(3.8410, 11.5380),
       category: 'landmark',
@@ -577,7 +707,7 @@ class CityData {
       pos: LatLng(3.8680, 11.5580),
       category: 'landmark',
       district: 'Mimboman',
-      desc: 'Quartier résidentiel Est Yaoundé',
+      desc: 'Quartier résidentiel Est Yaoundé & Marché 8ème',
     ),
     CityLandmark(
       name: 'Carrefour Nkoabang',
@@ -598,17 +728,24 @@ class CityData {
       pos: LatLng(3.8610, 11.4980),
       category: 'landmark',
       district: 'Melen',
-      desc: 'Polytechnique & CHU de Yaoundé',
+      desc: 'Polytechnique, CHU de Yaoundé & Mini-ferme',
     ),
     CityLandmark(
-      name: 'Carrefour Ngoa-Ekélé',
+      name: 'Carrefour CRADAT (Université Yaoundé I)',
       pos: LatLng(3.8560, 11.5030),
       category: 'landmark',
       district: 'Ngoa-Ekélé',
-      desc: 'Plateau Universitaire & Cité Universitaire',
+      desc: 'Carrefour estudiantin majeur, ESSTIC & Entrée Campus UY1',
     ),
     CityLandmark(
-      name: 'Carrefour Obili',
+      name: 'Carrefour Ngoa-Ekélé (Château)',
+      pos: LatLng(3.8580, 11.5010),
+      category: 'landmark',
+      district: 'Ngoa-Ekélé',
+      desc: 'Plateau Universitaire, Cité U & Stade Militaire',
+    ),
+    CityLandmark(
+      name: 'Carrefour Obili (Chapelle)',
       pos: LatLng(3.8590, 11.4880),
       category: 'landmark',
       district: 'Obili',
@@ -626,7 +763,7 @@ class CityData {
       pos: LatLng(3.8820, 11.4870),
       category: 'landmark',
       district: 'Cité Verte',
-      desc: 'Grand ensemble d\'habitations SIC',
+      desc: 'Grand ensemble d\'habitations SIC & Lycée',
     ),
     CityLandmark(
       name: 'Carrefour Essos',
@@ -671,6 +808,48 @@ class CityData {
       desc: 'Quartier résidentiel haut standing',
     ),
     CityLandmark(
+      name: 'Carrefour Dragages',
+      pos: LatLng(3.8960, 11.5220),
+      category: 'landmark',
+      district: 'Dragages',
+      desc: 'Liaison Nlongkak, Bastos et Mballa 2',
+    ),
+    CityLandmark(
+      name: 'Carrefour Mballa 2',
+      pos: LatLng(3.8940, 11.5280),
+      category: 'landmark',
+      district: 'Mballa 2',
+      desc: 'Quartier administratif et résidentiel',
+    ),
+    CityLandmark(
+      name: 'Carrefour Nkol-Eton',
+      pos: LatLng(3.8890, 11.5210),
+      category: 'landmark',
+      district: 'Nkol-Eton',
+      desc: 'Lycée de Nkol-Eton & Marché',
+    ),
+    CityLandmark(
+      name: 'Carrefour Mvog-Mbi',
+      pos: LatLng(3.8480, 11.5220),
+      category: 'landmark',
+      district: 'Mvog-Mbi',
+      desc: 'Nœud d\'échange sud-centre & Marché Mvog-Mbi',
+    ),
+    CityLandmark(
+      name: 'Carrefour Coron',
+      pos: LatLng(3.8510, 11.5240),
+      category: 'landmark',
+      district: 'Coron',
+      desc: 'Axe Siantou, Kondengui et Mvog-Mbi',
+    ),
+    CityLandmark(
+      name: 'Carrefour Kondengui',
+      pos: LatLng(3.8540, 11.5490),
+      category: 'landmark',
+      district: 'Kondengui',
+      desc: 'Prison Centrale, Marché et accès Emombo',
+    ),
+    CityLandmark(
       name: 'Carrefour Nkolmesseng',
       pos: LatLng(3.8850, 11.5620),
       category: 'landmark',
@@ -683,6 +862,267 @@ class CityData {
       category: 'landmark',
       district: 'Damas',
       desc: 'Axe de liaison Biyem-Assi vers Nsam',
+    ),
+    CityLandmark(
+      name: 'Carrefour Tropicana',
+      pos: LatLng(3.8150, 11.5190),
+      category: 'landmark',
+      district: 'Mvan',
+      desc: 'Liaison Mvan - Nsam et route de l\'aéroport',
+    ),
+    CityLandmark(
+      name: 'Carrefour Messamendongo',
+      pos: LatLng(3.8050, 11.5180),
+      category: 'landmark',
+      district: 'Messamendongo',
+      desc: 'Zone d\'habitation et accès Nsimalen',
+    ),
+    CityLandmark(
+      name: 'Carrefour Oyom-Abang',
+      pos: LatLng(3.8730, 11.4650),
+      category: 'landmark',
+      district: 'Oyom-Abang',
+      desc: 'Quartier ouest & Marché Oyom-Abang',
+    ),
+    CityLandmark(
+      name: 'Camp SIC Mendong',
+      pos: LatLng(3.8310, 11.4850),
+      category: 'landmark',
+      district: 'Mendong',
+      desc: 'Grand ensemble résidentiel de Mendong',
+    ),
+    CityLandmark(
+      name: 'Carrefour Nkolndongo',
+      pos: LatLng(3.8510, 11.5360),
+      category: 'landmark',
+      district: 'Nkolndongo',
+      desc: 'Marché Nkolndongo & Axe vers Anguissa',
+    ),
+    CityLandmark(
+      name: 'Carrefour Anguissa',
+      pos: LatLng(3.8480, 11.5300),
+      category: 'landmark',
+      district: 'Anguissa',
+      desc: 'Stade Malien, Carrefour Anguissa & Liaison Mvog-Mbi',
+    ),
+    CityLandmark(
+      name: 'Carrefour Mvog-Ada',
+      pos: LatLng(3.8640, 11.5320),
+      category: 'landmark',
+      district: 'Mvog-Ada',
+      desc: 'Grand quartier commerçant & Avenue Germaine',
+    ),
+    CityLandmark(
+      name: 'Carrefour Belibi (Mfoundi)',
+      pos: LatLng(3.8620, 11.5300),
+      category: 'landmark',
+      district: 'Mfoundi',
+      desc: 'Liaison Mfoundi, Poste Centrale et Mvog-Ada',
+    ),
+    CityLandmark(
+      name: 'Quartier Fouda',
+      pos: LatLng(3.8710, 11.5360),
+      category: 'landmark',
+      district: 'Fouda',
+      desc: 'Zone résidentielle et commerciale proche Elig-Essono',
+    ),
+    CityLandmark(
+      name: 'Carrefour Ekié',
+      pos: LatLng(3.8280, 11.5490),
+      category: 'landmark',
+      district: 'Ekié',
+      desc: 'Liaison Ekounou vers Nkomo',
+    ),
+    CityLandmark(
+      name: 'Carrefour Nkomo',
+      pos: LatLng(3.8290, 11.5620),
+      category: 'landmark',
+      district: 'Nkomo',
+      desc: 'Axe Est Yaoundé vers Awae et Biteng',
+    ),
+    CityLandmark(
+      name: 'Carrefour Awae Escalier',
+      pos: LatLng(3.8340, 11.5720),
+      category: 'landmark',
+      district: 'Awae',
+      desc: 'Marché Awae & Axe Sortie Est',
+    ),
+    CityLandmark(
+      name: 'Carrefour Biteng',
+      pos: LatLng(3.8120, 11.5780),
+      category: 'landmark',
+      district: 'Biteng',
+      desc: 'Sortie Est Yaoundé',
+    ),
+    CityLandmark(
+      name: 'Carrefour Etoug-Ebe (CNRH)',
+      pos: LatLng(3.8420, 11.4820),
+      category: 'landmark',
+      district: 'Etoug-Ebe',
+      desc: 'Centre de réhabilitation des personnes handicapées',
+    ),
+
+    // --- Établissements Scolaires, Lycées & Grandes Écoles ---
+    CityLandmark(
+      name: 'CFTA (Collège Polyvalent & Carrefour CFTA)',
+      pos: LatLng(3.8455, 11.5350),
+      category: 'university',
+      district: 'Nkolndongo / Ekounou',
+      desc: 'Collège technique, Carrefour CFTA & Axe Anguissa',
+    ),
+    CityLandmark(
+      name: 'Collège Vogt (Mvolyé)',
+      pos: LatLng(3.8520, 11.5080),
+      category: 'university',
+      district: 'Mvolyé',
+      desc: 'Collège François-Xavier Vogt, Sanctuaire Marial & Carrefour Vogt',
+    ),
+    CityLandmark(
+      name: 'Lycée Général Leclerc',
+      pos: LatLng(3.8640, 11.5120),
+      category: 'university',
+      district: 'Centre',
+      desc: 'Lycée historique de référence & Avenue Winston Churchill',
+    ),
+    CityLandmark(
+      name: 'Collège de la Retraite',
+      pos: LatLng(3.8710, 11.5190),
+      category: 'university',
+      district: 'Centre',
+      desc: 'Établissement confessionnel d\'excellence & Cathédrale',
+    ),
+    CityLandmark(
+      name: 'Lycée de Mendong',
+      pos: LatLng(3.8340, 11.4880),
+      category: 'university',
+      district: 'Mendong',
+      desc: 'Grand lycée public de l\'Ouest Yaoundé',
+    ),
+    CityLandmark(
+      name: 'Lycée de Biyem-Assi',
+      pos: LatLng(3.8380, 11.4950),
+      category: 'university',
+      district: 'Biyem-Assi',
+      desc: 'Lycée d\'enseignement général de Biyem-Assi',
+    ),
+    CityLandmark(
+      name: 'Lycée d\'Ekounou',
+      pos: LatLng(3.8430, 11.5360),
+      category: 'university',
+      district: 'Ekounou',
+      desc: 'Lycée public d\'Ekounou Est',
+    ),
+    CityLandmark(
+      name: 'Lycée Bilingue d\'Essos',
+      pos: LatLng(3.8700, 11.5450),
+      category: 'university',
+      district: 'Essos',
+      desc: 'Lycée Bilingue d\'Application & Avenue Germaine',
+    ),
+    CityLandmark(
+      name: 'Lycée de Cité Verte',
+      pos: LatLng(3.8840, 11.4850),
+      category: 'university',
+      district: 'Cité Verte',
+      desc: 'Lycée moderne du quartier Cité Verte',
+    ),
+    CityLandmark(
+      name: 'Lycée de Nkol-Eton',
+      pos: LatLng(3.8910, 11.5200),
+      category: 'university',
+      district: 'Nkol-Eton',
+      desc: 'Lycée d\'enseignement secondaire général',
+    ),
+    CityLandmark(
+      name: 'Université de Yaoundé I (Ngoa-Ekélé)',
+      pos: LatLng(3.8580, 11.5010),
+      category: 'university',
+      district: 'Ngoa-Ekélé',
+      desc: 'Campus universitaire & Faculté des Sciences et Lettres',
+    ),
+    CityLandmark(
+      name: 'École Nationale Polytechnique (ENSP Melen)',
+      pos: LatLng(3.8620, 11.4980),
+      category: 'university',
+      district: 'Melen',
+      desc: 'Grande école d\'ingénieurs du Cameroun',
+    ),
+    CityLandmark(
+      name: 'Université de Yaoundé II (Soa)',
+      pos: LatLng(3.9550, 11.5950),
+      category: 'university',
+      district: 'Soa',
+      desc: 'Faculté des Sciences Juridiques et Économiques',
+    ),
+    CityLandmark(
+      name: 'Institut des Relations Internationales (IRIC)',
+      pos: LatLng(3.8820, 11.5080),
+      category: 'university',
+      district: 'Obili/Bastos',
+      desc: 'École diplomatique d\'excellence',
+    ),
+    CityLandmark(
+      name: 'Institut National de la Jeunesse (INJS)',
+      pos: LatLng(3.8780, 11.5320),
+      category: 'university',
+      district: 'Omnisports',
+      desc: 'Pôle national de formation sportive',
+    ),
+    CityLandmark(
+      name: 'Institut Supérieur Siantou (Coron / Mvog-Mbi)',
+      pos: LatLng(3.8520, 11.5230),
+      category: 'university',
+      district: 'Coron',
+      desc: 'Campus universitaire et professionnel Siantou',
+    ),
+    CityLandmark(
+      name: 'SUP\'PTIC (ENSPT - Postes et Télécommunications)',
+      pos: LatLng(3.8615, 11.5035),
+      category: 'university',
+      district: 'Melen / Ngoa-Ekélé',
+      desc: 'École Nationale Supérieure des Postes, Télécommunications et TIC',
+    ),
+    CityLandmark(
+      name: 'École Nationale d\'Administration et de Magistrature (ENAM)',
+      pos: LatLng(3.8670, 11.5120),
+      category: 'university',
+      district: 'Centre',
+      desc: 'Grande école de la haute fonction publique & Quartier Administratif',
+    ),
+    CityLandmark(
+      name: 'École Supérieure des Sciences et Techniques de l\'Information (ESSTIC)',
+      pos: LatLng(3.8560, 11.5030),
+      category: 'university',
+      district: 'Ngoa-Ekélé',
+      desc: 'École de journalisme, communication et médias',
+    ),
+    CityLandmark(
+      name: 'École Normale Supérieure (ENS Yaoundé)',
+      pos: LatLng(3.8600, 11.5020),
+      category: 'university',
+      district: 'Ngoa-Ekélé',
+      desc: 'Campus ENS Yaoundé & Formation des enseignants',
+    ),
+    CityLandmark(
+      name: 'Faculté de Médecine et Sciences Biomédicales (FMSB CUSS)',
+      pos: LatLng(3.8640, 11.4980),
+      category: 'university',
+      district: 'Melen',
+      desc: 'Faculté de Médecine & CHU CUSS',
+    ),
+    CityLandmark(
+      name: 'Institut Saint Jean (Campus Universitaire)',
+      pos: LatLng(3.8790, 11.4620),
+      category: 'university',
+      district: 'Nkolbisson',
+      desc: 'Grande école d\'ingénieurs et management Saint Jean',
+    ),
+    CityLandmark(
+      name: 'Ministère des Postes et Télécommunications (MINPOSTEL)',
+      pos: LatLng(3.8650, 11.5140),
+      category: 'landmark',
+      district: 'Centre',
+      desc: 'Immeuble ministériel Minpostel & Mincom',
     ),
 
     // --- Hôpitaux & Urgences ---
@@ -728,42 +1168,19 @@ class CityData {
       district: 'Biyem-Assi',
       desc: 'Hôpital public de référence Sud-Ouest',
     ),
-
-    // --- Enseignement & Grandes Écoles ---
     CityLandmark(
-      name: 'Université de Yaoundé I (Ngoa-Ekélé)',
-      pos: LatLng(3.8580, 11.5010),
-      category: 'university',
-      district: 'Ngoa-Ekélé',
-      desc: 'Campus universitaire & Faculté des Sciences et Lettres',
+      name: 'Hôpital de District de Djoungolo',
+      pos: LatLng(3.8860, 11.5290),
+      category: 'hospital',
+      district: 'Djoungolo',
+      desc: 'Hôpital protestant de référence',
     ),
     CityLandmark(
-      name: 'École Nationale Polytechnique (ENSP)',
-      pos: LatLng(3.8620, 11.4980),
-      category: 'university',
-      district: 'Melen',
-      desc: 'Grande école d\'ingénieurs du Cameroun',
-    ),
-    CityLandmark(
-      name: 'Université de Yaoundé II (Soa)',
-      pos: LatLng(3.9550, 11.5950),
-      category: 'university',
-      district: 'Soa',
-      desc: 'Faculté des Sciences Juridiques et Économiques',
-    ),
-    CityLandmark(
-      name: 'Institut des Relations Internationales (IRIC)',
-      pos: LatLng(3.8820, 11.5080),
-      category: 'university',
-      district: 'Obili/Bastos',
-      desc: 'École diplomatique d\'excellence',
-    ),
-    CityLandmark(
-      name: 'Institut National de la Jeunesse (INJS)',
-      pos: LatLng(3.8780, 11.5320),
-      category: 'university',
-      district: 'Omnisports',
-      desc: 'Pôle national de formation sportive',
+      name: 'Hôpital Jamot de Yaoundé',
+      pos: LatLng(3.8950, 11.5360),
+      category: 'hospital',
+      district: 'Mballa 2',
+      desc: 'Centre de pneumologie et santé mentale',
     ),
 
     // --- Transports & Gares ---
@@ -781,8 +1198,15 @@ class CityData {
       district: 'Elig-Essono',
       desc: 'Hub ferroviaire voyageurs vers Ngaoundéré',
     ),
+    CityLandmark(
+      name: 'Gare Routière de Mvan (Agences de Voyages)',
+      pos: LatLng(3.8220, 11.5230),
+      category: 'transport',
+      district: 'Mvan',
+      desc: 'Agences Finexs, Général, Buca, Touristique Express',
+    ),
 
-    // --- Malls & Hôtels ---
+    // --- Malls & Hôtels & Lieux Notables ---
     CityLandmark(
       name: 'Hôtel Hilton Yaoundé',
       pos: LatLng(3.8670, 11.5190),
@@ -817,6 +1241,48 @@ class CityData {
       category: 'mall',
       district: 'Bastos',
       desc: 'Supermarché moderne et galerie marchande',
+    ),
+    CityLandmark(
+      name: 'Dovv Mendong',
+      pos: LatLng(3.8350, 11.4870),
+      category: 'mall',
+      district: 'Mendong',
+      desc: 'Supermarché Dovv & Commerces Mendong',
+    ),
+    CityLandmark(
+      name: 'Dovv Mokolo',
+      pos: LatLng(3.8720, 11.5020),
+      category: 'mall',
+      district: 'Mokolo',
+      desc: 'Supermarché Dovv Marché Mokolo',
+    ),
+    CityLandmark(
+      name: 'Super U Bastos',
+      pos: LatLng(3.8910, 11.5120),
+      category: 'mall',
+      district: 'Bastos',
+      desc: 'Hypermarché Super U au cœur de Bastos',
+    ),
+    CityLandmark(
+      name: 'Marché Central de Yaoundé',
+      pos: LatLng(3.8630, 11.5170),
+      category: 'mall',
+      district: 'Centre',
+      desc: 'Grand marché commercial du centre-ville',
+    ),
+    CityLandmark(
+      name: 'Marché 8ème (Mimboman)',
+      pos: LatLng(3.8650, 11.5520),
+      category: 'mall',
+      district: 'Mimboman',
+      desc: 'Marché de vivres frais et commerces Est',
+    ),
+    CityLandmark(
+      name: 'Palais des Congrès de Yaoundé',
+      pos: LatLng(3.8980, 11.5080),
+      category: 'landmark',
+      district: 'Tsinga',
+      desc: 'Centre de conférences national sur la colline de Nkol-Nyada',
     ),
     CityLandmark(
       name: 'Palais Polyvalent des Sports (PAPOSY)',
@@ -872,7 +1338,7 @@ class CityData {
       desc: 'Zone urbaine dense & Stade de la Réunification',
     ),
     CityLandmark(
-      name: 'Rond-point Bonamoussadi',
+      name: 'Rond-point Bonamoussadi (Maetur)',
       pos: LatLng(4.0867, 9.7350),
       category: 'landmark',
       district: 'Bonamoussadi',
@@ -914,6 +1380,13 @@ class CityData {
       desc: 'Quartier résidentiel moderne & Pôle d\'affaires Nord',
     ),
     CityLandmark(
+      name: 'Carrefour Denver (Makepe)',
+      pos: LatLng(4.0810, 9.7390),
+      category: 'landmark',
+      district: 'Denver',
+      desc: 'Zone résidentielle haut standing Makepe',
+    ),
+    CityLandmark(
       name: 'Carrefour Yassa (Entrée Est)',
       pos: LatLng(3.9850, 9.7890),
       category: 'landmark',
@@ -949,7 +1422,7 @@ class CityData {
       desc: 'Quartier d\'affaires, Résidences & Restaurants',
     ),
     CityLandmark(
-      name: 'Carrefour Bessengué',
+      name: 'Carrefour Bessengué (Gare Camrail)',
       pos: LatLng(4.0560, 9.7120),
       category: 'landmark',
       district: 'Bessengué',
@@ -970,11 +1443,160 @@ class CityData {
       desc: 'Grand Stade Omnisports de Japoma (50 000 places)',
     ),
     CityLandmark(
-      name: 'Carrefour Denver (Makepe)',
-      pos: LatLng(4.0810, 9.7390),
+      name: 'Carrefour Ange Raphaël',
+      pos: LatLng(4.0580, 9.7310),
       category: 'landmark',
-      district: 'Denver',
-      desc: 'Zone résidentielle haut standing',
+      district: 'Ange Raphaël',
+      desc: 'Carrefour universitaire & Commerces étudiants',
+    ),
+    CityLandmark(
+      name: 'Carrefour Agip',
+      pos: LatLng(4.0560, 9.7190),
+      category: 'landmark',
+      district: 'Akwa Nord',
+      desc: 'Liaison Bépanda, Deido et Akwa',
+    ),
+    CityLandmark(
+      name: 'Carrefour Nelson Mandela (Deido)',
+      pos: LatLng(4.0640, 9.7080),
+      category: 'landmark',
+      district: 'Deido',
+      desc: 'Place Nelson Mandela & Axe Deido Plage',
+    ),
+    CityLandmark(
+      name: 'Carrefour Ndogbong',
+      pos: LatLng(4.0520, 9.7460),
+      category: 'landmark',
+      district: 'Ndogbong',
+      desc: 'Campus universitaire & IUT de Douala',
+    ),
+    CityLandmark(
+      name: 'Carrefour Beedi',
+      pos: LatLng(4.0690, 9.7580),
+      category: 'landmark',
+      district: 'Beedi',
+      desc: 'Quartier résidentiel & Commerces',
+    ),
+    CityLandmark(
+      name: 'Carrefour Total Bonabéri',
+      pos: LatLng(4.0760, 9.6680),
+      category: 'landmark',
+      district: 'Bonabéri',
+      desc: 'Station Total & Accès Ouest',
+    ),
+    CityLandmark(
+      name: 'Carrefour Rail Bonabéri',
+      pos: LatLng(4.0730, 9.6610),
+      category: 'landmark',
+      district: 'Bonabéri',
+      desc: 'Liaison ferroviaire et zone industrielle',
+    ),
+    CityLandmark(
+      name: 'Carrefour Grand Moulin',
+      pos: LatLng(4.0680, 9.6740),
+      category: 'landmark',
+      district: 'Bonabéri',
+      desc: 'Zone industrielle Grands Moulins du Cameroun',
+    ),
+    CityLandmark(
+      name: 'Carrefour Sodiko',
+      pos: LatLng(4.0820, 9.6540),
+      category: 'landmark',
+      district: 'Bonabéri',
+      desc: 'Quartier résidentiel Ouest',
+    ),
+    CityLandmark(
+      name: 'Carrefour Cité SIC (Bassa)',
+      pos: LatLng(4.0480, 9.7380),
+      category: 'landmark',
+      district: 'Bassa',
+      desc: 'Grand ensemble d\'habitations SIC Bassa',
+    ),
+    CityLandmark(
+      name: 'Carrefour Marché Dakar',
+      pos: LatLng(4.0290, 9.7210),
+      category: 'landmark',
+      district: 'Dakar',
+      desc: 'Marché populaire et liaison New Bell',
+    ),
+
+    // --- Établissements Scolaires, Lycées & Grandes Écoles ---
+    CityLandmark(
+      name: 'Collège Libermann',
+      pos: LatLng(4.0490, 9.6990),
+      category: 'university',
+      district: 'Akwa',
+      desc: 'Collège jésuite d\'excellence historique à Akwa',
+    ),
+    CityLandmark(
+      name: 'Collège De La Salle',
+      pos: LatLng(4.0610, 9.7040),
+      category: 'university',
+      district: 'Deido',
+      desc: 'Établissement confessionnel réputé de Deido',
+    ),
+    CityLandmark(
+      name: 'Lycée Joss',
+      pos: LatLng(4.0420, 9.6890),
+      category: 'university',
+      district: 'Bonanjo',
+      desc: 'Lycée public d\'excellence de Bonanjo',
+    ),
+    CityLandmark(
+      name: 'Lycée d\'Akwa',
+      pos: LatLng(4.0530, 9.7060),
+      category: 'university',
+      district: 'Akwa',
+      desc: 'Grand lycée d\'enseignement général d\'Akwa',
+    ),
+    CityLandmark(
+      name: 'Lycée de Bépanda',
+      pos: LatLng(4.0480, 9.7250),
+      category: 'university',
+      district: 'Bépanda',
+      desc: 'Lycée d\'enseignement secondaire de Bépanda',
+    ),
+    CityLandmark(
+      name: 'Lycée de Makèpè',
+      pos: LatLng(4.0800, 9.7420),
+      category: 'university',
+      district: 'Makepe',
+      desc: 'Lycée public de Makepe Nord',
+    ),
+    CityLandmark(
+      name: 'Lycée de Kotto',
+      pos: LatLng(4.0930, 9.7490),
+      category: 'university',
+      district: 'Kotto',
+      desc: 'Lycée d\'enseignement secondaire de Kotto',
+    ),
+    CityLandmark(
+      name: 'Lycée Polyvalent de Bonabéri',
+      pos: LatLng(4.0790, 9.6620),
+      category: 'university',
+      district: 'Bonabéri',
+      desc: 'Grand lycée technique et général de Bonabéri',
+    ),
+    CityLandmark(
+      name: 'Université de Douala (Campus Ndogbong)',
+      pos: LatLng(4.0520, 9.7460),
+      category: 'university',
+      district: 'Ndogbong',
+      desc: 'Campus universitaire principal, IUT & ENSET',
+    ),
+    CityLandmark(
+      name: 'IUT de Douala',
+      pos: LatLng(4.0540, 9.7440),
+      category: 'university',
+      district: 'Ndogbong',
+      desc: 'Institut Universitaire de Technologie',
+    ),
+    CityLandmark(
+      name: 'ENSET de Douala',
+      pos: LatLng(4.0510, 9.7480),
+      category: 'university',
+      district: 'Ndogbong',
+      desc: 'École Normale Supérieure d\'Enseignement Technique',
     ),
 
     // --- Hôpitaux & Urgences ---
@@ -1013,21 +1635,12 @@ class CityData {
       district: 'Bonabéri',
       desc: 'Hôpital public de référence Douala Ouest',
     ),
-
-    // --- Enseignement & Universités ---
     CityLandmark(
-      name: 'Université de Douala (Campus Ndogbong)',
-      pos: LatLng(4.0520, 9.7460),
-      category: 'university',
-      district: 'Ndogbong',
-      desc: 'Campus universitaire principal & IUT de Douala',
-    ),
-    CityLandmark(
-      name: 'IUT de Douala',
-      pos: LatLng(4.0540, 9.7440),
-      category: 'university',
-      district: 'Ndogbong',
-      desc: 'Institut Universitaire de Technologie',
+      name: 'Hôpital de District de Tergal',
+      pos: LatLng(4.0390, 9.7380),
+      category: 'hospital',
+      district: 'Bassa',
+      desc: 'Hôpital public de référence zone industrielle',
     ),
 
     // --- Transports & Aéroports ---
@@ -1114,8 +1727,15 @@ class CityData {
       name: 'Onomo Hotel Douala',
       pos: LatLng(4.0350, 9.6940),
       category: 'hotel',
-      district: 'Bonanjo',
+      district: 'Bonapriso',
       desc: 'Hôtel design contemporain',
+    ),
+    CityLandmark(
+      name: 'Hôtel Sawa Douala',
+      pos: LatLng(4.0410, 9.6930),
+      category: 'hotel',
+      district: 'Bonanjo',
+      desc: 'Hôtel 4 étoiles historique à Bonanjo',
     ),
   ];
 

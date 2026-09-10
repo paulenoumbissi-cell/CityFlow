@@ -253,7 +253,7 @@ class CityFlowApiService {
     });
   }
 
-  async predictTrip({ city = "Yaoundé", origin = "Poste Centrale", destination = "Carrefour CRADAT", departureHour = 17, departureDate }) {
+  async predictTrip({ city = "Yaoundé", origin = "Poste Centrale", destination = "Carrefour CRADAT", departureHour = 17, departureDate, routeMode = "comfort" }) {
     const fallback = {
       city,
       origin,
@@ -293,7 +293,7 @@ class CityFlowApiService {
     return this.fetchWithFallback(`/ai/predict-trip`, fallback, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ city, origin, destination, departureHour, departureDate }),
+      body: JSON.stringify({ city, origin, destination, departureHour, departureDate, routeMode }),
     });
   }
 

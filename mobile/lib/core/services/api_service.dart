@@ -1246,6 +1246,111 @@ class CityFlowMobileApiService {
     };
   }
 
+  /// Identification précise de la meilleure route et qualité du revêtement pour un lieu donné
+  static Map<String, dynamic> getRoadDetails(String name, String city) {
+    final isDouala = city.toLowerCase().contains('douala');
+    final nLow = name.toLowerCase();
+
+    if (isDouala) {
+      if (nLow.contains('bonaberi') || nLow.contains('pont') || nLow.contains('wouri')) {
+        return {
+          'roadName': 'Axe Lourd Pont sur le Wouri (N3)',
+          'roadType': 'Voie express 2x3 voies',
+          'roadQualityScore': 95,
+          'pavementStatus': 'Bitume autoroutier',
+          'surfaceAdvantage': 'Franchissement rapide sur le Wouri à 6 voies bitumées',
+        };
+      }
+      if (nLow.contains('akwa') || nLow.contains('liberte') || nLow.contains('atrium')) {
+        return {
+          'roadName': 'Boulevard de la Liberté',
+          'roadType': 'Boulevard central 2x2 voies',
+          'roadQualityScore': 96,
+          'pavementStatus': 'Bitumé excellent état',
+          'surfaceAdvantage': 'Boulevard commercial bitumé 2x2 avec feux régulés',
+        };
+      }
+      if (nLow.contains('ndokoti') || nLow.contains('bassa') || nLow.contains('ndogbong') || nLow.contains('bepanda')) {
+        return {
+          'roadName': 'Axe Lourd Bassa / Ndokoti (N3)',
+          'roadType': 'Artère industrielle bitumée',
+          'roadQualityScore': 84,
+          'pavementStatus': 'Bitume lourd',
+          'surfaceAdvantage': 'Axe de transit goudronné prioritaire pour tous véhicules',
+        };
+      }
+      if (nLow.contains('bonamoussadi') || nLow.contains('makepe') || nLow.contains('kotto')) {
+        return {
+          'roadName': 'Boulevard des Nations Unies (Maetur)',
+          'roadType': 'Boulevard résidentiel 2x2 voies',
+          'roadQualityScore': 94,
+          'pavementStatus': 'Bitumé excellent état',
+          'surfaceAdvantage': 'Boulevard résidentiel moderne et parfaitement bitumé',
+        };
+      }
+      return {
+        'roadName': 'Artère urbaine bitumée de Douala',
+        'roadType': 'Artère principale bitumée',
+        'roadQualityScore': 88,
+        'pavementStatus': 'Bitumé bon état',
+        'surfaceAdvantage': 'Axe goudronné direct privilégiant la sécurité',
+      };
+    } else {
+      if (nLow.contains('poste centrale') || nLow.contains('minpostel') || nLow.contains('enam') || nLow.contains('warda')) {
+        return {
+          'roadName': 'Boulevard du 20 Mai & Quartier Administratif',
+          'roadType': 'Boulevard 2x2 voies',
+          'roadQualityScore': 98,
+          'pavementStatus': 'Bitumé excellent état',
+          'surfaceAdvantage': 'Chaussée bitumée prioritaire, éclairée et fluide sans nids de poule',
+        };
+      }
+      if (nLow.contains('supptic') || nLow.contains('cradat') || nLow.contains('ngoa') || nLow.contains('esstic') || nLow.contains('ens') || nLow.contains('polytech') || nLow.contains('melen') || nLow.contains('cuss') || nLow.contains('fmsb')) {
+        return {
+          'roadName': 'Axe Ngoa-Ekélé / Avenue Mgr Vogt',
+          'roadType': 'Artère principale bitumée',
+          'roadQualityScore': 92,
+          'pavementStatus': 'Bitumé bon état',
+          'surfaceAdvantage': 'Axe goudronné large reliant le centre aux facultés',
+        };
+      }
+      if (nLow.contains('bastos') || nLow.contains('nlongkak') || nLow.contains('palais')) {
+        return {
+          'roadName': 'Boulevard de l\'URSS / Bastos',
+          'roadType': 'Boulevard prioritaire bitumé',
+          'roadQualityScore': 96,
+          'pavementStatus': 'Bitumé haute qualité',
+          'surfaceAdvantage': 'Revêtement asphalté haute qualité, évite les ruelles encombrées',
+        };
+      }
+      if (nLow.contains('cfta') || nLow.contains('ekounou') || nLow.contains('mvog-mbi') || nLow.contains('anguissa') || nLow.contains('coron')) {
+        return {
+          'roadName': 'Axe Ekounou - Mvog-Mbi (Route de l\'Aéroport)',
+          'roadType': 'Artère urbaine bitumée',
+          'roadQualityScore': 88,
+          'pavementStatus': 'Bitumé régulier',
+          'surfaceAdvantage': 'Chaussée goudronnée directe reliant le Sud-Est au centre',
+        };
+      }
+      if (nLow.contains('nsimalen') || nLow.contains('mvan') || nLow.contains('tropicana')) {
+        return {
+          'roadName': 'Autoroute / Voie Express Nsimalen',
+          'roadType': 'Voie express 2x2 voies',
+          'roadQualityScore': 99,
+          'pavementStatus': 'Bitume autoroutier optimal',
+          'surfaceAdvantage': 'Voie rapide 2x2 séparée, vitesse optimale et sécurité',
+        };
+      }
+      return {
+        'roadName': 'Axe de liaison urbain bitumé',
+        'roadType': 'Artère principale bitumée',
+        'roadQualityScore': 88,
+        'pavementStatus': 'Bitumé bon état',
+        'surfaceAdvantage': 'Axe goudronné direct privilégiant la sécurité et la fluidité',
+      };
+    }
+  }
+
   /// Diagnostic IA de trajet futur (Ex: Aller au CRADAT à 17h) avec météo réelle & obstacles
   static Future<Map<String, dynamic>?> predictTrip({
     required String city,
@@ -1253,6 +1358,7 @@ class CityFlowMobileApiService {
     required String destination,
     double departureHour = 17,
     String? departureDate,
+    String routeMode = 'comfort',
   }) async {
     final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
     final dateStr = departureDate ?? DateTime.now().toIso8601String();
@@ -1270,6 +1376,7 @@ class CityFlowMobileApiService {
                 'destination': destination,
                 'departureHour': departureHour,
                 'departureDate': dateStr,
+                'routeMode': routeMode,
               }),
             )
             .timeout(const Duration(seconds: 4));
@@ -1482,8 +1589,362 @@ class CityFlowMobileApiService {
       return 'dans $minutes min';
     }
 
+    final isDouala = city.toLowerCase().contains('douala');
+    final origLandmark = CityData.findLandmark(city, origin);
+    final destLandmark = CityData.findLandmark(city, destination);
+
+    final LatLng origPos = origLandmark?.pos ?? (isDouala ? const LatLng(4.0430, 9.6910) : const LatLng(3.8640, 11.5190));
+    final LatLng destPos = destLandmark?.pos ?? (isDouala ? const LatLng(4.0530, 9.7080) : const LatLng(3.8600, 11.5030));
+
+    final directKm = sqrt(pow((destPos.latitude - origPos.latitude) * 111.0, 2) + pow((destPos.longitude - origPos.longitude) * 111.0, 2));
+
+    final List<String> corridorNames = [origin];
+
+    if (directKm >= 0.6) {
+      final oLow = origin.toLowerCase();
+      final dLow = destination.toLowerCase();
+
+      final cityLandmarks = CityData.getLandmarks(city);
+      final polyline = <LatLng>[origPos];
+      const int steps = 14;
+      for (int i = 1; i < steps; i++) {
+        final double ratio = i / steps.toDouble();
+        final double lat = origPos.latitude + (destPos.latitude - origPos.latitude) * ratio;
+        final double lng = origPos.longitude + (destPos.longitude - origPos.longitude) * ratio;
+        final double latOffset = sin(ratio * pi) * 0.0035;
+        final double lngOffset = cos(ratio * pi) * 0.0025;
+        polyline.add(LatLng(lat + latOffset, lng + lngOffset));
+      }
+      polyline.add(destPos);
+
+      final candidates = <Map<String, dynamic>>[];
+      for (final lm in cityLandmarks) {
+        final lmLow = lm.name.toLowerCase();
+        if (lmLow == oLow || lmLow == dLow) continue;
+        if (lm.category == 'hotel' ||
+            lmLow.contains('hotel') ||
+            lmLow.contains('hôtel') ||
+            lmLow.contains('dovv') ||
+            lmLow.contains('super u') ||
+            lmLow.contains('playce')) {
+          continue;
+        }
+
+        final dO = sqrt(pow((lm.pos.latitude - origPos.latitude) * 111.0, 2) +
+            pow((lm.pos.longitude - origPos.longitude) * 111.0, 2));
+        final dD = sqrt(pow((lm.pos.latitude - destPos.latitude) * 111.0, 2) +
+            pow((lm.pos.longitude - destPos.longitude) * 111.0, 2));
+        if (dO < 0.35 || dD < 0.35) continue;
+
+        // Calcul de la distance minimale au tracé routier
+        double minDist = 999.0;
+        double bestFraction = 0.0;
+        double totalLen = 0.0;
+
+        final segmentLengths = <double>[];
+        for (int i = 0; i < polyline.length - 1; i++) {
+          final l = sqrt(pow((polyline[i + 1].latitude - polyline[i].latitude) * 111.0, 2) +
+              pow((polyline[i + 1].longitude - polyline[i].longitude) * 111.0, 2));
+          segmentLengths.add(l);
+          totalLen += l;
+        }
+        if (totalLen == 0) totalLen = 0.001;
+
+        double accum = 0.0;
+        for (int i = 0; i < polyline.length - 1; i++) {
+          final a = polyline[i];
+          final b = polyline[i + 1];
+          final segLen = segmentLengths[i];
+
+          final dx = (b.latitude - a.latitude) * 111.0;
+          final dy = (b.longitude - a.longitude) * 111.0;
+          final lenSq = dx * dx + dy * dy;
+
+          double t = 0.0;
+          if (lenSq > 0) {
+            final px = (lm.pos.latitude - a.latitude) * 111.0;
+            final py = (lm.pos.longitude - a.longitude) * 111.0;
+            t = (px * dx + py * dy) / lenSq;
+            t = max(0.0, min(1.0, t));
+          }
+
+          final projLat = a.latitude + t * (b.latitude - a.latitude);
+          final projLng = a.longitude + t * (b.longitude - a.longitude);
+          final dist = sqrt(pow((lm.pos.latitude - projLat) * 111.0, 2) +
+              pow((lm.pos.longitude - projLng) * 111.0, 2));
+
+          if (dist < minDist) {
+            minDist = dist;
+            bestFraction = (accum + t * segLen) / totalLen;
+          }
+          accum += segLen;
+        }
+
+        if (minDist <= 0.40 && bestFraction >= 0.05 && bestFraction <= 0.95) {
+          candidates.add({
+            'name': lm.name,
+            'pos': lm.pos,
+            'fraction': bestFraction,
+            'dist': minDist,
+          });
+        }
+      }
+
+      candidates.sort((a, b) => (a['fraction'] as double).compareTo(b['fraction'] as double));
+
+      int maxIntermediates = 0;
+      double minSpacing = 1.0;
+      if (directKm < 1.3) {
+        maxIntermediates = 0;
+      } else if (directKm < 3.2) {
+        maxIntermediates = 1;
+        minSpacing = max(0.8, directKm * 0.45);
+      } else if (directKm < 6.5) {
+        maxIntermediates = 2;
+        minSpacing = max(1.1, directKm * 0.28);
+      } else {
+        maxIntermediates = 4;
+        minSpacing = max(1.5, directKm * 0.20);
+      }
+
+      final selectedList = <Map<String, dynamic>>[];
+      for (final c in candidates) {
+        if (selectedList.length >= maxIntermediates) break;
+        final cPos = c['pos'] as LatLng;
+        final tooClose = selectedList.any((sel) {
+          final selPos = sel['pos'] as LatLng;
+          final d = sqrt(pow((cPos.latitude - selPos.latitude) * 111.0, 2) +
+              pow((cPos.longitude - selPos.longitude) * 111.0, 2));
+          return d < minSpacing;
+        });
+        if (!tooClose) {
+          selectedList.add(c);
+          corridorNames.add(c['name'] as String);
+        }
+      }
+    }
+
+    if (!corridorNames.contains(destination)) {
+      corridorNames.add(destination);
+    }
+
+    int cumulativeNominal = 0;
+    int cumulativeDelay = 0;
+    final corridorWaypoints = <Map<String, dynamic>>[];
+    Map<String, dynamic>? criticalBottleneck;
+    int maxCongestionFound = 0;
+
+    final baseMin = (departureHour * 60).round() % 60;
+    final baseH = departureHour.floor() % 24;
+
+    for (int i = 0; i < corridorNames.length; i++) {
+      final name = corridorNames[i];
+      final isStart = i == 0;
+      final isEnd = i == corridorNames.length - 1;
+      final segNominal = isStart ? 0 : max(2, (directKm / max(1, corridorNames.length - 1) * 2.5).round());
+      cumulativeNominal += segNominal;
+
+      final totalMinutesFromDeparture = cumulativeNominal + cumulativeDelay;
+      final totalMinOfDay = baseH * 60 + baseMin + totalMinutesFromDeparture;
+      final etaH = (totalMinOfDay ~/ 60) % 24;
+      final etaM = totalMinOfDay % 60;
+      final etaFormatted = '${etaH.toString().padLeft(2, '0')}h${etaM.toString().padLeft(2, '0')}';
+
+      final etaFloat = etaH + etaM / 60.0;
+      final nodeFactor = getHourlyFactor(etaFloat);
+
+      final nameLower = name.toLowerCase();
+      final isNodeCradat = nameLower.contains('cradat') || nameLower.contains('ngoa');
+      final isNodeMokolo = nameLower.contains('mokolo') || nameLower.contains('mboppi');
+      final isNodeNlongkak = nameLower.contains('nlongkak');
+      final isNodeMvan = nameLower.contains('mvan');
+      final isNodeDeidoOrNdokoti = nameLower.contains('deido') || nameLower.contains('ndokoti');
+      final isSchool = nameLower.contains('vogt') || nameLower.contains('leclerc') || nameLower.contains('retraite') || nameLower.contains('libermann') || nameLower.contains('lycee') || nameLower.contains('college');
+
+      final nodeObstacles = <Map<String, dynamic>>[];
+
+      // A. Amphis et universités
+      if (isNodeCradat && (etaFloat >= 16.25 && etaFloat <= 19.5)) {
+        nodeObstacles.add({
+          'id': 'cradat_rush',
+          'icon': '🎓',
+          'title': 'Sortie massive des amphis Université Yaoundé I',
+          'description': 'À $etaFormatted, traversées d\'étudiants denses et attroupements créant un goulet.',
+          'severity': 'critical',
+          'timeFormatted': etaFormatted,
+        });
+      }
+
+      // B. Lycées et collèges
+      if (isSchool && ((etaFloat >= 7.0 && etaFloat <= 8.25) || (etaFloat >= 15.5 && etaFloat <= 17.75))) {
+        nodeObstacles.add({
+          'id': 'school_rush',
+          'icon': '🎒',
+          'title': 'Affluence scolaire & dépose-minute ($name)',
+          'description': 'À $etaFormatted, attente de parents d\'élèves et flux de motos-taxis aux abords de l\'école.',
+          'severity': 'warning',
+          'timeFormatted': etaFormatted,
+        });
+      }
+
+      // C. Marchés
+      if (isNodeMokolo && (etaFloat >= 9.5 && etaFloat <= 17.5)) {
+        nodeObstacles.add({
+          'id': 'market_rush',
+          'icon': '🛒',
+          'title': 'Forte affluence marchande & déchargements',
+          'description': 'À $etaFormatted, camions de vivres et pousseurs réduisant la chaussée.',
+          'severity': etaFloat >= 11 && etaFloat <= 16 ? 'critical' : 'warning',
+          'timeFormatted': etaFormatted,
+        });
+      }
+
+      // D. Bas-fonds inondables
+      if ((isNodeCradat || isNodeNlongkak || isNodeDeidoOrNdokoti) && rainAmount >= 8.0) {
+        nodeObstacles.add({
+          'id': 'flash_flood',
+          'icon': '🌊',
+          'title': 'Risque de chaussée submergée',
+          'description': 'Bas-fond vulnérable aux fortes averses. Passage au pas obligatoire vers $etaFormatted.',
+          'severity': rainAmount >= 20 ? 'critical' : 'warning',
+          'timeFormatted': etaFormatted,
+        });
+      }
+
+      // E. Travaux
+      if ((isNodeNlongkak || nameLower.contains('nsam') || nameLower.contains('ndokoti')) && (etaFloat >= 8 && etaFloat <= 18)) {
+        nodeObstacles.add({
+          'id': 'road_works',
+          'icon': '🚧',
+          'title': 'Travaux d\'assainissement / Réfection',
+          'description': 'Chantier et rétrécissement temporaire de voie vers $etaFormatted.',
+          'severity': 'warning',
+          'timeFormatted': etaFormatted,
+        });
+      }
+
+      // F. Gares routières
+      if (isNodeMvan && ((etaFloat >= 6.5 && etaFloat <= 9.0) || (etaFloat >= 16.5 && etaFloat <= 19.5))) {
+        nodeObstacles.add({
+          'id': 'intercity_terminal',
+          'icon': '🚌',
+          'title': 'Affluence des gares routières (Mvan)',
+          'description': 'Départs de bus interurbains et manœuvres d\'embarquement vers $etaFormatted.',
+          'severity': 'warning',
+          'timeFormatted': etaFormatted,
+        });
+      }
+
+      int rawBase = 36;
+      if (nameLower.contains('mokolo') || nameLower.contains('mboppi') || nameLower.contains('nlongkak') || nameLower.contains('ndokoti') || nameLower.contains('mvan')) {
+        rawBase = 76;
+      } else if (nameLower.contains('poste centrale') || nameLower.contains('deido') || nameLower.contains('bonamoussadi') || nameLower.contains('express') || nameLower.contains('cradat')) {
+        rawBase = 66;
+      } else if (nameLower.contains('melen') || nameLower.contains('damas') || nameLower.contains('anguissa') || nameLower.contains('coron') || nameLower.contains('elig-essono') || nameLower.contains('madagascar') || nameLower.contains('makepe')) {
+        rawBase = 50;
+      } else if (nameLower.contains('leclerc') || nameLower.contains('hopital') || nameLower.contains('bastos') || nameLower.contains('omnisports') || nameLower.contains('supptic') || nameLower.contains('enam') || nameLower.contains('esstic')) {
+        rawBase = 32;
+      }
+
+      final boost = nodeObstacles.fold<int>(0, (sum, o) => sum + (o['severity'] == 'critical' ? 35 : o['severity'] == 'warning' ? 18 : 8));
+      int nodeScore = ((rawBase * 0.70 + boost * 0.45) * nodeFactor).round().clamp(12, 99);
+
+      final currentSpeedKmh = max(8, (42 * (1 - (nodeScore / 125))).round());
+      final actualSegmentMin = isStart ? 0 : max(1, ((segNominal * 25) / currentSpeedKmh).round());
+      final nodeDelay = isStart ? 0 : max(0, actualSegmentMin - segNominal + (boost > 0 ? 2 : 0));
+      cumulativeDelay += nodeDelay;
+
+      String nodeStatus = 'FLUID';
+      String nodeStatusLabel = 'Fluide';
+      String nodeColor = '#10B981';
+
+      if (nodeScore >= 85 || nodeObstacles.any((o) => o['severity'] == 'critical')) {
+        nodeStatus = 'BLOCKED_OR_JAMMED';
+        nodeStatusLabel = 'Saturé / Bloqué';
+        nodeColor = '#DC2626';
+      } else if (nodeScore >= 68) {
+        nodeStatus = 'HEAVY_CONGESTION';
+        nodeStatusLabel = 'Très dense';
+        nodeColor = '#EA580C';
+      } else if (nodeScore >= 40) {
+        nodeStatus = 'MODERATE';
+        nodeStatusLabel = 'Ralenti';
+        nodeColor = '#F59E0B';
+      }
+
+      final roadInfra = getRoadDetails(name, city);
+
+      final wp = {
+        'stepIndex': i + 1,
+        'id': 'wp_$i',
+        'name': name,
+        'isOrigin': isStart,
+        'isDestination': isEnd,
+        'estimatedArrival': etaFormatted,
+        'relativeMinutesFromStart': totalMinutesFromDeparture,
+        'congestionScore': nodeScore,
+        'status': nodeStatus,
+        'statusLabel': nodeStatusLabel,
+        'statusColor': nodeColor,
+        'segmentNominalMin': segNominal,
+        'delayAtNodeMin': nodeDelay,
+        'obstacles': nodeObstacles,
+        'roadName': roadInfra['roadName'],
+        'roadType': roadInfra['roadType'],
+        'roadQualityScore': roadInfra['roadQualityScore'],
+        'pavementStatus': roadInfra['pavementStatus'],
+        'surfaceAdvantage': roadInfra['surfaceAdvantage'],
+        'isRecommendedBestRoute': true,
+        'advice': isNodeCradat && nodeScore >= 70 ? 'Contourner par le Plateau Ngoa-Ekellé.' : (nodeObstacles.isNotEmpty ? nodeObstacles.first['description'] : 'Axe ${roadInfra['roadName']} praticable et goudronné.'),
+      };
+
+      corridorWaypoints.add(wp);
+
+      if (!isStart && (criticalBottleneck == null || nodeScore > maxCongestionFound)) {
+        maxCongestionFound = nodeScore;
+        criticalBottleneck = {
+          'nodeName': name,
+          'etaFormatted': etaFormatted,
+          'congestionScore': nodeScore,
+          'statusLabel': nodeStatusLabel,
+          'statusColor': nodeColor,
+          'obstacles': nodeObstacles,
+          'mainReason': nodeObstacles.isNotEmpty ? nodeObstacles.first['title'] : 'Affluence de pointe',
+          'detourAdvice': wp['advice'],
+        };
+      }
+    }
+
+    final allWarnings = <Map<String, dynamic>>[];
+    allWarnings.addAll(warnings);
+    for (final wp in corridorWaypoints) {
+      final obsList = (wp['obstacles'] as List<dynamic>?) ?? [];
+      for (final obs in obsList) {
+        if (obs is Map<String, dynamic> && (obs['severity'] == 'critical' || obs['severity'] == 'warning')) {
+          allWarnings.add({
+            'type': 'OBSTACLE',
+            'icon': obs['icon'] ?? '⚠️',
+            'title': '${wp['name']} (${wp['estimatedArrival']}) : ${obs['title']}',
+            'description': obs['description'] ?? '',
+            'severity': obs['severity'] ?? 'warning',
+          });
+        }
+      }
+    }
+
+    final totalEstimatedDuration = cumulativeNominal + cumulativeDelay;
+
     String? alertMsg;
-    if (peak['level'] == 'embouteillage' || peak['level'] == 'bloque') {
+    if (criticalBottleneck != null && ((criticalBottleneck['congestionScore'] as int) >= 68)) {
+      final nature = (criticalBottleneck['congestionScore'] as int) >= 85 ? 'un blocage important' : 'un fort ralentissement';
+      alertMsg = 'Sur votre trajet, $nature est prévu à ${criticalBottleneck['nodeName']} vers ${criticalBottleneck['etaFormatted']}';
+      final obsList = (criticalBottleneck['obstacles'] as List<dynamic>?) ?? [];
+      if (obsList.isNotEmpty && obsList.first is Map) {
+        alertMsg += ' à cause de : ${(obsList.first as Map)['title'].toString().toLowerCase()}.';
+      } else {
+        alertMsg += ' à cause de l\'affluence de pointe.';
+      }
+    } else if (peak['level'] == 'embouteillage' || peak['level'] == 'bloque') {
       final nature = peak['level'] == 'bloque' ? 'un blocage important' : 'un fort ralentissement';
       final hTxt = horizonText(peak['horizon_minutes'] as int);
       alertMsg = 'Il y aura $nature à $destination $hTxt';
@@ -1500,23 +1961,46 @@ class CityFlowMobileApiService {
     calculatedConfidence -= (peakMin / 120.0) * 0.08;
     calculatedConfidence = calculatedConfidence.clamp(0.74, 0.94);
 
+    final avgRoadQual = corridorWaypoints.isEmpty
+        ? 88
+        : (corridorWaypoints.fold<int>(0, (sum, w) => sum + (w['roadQualityScore'] as int? ?? 88)) ~/ corridorWaypoints.length);
+
+    final uniqueRoadNames = corridorWaypoints.map((w) => w['roadName'] as String?).where((r) => r != null && r.isNotEmpty).toSet().toList();
+
+    final bestRouteOverview = {
+      'recommendedRouteName': 'Itinéraire Bitumé Prioritaire (${uniqueRoadNames.take(2).join(" • ")})',
+      'averageRoadQualityScore': avgRoadQual,
+      'pavementCondition': avgRoadQual >= 92 ? 'Chaussée bitumée en excellent état' : 'Chaussée bitumée standard',
+      'primaryAvenues': uniqueRoadNames,
+      'isOptimalRoadChoice': true,
+      'whyBestRoute': 'Privilégie les grands boulevards bitumés et évite les ruelles dégradées à nids de poule.',
+      'surfaceAdvantage': corridorWaypoints.isNotEmpty ? corridorWaypoints.first['surfaceAdvantage'] : 'Axe prioritaire bitumé',
+      'alternativeDegradedRoute': {
+        'name': 'Raccourcis par ruelles secondaires',
+        'warning': 'Déconseillé (+5 à +9 min de retard estimé pour nids de poule et voies étroites)',
+      },
+    };
+
     return {
       'city': city,
       'origin': origin,
       'destination': destination,
       'targetHour': departureHour.round(),
       'targetDate': dateStr,
-      'congestionScore': congestion,
-      'roadStatus': status,
-      'roadStatusLabel': statusLabel,
+      'congestionScore': maxCongestionFound > 0 ? maxCongestionFound : congestion,
+      'roadStatus': maxCongestionFound >= 85 ? 'BLOCKED_OR_JAMMED' : (maxCongestionFound >= 68 ? 'HEAVY_CONGESTION' : status),
+      'roadStatusLabel': maxCongestionFound >= 85 ? 'Trajet saturé' : statusLabel,
       'statusColor': statusColor,
-      'nominalDurationMinutes': nominalMin,
-      'estimatedDurationMinutes': estimatedMin,
-      'delayMinutes': delayMin,
-      'isRoadBlocked': congestion >= 80,
+      'nominalDurationMinutes': cumulativeNominal > 0 ? cumulativeNominal : nominalMin,
+      'estimatedDurationMinutes': totalEstimatedDuration > 0 ? totalEstimatedDuration : estimatedMin,
+      'delayMinutes': cumulativeDelay > 0 ? cumulativeDelay : delayMin,
+      'isRoadBlocked': maxCongestionFound >= 85 || congestion >= 80,
       'weatherAtTargetHour': effectiveWeather,
-      'warnings': warnings,
-      'detourRecommendation': detour,
+      'warnings': allWarnings,
+      'corridorWaypoints': corridorWaypoints,
+      'bestRouteOverview': bestRouteOverview,
+      'criticalBottleneck': criticalBottleneck,
+      'detourRecommendation': criticalBottleneck?['detourAdvice'] ?? detour,
       'bestDepartureAdvice': bestAdvice,
       'timeline': {
         'points': timelinePoints,
@@ -1527,7 +2011,7 @@ class CityFlowMobileApiService {
         'factors': {
           'isPeakHour': isPeakHour,
           'rainMm': rainAmount,
-          'hasEvent': hasEvent,
+          'hasEvent': allWarnings.isNotEmpty,
           'roadDegraded': isRoadDegraded,
         },
       },
@@ -2515,5 +2999,35 @@ class CityFlowMobileApiService {
       }
     }
     return list;
+  }
+
+  // ===================================================================
+  // NOTIFICATIONS PUSH (FCM)
+  // ===================================================================
+
+  /// Enregistre le token Firebase Cloud Messaging sur le profil utilisateur
+  static Future<bool> updateFcmToken(String fcmToken, String userToken) async {
+    final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
+    for (final host in hostsToTry) {
+      try {
+        final uri = Uri.parse('$host/auth/fcm-token');
+        final response = await http.post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $userToken',
+          },
+          body: json.encode({
+            'fcmToken': fcmToken,
+          }),
+        ).timeout(const Duration(seconds: 3));
+
+        if (response.statusCode == 200) {
+          _activeBaseUrl = host;
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
   }
 }

@@ -19,6 +19,7 @@ import '../core/constants/city_data.dart';
 import '../core/services/location_service.dart';
 import '../core/services/api_service.dart';
 import '../core/services/websocket_service.dart';
+import '../models/route_incident_notification.dart';
 
 class CityFlowProvider extends ChangeNotifier {
   String _selectedCity = 'Yaoundé';
@@ -33,6 +34,9 @@ class CityFlowProvider extends ChangeNotifier {
   List<CatalogRewardItem> _rewardsCatalog = [];
   List<CommunityRadioMessage> _radioMessages = [];
   List<SosAssistanceRequest> _sosRequests = [];
+
+  // ★ Notifications géo-contextuelles sur trajet
+  final List<RouteIncidentNotification> _routeAlerts = [];
 
   // Mode Secours & Onde Verte
   EmergencyMission? _activeEmergencyMission;
@@ -157,6 +161,26 @@ class CityFlowProvider extends ChangeNotifier {
       _radioMessages.where((m) => m.city.toLowerCase() == _selectedCity.toLowerCase()).toList();
   List<SosAssistanceRequest> get currentCitySosRequests =>
       _sosRequests.where((s) => s.city.toLowerCase() == _selectedCity.toLowerCase()).toList();
+
+  // Notifications géo-contextuelles sur trajet
+  List<RouteIncidentNotification> get routeAlerts =>
+      _routeAlerts.where((a) => !a.isDismissed).toList();
+  bool get hasActiveRouteAlerts => _routeAlerts.any((a) => !a.isDismissed);
+
+  void dismissRouteAlert(String alertId) {
+    final idx = _routeAlerts.indexWhere((a) => a.id == alertId);
+    if (idx != -1) {
+      _routeAlerts[idx].isDismissed = true;
+      if (!_isDisposed) notifyListeners();
+    }
+  }
+
+  void clearAllRouteAlerts() {
+    for (final a in _routeAlerts) {
+      a.isDismissed = true;
+    }
+    if (!_isDisposed) notifyListeners();
+  }
 
   
   List<PriorityRoute> get currentCityPriorityRoutes => _priorityRoutes;
@@ -610,6 +634,25 @@ class CityFlowProvider extends ChangeNotifier {
         _isEmergencyModeActive = false;
         notifyListeners();
         break;
+
+      // ★ Alerte incidente géo-contextuelle sur trajet actif
+      case 'ROUTE_INCIDENT_ALERT':
+        final alertJson = data['alert'];
+        if (alertJson is Map<String, dynamic>) {
+          final notification = RouteIncidentNotification.fromWsAlert(alertJson);
+          // Anti-doublon : ne pas ré-ajouter si le même rapport est déjà actif
+          final alreadyExists = _routeAlerts.any(
+            (a) => a.reportId == notification.reportId && !a.isDismissed,
+          );
+          if (!alreadyExists) {
+            _routeAlerts.insert(0, notification);
+            notifyListeners();
+            debugPrint(
+              '🚨 [Provider] Alerte trajet reçue : "${notification.title}" à ${notification.distanceMeters}m',
+            );
+          }
+        }
+        break;
     }
   }
 
@@ -912,6 +955,14 @@ class CityFlowProvider extends ChangeNotifier {
     if (autoSimulate) {
       _startNavSimulation();
     }
+
+    // ★ Enregistrer la route active sur le serveur WS pour les alertes géo-contextuelles
+    if (_selectedSmartRoute != null && _selectedSmartRoute!.coordinates.length >= 2) {
+      _wsService.registerActiveRoute(
+        routePoints: _selectedSmartRoute!.coordinates,
+        city: _selectedCity,
+      );
+    }
   }
 
   void _startNavSimulation() {
@@ -1150,6 +1201,10 @@ class CityFlowProvider extends ChangeNotifier {
     try {
       _flutterTts.stop();
     } catch (_) {}
+
+    // ★ Désenregistrer la route active — plus d'alertes géo-contextuelles
+    _wsService.unregisterRoute();
+
     notifyListeners();
   }
 

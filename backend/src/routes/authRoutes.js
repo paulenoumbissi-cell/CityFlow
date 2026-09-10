@@ -8,6 +8,7 @@ import {
   resetPassword,
   updateProfile,
   deleteAccount,
+  updateFcmToken,
 } from "../controllers/authController.js";
 
 const router = Router();
@@ -23,6 +24,7 @@ router.post("/login", login);
 router.post("/register", register);
 router.put("/profile", updateProfile);
 router.delete("/account", deleteAccount);
+router.post("/fcm-token", updateFcmToken);
 
 export default router;
 

@@ -5,6 +5,18 @@
   padding: 32px;
 }
 
+/* Animation d'entrée du panneau historique */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 
 /* HEADER */
 

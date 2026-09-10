@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 
 enum WsConnectionStatus { connected, connecting, disconnected }
 
@@ -41,7 +42,9 @@ class CityFlowWebSocketService {
   }
 
   void connect({String? customUrl}) {
-    if (_socket != null && (_status == WsConnectionStatus.connected || _status == WsConnectionStatus.connecting)) {
+    if (_socket != null &&
+        (_status == WsConnectionStatus.connected ||
+            _status == WsConnectionStatus.connecting)) {
       return;
     }
 
@@ -112,6 +115,48 @@ class CityFlowWebSocketService {
     _subscribedCity = city;
     send({'type': 'SUBSCRIBE_CITY', 'city': city});
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GESTION DE ROUTE ACTIVE — Notifications géo-contextuelles sur trajet
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Enregistre la route active du conducteur sur le serveur WebSocket.
+  /// Le backend utilisera ces coordonnées pour détecter les incidents
+  /// signalés à moins de 200m du trajet et envoyer des alertes ciblées.
+  ///
+  /// [routePoints] — Liste des coordonnées GPS de la polyligne de navigation
+  /// [city]        — Ville de la route (ex: 'Yaoundé')
+  /// [driverId]    — Identifiant optionnel du conducteur
+  void registerActiveRoute({
+    required List<LatLng> routePoints,
+    required String city,
+    String? driverId,
+  }) {
+    if (routePoints.length < 2) return;
+
+    final coordinates = routePoints
+        .map((p) => [p.latitude, p.longitude])
+        .toList();
+
+    send({
+      'type': 'REGISTER_ROUTE',
+      'routeId': 'route_${DateTime.now().millisecondsSinceEpoch}',
+      'coordinates': coordinates,
+      'city': city,
+      if (driverId != null) 'driverId': driverId,
+    });
+
+    debugPrint('🗺️ [WS] Route enregistrée : ${routePoints.length} points ($city)');
+  }
+
+  /// Désenregistre la route active (fin de navigation).
+  /// Le conducteur ne recevra plus d'alertes d'incident sur trajet.
+  void unregisterRoute() {
+    send({'type': 'UNREGISTER_ROUTE'});
+    debugPrint('🛑 [WS] Route désenregistrée — alertes trajet désactivées');
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   void send(Map<String, dynamic> data) {
     if (_socket != null && _status == WsConnectionStatus.connected) {

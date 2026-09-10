@@ -4,6 +4,7 @@ import '../providers/city_flow_provider.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/city_data.dart';
 import '../core/services/api_service.dart';
+import '../core/services/location_service.dart';
 import '../widgets/city_selector.dart';
 
 class TrafficPredictionScreen extends StatefulWidget {
@@ -22,6 +23,13 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
   bool _isLoading = false;
   bool _isPredictingTrip = false;
 
+  // Mode de routage : 'comfort' (routes bitumées) ou 'speed' (plus rapide)
+  String _routeMode = 'comfort';
+
+  // GPS : position de l'utilisateur pour l'origine
+  bool _isLoadingGps = false;
+  bool _isGpsOrigin = false; // true si l'origine est la position GPS
+
   // Simulateur prédictif de trajet futur (dynamiquement ancré dans le futur)
   String _selectedTripOrigin = 'Poste Centrale';
   String _selectedTripDestination = '';
@@ -29,6 +37,7 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
   bool _isTripTomorrow = false;
   String _formattedDepartureTime = '';
   TextEditingController? _destinationFieldController;
+  TextEditingController? _originFieldController;
 
   String? _lastCity;
 
@@ -41,6 +50,47 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
     _isTripTomorrow = in15.day != now.day;
     _formattedDepartureTime = '${in15.hour.toString().padLeft(2, '0')}h${in15.minute.toString().padLeft(2, '0')} (Aujourd\'hui)';
     _loadAllAiData();
+  }
+
+  /// Récupère la position GPS de l'utilisateur et la définit comme point de départ
+  Future<void> _fetchUserGpsOrigin() async {
+    setState(() => _isLoadingGps = true);
+    try {
+      final result = await LocationService.detectUserCity();
+      if (!mounted) return;
+      final label = result.isGpsLive ? '📍 Ma position actuelle' : '📍 Centre-ville (GPS indispo.)';
+      setState(() {
+        _selectedTripOrigin = label;
+        _isGpsOrigin = true;
+        _originFieldController?.text = label;
+        _isLoadingGps = false;
+      });
+      if (_selectedTripDestination.trim().isNotEmpty) {
+        _runTripPrediction();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingGps = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF0F172A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: const Row(
+            children: [
+              Icon(Icons.location_off_rounded, color: Color(0xFFF87171), size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Impossible d\'obtenir votre position GPS. Vérifiez les permissions.',
+                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   void _setRelativeDepartureTime(Duration offset, {bool isTomorrow = false}) {
@@ -185,6 +235,7 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
       destination: _selectedTripDestination,
       departureHour: _selectedTripHour,
       departureDate: targetDate.toIso8601String(),
+      routeMode: _routeMode,
     );
 
     if (mounted) {
@@ -192,6 +243,19 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
         _tripPredictionResult = res;
         _isPredictingTrip = false;
       });
+
+      // Sauvegarde dans l'historique des trajets
+      if (res != null) {
+        final destLandmark = CityData.findLandmark(provider.selectedCity, _selectedTripDestination);
+        final isYde = provider.selectedCity == 'Yaoundé';
+        final destPos = destLandmark?.pos ?? (isYde ? CityData.yaoundeCenter : CityData.doualaCenter);
+        provider.addToTripHistory(
+          title: '$_selectedTripOrigin → $_selectedTripDestination',
+          subtitle: '${_routeMode == "comfort" ? "🛣️ Confort" : "⚡ Vitesse"} • $_formattedDepartureTime',
+          destinationPos: destPos,
+          category: 'recent_route',
+        );
+      }
     }
   }
 
@@ -478,13 +542,6 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
   // 2. ASSISTANT PRÉDICTIF DE TRAJET & OBSTACLES (EX: CRADAT À 17H)
   // =========================================================================
   Widget _buildTripPredictorSection(CityFlowProvider provider, bool isYaounde) {
-    final landmarks = CityData.getLandmarks(provider.selectedCity);
-    final nodes = provider.currentNodes.map((n) => n.name).toList();
-    final allPlaces = <String>{
-      ...landmarks.map((l) => l.name),
-      ...nodes,
-    }.toList();
-
     final res = _tripPredictionResult;
     final warnings = (res?['warnings'] as List<dynamic>?) ?? [];
     final roadStatusLabel = res?['roadStatusLabel'] ?? 'Calcul en cours...';
@@ -494,6 +551,8 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
     final weatherAtHour = res?['weatherAtTargetHour'] as Map<String, dynamic>?;
     final detour = res?['detourRecommendation'] as String?;
     final bestAdvice = res?['bestDepartureAdvice'] as String?;
+    final corridorWaypoints = (res?['corridorWaypoints'] as List<dynamic>?) ?? [];
+    final criticalBottleneck = res?['criticalBottleneck'] as Map<String, dynamic>?;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -517,10 +576,14 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1A3A6B), Color(0xFF22A832)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.psychology_rounded, color: Color(0xFF0284C7), size: 20),
+                child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -540,12 +603,231 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Zone de recherche Destination (Recherche libre + suggestions en direct)
-          const Text(
-            'Destination :',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
+          // --- RECHERCHES RÉCENTES (1-Tap reload) ---
+          _buildRecentSearchesSection(provider),
+
+          // Point de départ (Origine) + bouton GPS
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Point de départ :',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Bouton GPS : Ma position
+                  InkWell(
+                    onTap: _isLoadingGps ? null : _fetchUserGpsOrigin,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: _isLoadingGps
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 1.8, color: Color(0xFF22A832)),
+                            )
+                          : Row(
+                              children: [
+                                Icon(
+                                  _isGpsOrigin ? Icons.gps_fixed_rounded : Icons.gps_not_fixed_rounded,
+                                  size: 13,
+                                  color: _isGpsOrigin ? const Color(0xFF22A832) : const Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _isGpsOrigin ? 'GPS actif' : 'Ma position',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: _isGpsOrigin ? const Color(0xFF22A832) : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Bouton Inverser
+                  InkWell(
+                    onTap: () {
+                      if (_selectedTripDestination.trim().isNotEmpty) {
+                        final oldOrig = _selectedTripOrigin;
+                        final oldDest = _selectedTripDestination;
+                        setState(() {
+                          _selectedTripOrigin = oldDest;
+                          _selectedTripDestination = oldOrig;
+                          _isGpsOrigin = false;
+                        });
+                        _originFieldController?.text = oldDest;
+                        _destinationFieldController?.text = oldOrig;
+                        _runTripPrediction();
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Row(
+                        children: [
+                          Icon(Icons.swap_vert_rounded, size: 15, color: Color(0xFF0284C7)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Inverser',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0284C7)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Autocomplete<String>(
+                initialValue: TextEditingValue(text: _selectedTripOrigin),
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  final query = textEditingValue.text.trim();
+                  final places = CityData.searchPlaces(query, provider.selectedCity);
+                  return places.map((l) => l.name).take(10);
+                },
+                onSelected: (String selection) {
+                  setState(() => _selectedTripOrigin = selection);
+                  if (_selectedTripDestination.trim().isNotEmpty) {
+                    _runTripPrediction();
+                  }
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  _originFieldController = controller;
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    style: const TextStyle(
+                      color: AppColors.navy,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                    onChanged: (val) {
+                      if (_isGpsOrigin) setState(() => _isGpsOrigin = false);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Origine (ex: Poste Centrale, Bastos...)',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      prefixIcon: Icon(
+                        _isGpsOrigin ? Icons.gps_fixed_rounded : Icons.my_location_rounded,
+                        color: _isGpsOrigin ? const Color(0xFF22A832) : const Color(0xFF10B981),
+                        size: 18,
+                      ),
+                      filled: true,
+                      fillColor: _isGpsOrigin ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: _isGpsOrigin ? const Color(0xFF22A832) : const Color(0xFFCBD5E1),
+                          width: _isGpsOrigin ? 1.5 : 1.0,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                      ),
+                    ),
+                    onSubmitted: (val) {
+                      if (val.trim().isNotEmpty) {
+                        setState(() {
+                          _selectedTripOrigin = val.trim();
+                          _isGpsOrigin = false;
+                        });
+                        if (_selectedTripDestination.trim().isNotEmpty) {
+                          _runTripPrediction();
+                        }
+                      }
+                    },
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      child: Container(
+                        width: constraints.maxWidth,
+                        constraints: const BoxConstraints(maxHeight: 220),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            final landmark = CityData.findLandmark(provider.selectedCity, option);
+                            return ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              leading: const Icon(Icons.my_location_rounded, color: Color(0xFF10B981), size: 18),
+                              title: Text(
+                                option,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.navy),
+                              ),
+                              subtitle: landmark != null && landmark.district.isNotEmpty
+                                  ? Text(landmark.district, style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)))
+                                  : null,
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+
+          // Zone de recherche Destination (Recherche universelle de tous les lieux réels)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Destination recherchée :',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  '180+ lieux reconnus',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF0284C7)),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           LayoutBuilder(
@@ -553,13 +835,9 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
               return Autocomplete<String>(
                 initialValue: TextEditingValue(text: _selectedTripDestination),
                 optionsBuilder: (TextEditingValue textEditingValue) {
-                  final query = textEditingValue.text.trim().toLowerCase();
-                  if (query.isEmpty) {
-                    return isYaounde
-                        ? ['Carrefour CRADAT', 'Marché Mokolo', 'Poste Centrale', 'Rond-point Bastos', 'Carrefour Nlongkak', 'Carrefour Mvan']
-                        : ['Carrefour Ndokoti', 'Rond-point Deido', 'Boulevard de la Liberté (Akwa)', 'Marché Mboppi', 'Plateau Administratif (Bonanjo)'];
-                  }
-                  return allPlaces.where((p) => p.toLowerCase().contains(query)).take(8);
+                  final query = textEditingValue.text.trim();
+                  final places = CityData.searchPlaces(query, provider.selectedCity);
+                  return places.map((l) => l.name).take(12);
                 },
                 onSelected: (String selection) {
                   setState(() => _selectedTripDestination = selection);
@@ -576,7 +854,7 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                       fontSize: 13,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Rechercher un lieu, carrefour, quartier...',
+                      hintText: 'Ex: Collège Vogt, Biyem-Assi, Mendong, Olembe...',
                       hintStyle: const TextStyle(
                         color: Color(0xFF94A3B8),
                         fontSize: 12,
@@ -629,7 +907,7 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                       color: Colors.white,
                       child: Container(
                         width: constraints.maxWidth,
-                        constraints: const BoxConstraints(maxHeight: 220),
+                        constraints: const BoxConstraints(maxHeight: 240),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -643,16 +921,59 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                           itemBuilder: (context, index) {
                             final option = options.elementAt(index);
                             final landmark = CityData.findLandmark(provider.selectedCity, option);
+
+                            IconData catIcon = Icons.location_on_rounded;
+                            Color catColor = const Color(0xFF0284C7);
+                            String catBadge = 'Lieu';
+
+                            if (landmark != null) {
+                              if (landmark.category == 'university') {
+                                catIcon = Icons.school_rounded;
+                                catColor = const Color(0xFF2563EB);
+                                catBadge = 'Éducation';
+                              } else if (landmark.category == 'hospital') {
+                                catIcon = Icons.local_hospital_rounded;
+                                catColor = const Color(0xFFEF4444);
+                                catBadge = 'Santé';
+                              } else if (landmark.category == 'mall') {
+                                catIcon = Icons.shopping_bag_rounded;
+                                catColor = const Color(0xFFF59E0B);
+                                catBadge = 'Commerce';
+                              } else if (landmark.category == 'transport') {
+                                catIcon = Icons.directions_bus_rounded;
+                                catColor = const Color(0xFF10B981);
+                                catBadge = 'Transport';
+                              } else if (landmark.category == 'hotel') {
+                                catIcon = Icons.hotel_rounded;
+                                catColor = const Color(0xFF8B5CF6);
+                                catBadge = 'Hôtel';
+                              } else {
+                                catIcon = Icons.traffic_rounded;
+                                catColor = const Color(0xFF0284C7);
+                                catBadge = 'Carrefour';
+                              }
+                            }
+
                             return ListTile(
                               dense: true,
                               visualDensity: VisualDensity.compact,
-                              leading: const Icon(Icons.location_on_outlined, color: Color(0xFF0284C7), size: 18),
+                              leading: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: catColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(catIcon, color: catColor, size: 16),
+                              ),
                               title: Text(
                                 option,
                                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.navy),
                               ),
                               subtitle: landmark != null && landmark.district.isNotEmpty
-                                  ? Text(landmark.district, style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)))
+                                  ? Text(
+                                      '${landmark.district} • $catBadge',
+                                      style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                                    )
                                   : null,
                               onTap: () => onSelected(option),
                             );
@@ -667,46 +988,54 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Raccourcis rapides de destinations
+          // Raccourcis rapides de destinations populaires
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: (isYaounde
-                      ? ['CRADAT', 'Mokolo', 'Bastos', 'Nlongkak', 'Mvan', 'Poste Centrale']
-                      : ['Ndokoti', 'Deido', 'Akwa', 'Mboppi', 'Bonanjo', 'Bonamoussadi'])
+                      ? ['CRADAT', 'Collège Vogt', 'Biyem-Assi', 'Mendong', 'Mokolo', 'Bastos', 'Nlongkak', 'Etoudi']
+                      : ['Ndokoti', 'Deido', 'Akwa', 'Bonamoussadi', 'Makepe', 'Kotto', 'Mboppi', 'Bonabéri'])
                   .map((shortcut) {
                 final isMatch = _selectedTripDestination.toLowerCase().contains(shortcut.toLowerCase());
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: InkWell(
-                      onTap: () {
-                        final fullName = isYaounde
-                            ? (shortcut == 'CRADAT'
-                                ? 'Carrefour CRADAT'
-                                : (shortcut == 'Mokolo'
-                                    ? 'Marché Mokolo'
-                                    : (shortcut == 'Bastos'
-                                        ? 'Rond-point Bastos'
-                                        : (shortcut == 'Nlongkak'
-                                            ? 'Carrefour Nlongkak'
-                                            : (shortcut == 'Mvan'
-                                                ? 'Carrefour Mvan'
-                                                : 'Poste Centrale')))))
-                            : (shortcut == 'Ndokoti'
-                                ? 'Carrefour Ndokoti'
-                                : (shortcut == 'Deido'
-                                    ? 'Rond-point Deido'
-                                    : (shortcut == 'Akwa'
-                                        ? 'Boulevard de la Liberté (Akwa)'
-                                        : (shortcut == 'Mboppi'
-                                            ? 'Marché Mboppi'
-                                            : (shortcut == 'Bonanjo'
-                                                ? 'Plateau Administratif (Bonanjo)'
-                                                : 'Carrefour Bonamoussadi')))));
-                        _destinationFieldController?.text = fullName;
-                        setState(() => _selectedTripDestination = fullName);
-                        _runTripPrediction();
-                      },
+                    onTap: () {
+                      final fullName = isYaounde
+                          ? (shortcut == 'CRADAT'
+                              ? 'Carrefour CRADAT (Université Yaoundé I)'
+                              : (shortcut == 'Collège Vogt'
+                                  ? 'Collège Vogt (Mvolyé)'
+                                  : (shortcut == 'Biyem-Assi'
+                                      ? 'Carrefour Biyem-Assi (Rond-point Express)'
+                                      : (shortcut == 'Mendong'
+                                          ? 'Carrefour Mendong'
+                                          : (shortcut == 'Mokolo'
+                                              ? 'Marché Mokolo'
+                                              : (shortcut == 'Bastos'
+                                                  ? 'Bastos (Ambassades)'
+                                                  : (shortcut == 'Nlongkak'
+                                                      ? 'Carrefour Nlongkak'
+                                                      : 'Carrefour Etoudi (Palais de l\'Unité)')))))))
+                          : (shortcut == 'Ndokoti'
+                              ? 'Carrefour Ndokoti (Axe Lourd)'
+                              : (shortcut == 'Deido'
+                                  ? 'Rond-point Deido'
+                                  : (shortcut == 'Akwa'
+                                      ? 'Carrefour Akwa (Boulevard Liberté)'
+                                      : (shortcut == 'Bonamoussadi'
+                                          ? 'Rond-point Bonamoussadi (Maetur)'
+                                          : (shortcut == 'Makepe'
+                                              ? 'Carrefour Makepe (Missoke)'
+                                              : (shortcut == 'Kotto'
+                                                  ? 'Carrefour Kotto'
+                                                  : (shortcut == 'Mboppi'
+                                                      ? 'Marché Mboppi'
+                                                      : 'Carrefour Bonabéri (Ancien Pont)')))))));
+                      _destinationFieldController?.text = fullName;
+                      setState(() => _selectedTripDestination = fullName);
+                      _runTripPrediction();
+                    },
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -806,6 +1135,11 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
               ),
             ),
           ),
+
+          const SizedBox(height: 12),
+
+          // --- SÉLECTEUR DE MODE DE ROUTE (VITESSE VS CONFORT) ---
+          _buildRouteModeSelector(),
 
           const SizedBox(height: 14),
 
@@ -1004,19 +1338,42 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                 ],
               ),
             ),
+
+            if (corridorWaypoints.isNotEmpty)
+              _buildCorridorWaypointsSection(corridorWaypoints, criticalBottleneck),
           ],
 
           const SizedBox(height: 16),
 
-          // Bouton principal de confirmation & planification
-          SizedBox(
+          // Bouton principal de confirmation & planification avec dégradé logo
+          Container(
             width: double.infinity,
             height: 48,
+            decoration: BoxDecoration(
+              gradient: _selectedTripDestination.trim().isNotEmpty
+                  ? const LinearGradient(
+                      colors: [Color(0xFF1A3A6B), Color(0xFF22A832)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: _selectedTripDestination.trim().isNotEmpty ? null : const Color(0xFF94A3B8),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: _selectedTripDestination.trim().isNotEmpty
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF22A832).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedTripDestination.trim().isNotEmpty ? const Color(0xFF0284C7) : const Color(0xFF94A3B8),
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
                 foregroundColor: Colors.white,
-                elevation: _selectedTripDestination.trim().isNotEmpty ? 2 : 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -1031,6 +1388,191 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // --- COMPOSANT : RECHERCHES RÉCENTES ---
+  Widget _buildRecentSearchesSection(CityFlowProvider provider) {
+    final history = provider.tripHistory.take(6).toList();
+    if (history.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.history_rounded, size: 14, color: Color(0xFF64748B)),
+              const SizedBox(width: 4),
+              const Text(
+                'Trajets récents :',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () => provider.clearTripHistory(),
+                child: const Text('Effacer', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: history.map((item) {
+                final parts = item.title.split(' → ');
+                final orig = parts.isNotEmpty ? parts[0].trim() : _selectedTripOrigin;
+                final dest = parts.length > 1 ? parts[1].trim() : item.title.trim();
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedTripOrigin = orig;
+                        _selectedTripDestination = dest;
+                      });
+                      _destinationFieldController?.text = dest;
+                      _runTripPrediction();
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.turn_right_rounded, size: 12, color: Color(0xFF10B981)),
+                          const SizedBox(width: 4),
+                          Text(
+                            dest,
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- COMPOSANT : SÉLECTEUR VITESSE VS CONFORT ---
+  Widget _buildRouteModeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Préférence d\'itinéraire :',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  setState(() => _routeMode = 'comfort');
+                  if (_selectedTripDestination.trim().isNotEmpty) {
+                    _runTripPrediction();
+                  }
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  decoration: BoxDecoration(
+                    gradient: _routeMode == 'comfort'
+                        ? const LinearGradient(
+                            colors: [Color(0xFF1A3A6B), Color(0xFF22A832)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: _routeMode == 'comfort' ? null : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _routeMode == 'comfort' ? Colors.transparent : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('🛣️', style: TextStyle(fontSize: 13)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Confort (Bitumé)',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: _routeMode == 'comfort' ? Colors.white : const Color(0xFF334155),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  setState(() => _routeMode = 'speed');
+                  if (_selectedTripDestination.trim().isNotEmpty) {
+                    _runTripPrediction();
+                  }
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  decoration: BoxDecoration(
+                    gradient: _routeMode == 'speed'
+                        ? const LinearGradient(
+                            colors: [Color(0xFF1A3A6B), Color(0xFF22A832)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: _routeMode == 'speed' ? null : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _routeMode == 'speed' ? Colors.transparent : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('⚡', style: TextStyle(fontSize: 13)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Vitesse (Rapide)',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: _routeMode == 'speed' ? Colors.white : const Color(0xFF334155),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1198,6 +1740,352 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCorridorWaypointsSection(List<dynamic> waypoints, Map<String, dynamic>? bottleneck) {
+    if (waypoints.isEmpty) return const SizedBox.shrink();
+
+    final bestRoute = _tripPredictionResult?['bestRouteOverview'] as Map<String, dynamic>?;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.alt_route_rounded, color: Color(0xFF0284C7), size: 16),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Diagnostic étape par étape & Meilleur itinéraire',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: AppColors.navy),
+                    ),
+                    Text(
+                      'Heures de passage exactes & qualité de la chaussée',
+                      style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Synthèse Meilleure Route Bitumée Recommandée
+          if (bestRoute != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '🛣️ ${bestRoute['recommendedRouteName'] ?? 'Itinéraire Prioritaire Bitumé'}',
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF15803D)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${bestRoute['averageRoadQualityScore'] ?? 95}% Bitume',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF166534)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '✨ ${bestRoute['whyBestRoute'] ?? 'Privilégie les boulevards bitumés.'}',
+                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF166534), fontWeight: FontWeight.w600),
+                  ),
+                  if (bestRoute['alternativeDegradedRoute'] != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '⚠️ ${bestRoute['alternativeDegradedRoute']['name']}: ${bestRoute['alternativeDegradedRoute']['warning']}',
+                      style: const TextStyle(fontSize: 10, color: Color(0xFFB45309), fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+          // Point critique identifié
+          if (bottleneck != null && (bottleneck['congestionScore'] as num? ?? 0) >= 65)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('🚨', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF991B1B)),
+                        children: [
+                          const TextSpan(text: 'Point critique du parcours : ', style: TextStyle(fontWeight: FontWeight.w900)),
+                          TextSpan(
+                            text: '${bottleneck['nodeName']} ',
+                            style: const TextStyle(fontWeight: FontWeight.w900, decoration: TextDecoration.underline),
+                          ),
+                          TextSpan(text: 'atteint vers ${bottleneck['etaFormatted']} (${bottleneck['mainReason']}).'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Liste verticale des étapes & carrefours
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: waypoints.length,
+            separatorBuilder: (context, index) => Container(
+              margin: const EdgeInsets.only(left: 16),
+              height: 14,
+              child: const VerticalDivider(color: Color(0xFFCBD5E1), thickness: 1.5, width: 2),
+            ),
+            itemBuilder: (context, index) {
+              final wp = waypoints[index] as Map<String, dynamic>;
+              final isOrigin = wp['isOrigin'] == true;
+              final isDest = wp['isDestination'] == true;
+              final score = wp['congestionScore'] as num? ?? 50;
+              final obstacles = (wp['obstacles'] as List<dynamic>?) ?? [];
+              final statusLabel = wp['statusLabel'] ?? 'Fluide';
+              final eta = wp['estimatedArrival'] ?? '';
+              final delayAtNode = wp['delayAtNodeMin'] as num? ?? 0;
+              final roadName = wp['roadName'] as String?;
+              final pavementStatus = wp['pavementStatus'] as String?;
+
+              Color badgeColor = const Color(0xFF10B981);
+              if (score >= 85 || obstacles.any((o) => (o as Map)['severity'] == 'critical')) {
+                badgeColor = const Color(0xFFDC2626);
+              } else if (score >= 68) {
+                badgeColor = const Color(0xFFEA580C);
+              } else if (score >= 40) {
+                badgeColor = const Color(0xFFF59E0B);
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isOrigin
+                              ? const Color(0xFF0284C7)
+                              : (isDest ? const Color(0xFF10B981) : badgeColor.withValues(alpha: 0.15)),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isOrigin
+                                ? const Color(0xFF0284C7)
+                                : (isDest ? const Color(0xFF10B981) : badgeColor),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          isOrigin
+                              ? Icons.trip_origin_rounded
+                              : (isDest ? Icons.location_on_rounded : Icons.alt_route_rounded),
+                          size: 15,
+                          color: (isOrigin || isDest) ? Colors.white : badgeColor,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    wp['name'] ?? '',
+                                    style: TextStyle(
+                                      fontWeight: isOrigin || isDest ? FontWeight.w900 : FontWeight.w800,
+                                      fontSize: 12.5,
+                                      color: AppColors.navy,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0284C7).withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.access_time_filled_rounded, size: 10, color: Color(0xFF0284C7)),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        eta,
+                                        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: Color(0xFF0284C7)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (roadName != null && roadName.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 4,
+                                runSpacing: 2,
+                                children: [
+                                  Text(
+                                    '🛣️ $roadName',
+                                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF0284C7)),
+                                  ),
+                                  if (pavementStatus != null)
+                                    Text(
+                                      '• $pavementStatus',
+                                      style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                                    ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 2),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 5,
+                              runSpacing: 2,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(color: badgeColor, shape: BoxShape.circle),
+                                ),
+                                Text(
+                                  '$statusLabel ($score%)',
+                                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: badgeColor),
+                                ),
+                                if (delayAtNode > 0)
+                                  Text(
+                                    '(+${delayAtNode}m retard)',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Obstacles détectés sur ce carrefour spécifique
+                  if (obstacles.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 42, top: 6, bottom: 4),
+                      child: Column(
+                        children: obstacles.map((obsMap) {
+                          final obs = obsMap as Map<String, dynamic>;
+                          final isCritical = obs['severity'] == 'critical';
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isCritical ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isCritical ? const Color(0xFFFECACA) : const Color(0xFFFDE68A),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(obs['icon'] ?? '⚠️', style: const TextStyle(fontSize: 13)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        obs['title'] ?? '',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: isCritical ? const Color(0xFF991B1B) : const Color(0xFF92400E),
+                                        ),
+                                      ),
+                                      if ((obs['description'] as String?)?.isNotEmpty == true)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 1),
+                                          child: Text(
+                                            obs['description'] ?? '',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: isCritical ? const Color(0xFF7F1D1D) : const Color(0xFF78350F),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1416,14 +2304,14 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                       child: Ink(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
+                            colors: [Color(0xFF1A3A6B), Color(0xFF22A832)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                              color: const Color(0xFF22A832).withValues(alpha: 0.25),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),

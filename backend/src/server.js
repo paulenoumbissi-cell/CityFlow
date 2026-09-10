@@ -12,6 +12,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import emergencyRoutes from "./routes/emergencyRoutes.js";
 import mapRoutes from "./routes/mapRoutes.js";
 import { initWebSocketServer } from "./services/websocketServer.js";
+import { initPushService } from "./services/pushService.js";
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.get("/api/health", (req, res) => {
 
 const server = http.createServer(app);
 initWebSocketServer(server);
+initPushService();
 
 server.listen(PORT, () => {
   console.log(`[CityFlow Backend API & WebSockets] running on http://localhost:${PORT}`);

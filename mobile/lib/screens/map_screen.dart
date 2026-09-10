@@ -11,6 +11,7 @@ import '../core/constants/city_data.dart';
 import '../widgets/pulsing_traffic_marker.dart';
 import '../widgets/cityflow_drawer.dart';
 import '../widgets/waze_report_modal.dart';
+import '../widgets/route_alert_banner.dart';
 import 'saved_places_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -537,6 +538,20 @@ class _MapScreenState extends State<MapScreen> {
             _buildTrafficNodeCard(context, provider, _highlightedNode!)
           else
             _buildWazeHomeBottomSheet(context, provider),
+
+          // =========================================================
+          // 5. BANNER D'ALERTE GÉO-CONTEXTUELLE (SUR TRAJET)
+          // =========================================================
+          RouteAlertBannerStack(
+            alerts: provider.routeAlerts,
+            onDismiss: (id) => provider.dismissRouteAlert(id),
+            onViewOnMap: () {
+              final topAlert = provider.routeAlerts.firstOrNull;
+              if (topAlert != null && topAlert.position != null) {
+                _mapController.move(topAlert.position!, 16.0);
+              }
+            },
+          ),
         ],
       ),
     );

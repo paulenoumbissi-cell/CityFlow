@@ -1,5 +1,53 @@
 import { YAOUNDE_NODES, DOUALA_NODES } from "../data/cityData.js";
 import { fetchLiveWeatherData, getForecastForHour, parseWmoCode } from "./weatherService.js";
+import { CITY_LANDMARKS, resolveCoordinates, calculateDistanceKm, fetchOsrmRoutes, generatePolyline } from "../controllers/routeController.js";
+
+// Helpers pour projection spatiale haute fidélité le long du réseau routier réel OSRM
+function pointToSegmentDistance(p, a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return { distKm: calculateDistanceKm(p, a), t: 0, proj: a };
+
+  const px = p[0] - a[0];
+  const py = p[1] - a[1];
+  let t = (px * dx + py * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+
+  const proj = [a[0] + t * dx, a[1] + t * dy];
+  const distKm = calculateDistanceKm(p, proj);
+  return { distKm, t, proj };
+}
+
+function findDistanceAndProgressionOnPolyline(p, polyline) {
+  let minDist = Infinity;
+  let bestFraction = 0;
+  let totalLength = 0;
+
+  const segmentLengths = [];
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const l = calculateDistanceKm(polyline[i], polyline[i + 1]);
+    segmentLengths.push(l);
+    totalLength += l;
+  }
+  if (totalLength === 0) totalLength = 0.001;
+
+  let accumulatedDist = 0;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const a = polyline[i];
+    const b = polyline[i + 1];
+    const segLen = segmentLengths[i];
+    const res = pointToSegmentDistance(p, a, b);
+    if (res.distKm < minDist) {
+      minDist = res.distKm;
+      const alongSegment = res.t * segLen;
+      bestFraction = (accumulatedDist + alongSegment) / totalLength;
+    }
+    accumulatedDist += segLen;
+  }
+
+  return { distToRoadKm: minDist, fraction: bestFraction, totalLengthKm: totalLength };
+}
 
 // Facteurs météo et coefficients d'adhérence
 export const WEATHER_CONDITIONS = {
@@ -139,6 +187,202 @@ export const LOCAL_EVENTS = {
     targetedNodes: ["yde_poste_centrale", "yde_bastos", "yde_warda", "dla_bonanjo"],
   },
 };
+
+// --- INFRASTRUCTURE ROUTIÈRE & QUALITÉ DES CHAUSSÉES DE YAOUNDÉ ET DOUALA ---
+export const CITY_ROAD_INFRASTRUCTURE = {
+  "Yaoundé": [
+    {
+      id: "axe_boulevard_20_mai",
+      name: "Boulevard du 20 Mai & Quartier Administratif",
+      type: "Boulevard 2x2 voies",
+      qualityScore: 98,
+      pavementStatus: "Bitumé excellent état",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Chaussée bitumée prioritaire, éclairée et fluide sans nids de poule",
+      keywords: ["poste centrale", "warda", "minpostel", "enam", "leclerc", "centre", "hilton", "djeuga", "retraite", "paposy", "churchill"],
+    },
+    {
+      id: "axe_ngoa_ekele_cradat",
+      name: "Axe Ngoa-Ekélé / Avenue Mgr Vogt",
+      type: "Artère principale bitumée",
+      qualityScore: 92,
+      pavementStatus: "Bitumé bon état",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Axe goudronné large reliant le centre aux facultés",
+      keywords: ["supptic", "cradat", "ngoa", "universite", "esstic", "ens", "polytech", "melen", "vogt", "cuss", "hopital central", "fmsb"],
+    },
+    {
+      id: "axe_bastos_urss",
+      name: "Boulevard de l'URSS / Bastos - Dragages",
+      type: "Boulevard prioritaire bitumé",
+      qualityScore: 96,
+      pavementStatus: "Bitumé haute qualité",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Revêtement asphalté haute qualité, évite les ruelles encombrées",
+      keywords: ["bastos", "nlongkak", "palais des congres", "tsinga", "dragages", "ambassade", "super u", "dovv bastos", "golf"],
+    },
+    {
+      id: "axe_ekounou_cfta_mvogmbi",
+      name: "Axe Ekounou - Mvog-Mbi (Route de l'Aéroport)",
+      type: "Artère urbaine bitumée",
+      qualityScore: 88,
+      pavementStatus: "Bitumé régulier",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Chaussée goudronnée directe reliant le Sud-Est au centre",
+      keywords: ["cfta", "ekounou", "mvog-mbi", "anguissa", "nkolndongo", "coron", "siantou", "mvog-ada", "kondengui", "ekie", "nkomo"],
+    },
+    {
+      id: "axe_voie_express_nsimalen",
+      name: "Autoroute / Voie Express Nsimalen",
+      type: "Voie express 2x2 voies",
+      qualityScore: 99,
+      pavementStatus: "Bitume autoroutier optimal",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Voie rapide 2x2 séparée, vitesse optimale et sécurité",
+      keywords: ["nsimalen", "aeroport", "mvan", "tropicana", "ahala", "nsam"],
+    },
+    {
+      id: "axe_mokolo_madagascar",
+      name: "Route de Mokolo / Boulevard Jean-Paul II",
+      type: "Artère commerçante bitumée",
+      qualityScore: 80,
+      pavementStatus: "Bitumé trafic dense",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Axe goudronné majeur évitant les pistes boueuses",
+      keywords: ["mokolo", "madagascar", "cite verte", "marche central", "carrefour meec", "carrefour tsinga"],
+    },
+    {
+      id: "axe_omnisports_essos",
+      name: "Avenue Germaine / Axe Omnisports - Ngousso",
+      type: "Artère principale bitumée",
+      qualityScore: 90,
+      pavementStatus: "Bitumé bon état",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Axe bitumé large desservant l'Est et les hôpitaux",
+      keywords: ["omnisports", "essos", "ngousso", "hopital general", "injs", "mimboman", "djoungolo", "jamot"],
+    },
+    {
+      id: "axe_mendong_biyemassi",
+      name: "Route de Mendong / Biyem-Assi - Simbock",
+      type: "Artère urbaine bitumée",
+      qualityScore: 86,
+      pavementStatus: "Bitumé régulier",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Chaussée principale goudronnée évitant les ravins et pistes",
+      keywords: ["mendong", "biyem-assi", "etoug-ebe", "ronpoint damas", "lycee de mendong", "simbock", "dovv mendong", "nkolbisson"],
+    },
+  ],
+  "Douala": [
+    {
+      id: "axe_boulevard_liberte",
+      name: "Boulevard de la Liberté / Rue Prince Bell",
+      type: "Boulevard central 2x2 voies",
+      qualityScore: 96,
+      pavementStatus: "Bitumé excellent état",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Boulevard commercial bitumé 2x2 avec feux régulés",
+      keywords: ["akwa", "liberte", "atrium", "krystal", "palace", "deido", "bonanjo", "laquintinie", "libermann"],
+    },
+    {
+      id: "axe_pont_wouri_bonaberi",
+      name: "Axe Lourd Pont sur le Wouri (N3)",
+      type: "Voie express 2x3 voies",
+      qualityScore: 95,
+      pavementStatus: "Bitume autoroutier",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Franchissement rapide sur le Wouri à 6 voies bitumées",
+      keywords: ["bonaberi", "pont", "wouri", "deido", "rond-point bonaberi", "grand moulin", "sodiko", "bonassama"],
+    },
+    {
+      id: "axe_lourd_ndokoti_bassa",
+      name: "Axe Lourd Bassa / Carrefour Ndokoti (N3)",
+      type: "Artère industrielle bitumée",
+      qualityScore: 84,
+      pavementStatus: "Bitume lourd",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Axe de transit goudronné pour poids lourds et véhicules",
+      keywords: ["ndokoti", "bassa", "ndogbong", "bessengue", "bepanda", "iut", "enset", "tergal", "cite sic"],
+    },
+    {
+      id: "axe_bonamoussadi_nations_unies",
+      name: "Boulevard des Nations Unies (Maetur)",
+      type: "Boulevard résidentiel 2x2 voies",
+      qualityScore: 94,
+      pavementStatus: "Bitumé excellent état",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Boulevard résidentiel moderne large et parfaitement bitumé",
+      keywords: ["bonamoussadi", "makepe", "denver", "kotto", "logbessou", "hopital general"],
+    },
+    {
+      id: "axe_aeroport_yassa_japoma",
+      name: "Pénétrante Est / Boulevard de l'Aviation",
+      type: "Voie express 2x2 voies",
+      qualityScore: 98,
+      pavementStatus: "Bitume autoroutier optimal",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Voie rapide 2x2 vers l'aéroport et l'autoroute de Japoma",
+      keywords: ["aeroport", "douala grand mall", "yassa", "japoma", "nyalla", "stade"],
+    },
+    {
+      id: "axe_bonanjo_port",
+      name: "Avenue Charles de Gaulle / Bonanjo",
+      type: "Boulevard administratif bitumé",
+      qualityScore: 97,
+      pavementStatus: "Bitumé parfait",
+      isPrimaryAxis: true,
+      surfaceAdvantage: "Artère administrative large, fluide et en parfait état",
+      keywords: ["bonanjo", "port", "pad", "prefecture", "bali", "bonapriso", "joss", "sawa", "pullman"],
+    },
+  ],
+};
+
+// Résolution de la meilleure route et de la qualité du revêtement pour un segment ou carrefour
+export function getRoadSegmentInfrastructure(nodeA, nodeB, city = "Yaoundé") {
+  const isDouala = (city || "").toLowerCase().includes("douala");
+  const roadAxes = CITY_ROAD_INFRASTRUCTURE[isDouala ? "Douala" : "Yaoundé"] || [];
+
+  const textA = ((nodeA?.name || "") + " " + (nodeA?.id || "") + " " + (nodeA?.district || "")).toLowerCase();
+  const textB = ((nodeB?.name || "") + " " + (nodeB?.id || "") + " " + (nodeB?.district || "")).toLowerCase();
+  const combined = `${textA} ${textB}`;
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const axis of roadAxes) {
+    let matchCount = 0;
+    for (const kw of axis.keywords) {
+      if (combined.includes(kw)) {
+        matchCount += 1;
+      }
+    }
+    if (matchCount > bestScore) {
+      bestScore = matchCount;
+      bestMatch = axis;
+    }
+  }
+
+  if (bestMatch && bestScore > 0) {
+    return {
+      roadName: bestMatch.name,
+      roadType: bestMatch.type,
+      roadQualityScore: bestMatch.qualityScore,
+      pavementStatus: bestMatch.pavementStatus,
+      surfaceAdvantage: bestMatch.surfaceAdvantage,
+      isPrimaryAxis: true,
+      isRecommendedBestRoute: true,
+    };
+  }
+
+  return {
+    roadName: isDouala ? "Artère urbaine bitumée de Douala" : "Axe de liaison urbain bitumé",
+    roadType: "Artère principale bitumée",
+    roadQualityScore: 88,
+    pavementStatus: "Bitumé bon état",
+    surfaceAdvantage: "Axe goudronné direct privilégiant la sécurité et la fluidité",
+    isPrimaryAxis: true,
+    isRecommendedBestRoute: true,
+  };
+}
 
 // Courbe d'affluence horaire (24h)
 const getHourlyBaseFactor = (hour) => {
@@ -402,8 +646,174 @@ export class AiTrafficEngine {
     };
   }
 
+  // Estimation de l'intensité de trafic de base selon la notoriété réelle du carrefour / pôle
+  static getLandmarkBaseCongestion(node) {
+    const n = (node?.name || "").toLowerCase();
+    const cat = node?.category || "";
+    if (n.includes("mokolo") || n.includes("mboppi") || n.includes("nlongkak") || n.includes("ndokoti") || n.includes("mvan")) return 76;
+    if (n.includes("poste centrale") || n.includes("deido") || n.includes("bonamoussadi") || n.includes("express") || n.includes("cradat")) return 66;
+    if (n.includes("melen") || n.includes("damas") || n.includes("anguissa") || n.includes("coron") || n.includes("elig-essono") || n.includes("madagascar") || n.includes("makepe")) return 50;
+    if (n.includes("leclerc") || n.includes("hopital") || n.includes("bastos") || n.includes("omnisports") || n.includes("supptic") || n.includes("enam") || n.includes("esstic")) return 32;
+    if (cat === "university" || cat === "hospital") return 40;
+    if (cat === "mall") return 58;
+    return 36;
+  }
+
   /**
-   * Diagnostic prédictif complet pour un trajet futur (Ex: Aller au CRADAT à 17h)
+   * Résolution universelle et géographiquement exacte des carrefours intermédiaires traversés pour N'IMPORTE QUEL lieu
+   */
+  static async resolveRouteCorridorWaypoints(city, origNode, destNode, allNodes = [], routeMode = "comfort") {
+    const isDouala = (city || "").toLowerCase().includes("douala");
+    const origPos = origNode.position || (isDouala ? [4.0430, 9.6910] : [3.8640, 11.5190]);
+    const destPos = destNode.position || (isDouala ? [4.0530, 9.7080] : [3.8600, 11.5030]);
+    const directKm = calculateDistanceKm(origPos, destPos);
+
+    // Nombre maximum d'étapes et espacement minimal strictement adaptés à la distance réelle du trajet
+    let maxIntermediates = 0;
+    let minSpacing = 1.0;
+    if (directKm < 1.3) {
+      maxIntermediates = 0; // Trajet court / contigu (< 1.3 km) : direct sans étapes superflues
+    } else if (directKm < 3.2) {
+      maxIntermediates = 1; // Trajet de proximité : 1 carrefour clé
+      minSpacing = Math.max(0.8, directKm * 0.45);
+    } else if (directKm < 6.5) {
+      maxIntermediates = 2; // Trajet moyen : 2 étapes majeures
+      minSpacing = Math.max(1.1, directKm * 0.28);
+    } else {
+      maxIntermediates = 4; // Long trajet : 3 à 4 étapes
+      minSpacing = Math.max(1.5, directKm * 0.20);
+    }
+
+    if (maxIntermediates === 0) {
+      return [origNode, destNode];
+    }
+
+    const currentCityLandmarks = CITY_LANDMARKS[city] || CITY_LANDMARKS[isDouala ? "Douala" : "Yaoundé"];
+
+    // 1. Récupération du tracé réel de la chaussée (OSRM ou générateur géométrique)
+    let polyline = null;
+    try {
+      const osrm = await fetchOsrmRoutes(origPos, destPos, origNode.name, destNode.name);
+      if (osrm && osrm.length > 0 && osrm[0].coordinates && osrm[0].coordinates.length > 1) {
+        polyline = osrm[0].coordinates;
+      }
+    } catch (e) {
+      // ignore
+    }
+    if (!polyline || polyline.length < 2) {
+      polyline = generatePolyline(origPos, destPos, 0);
+    }
+
+    // 2. Constitution du catalogue de carrefours, ronds-points et nœuds réels
+    const landmarkNodes = Object.entries(currentCityLandmarks).map(([name, data]) => ({
+      id: `lm_${name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+      name,
+      position: data.pos,
+      category: data.category,
+      district: data.district,
+      congestionValue: AiTrafficEngine.getLandmarkBaseCongestion({ name, category: data.category }),
+    }));
+
+    const isExcluded = (n) => {
+      const name = (n.name || "").toLowerCase();
+      const cat = n.category || "";
+      if (cat === "hotel") return true;
+      if (name.includes("hotel") || name.includes("hôtel")) return true;
+      if (name.includes("super u") || name.includes("dovv") || name.includes("playce")) return true;
+      return false;
+    };
+
+    const candidatePool = [...allNodes, ...landmarkNodes].filter((n) => {
+      if (!n || !n.position || isExcluded(n)) return false;
+      const dO = calculateDistanceKm(origPos, n.position);
+      const dD = calculateDistanceKm(destPos, n.position);
+      return dO >= 0.45 && dD >= 0.45;
+    });
+
+    // 3. Calcul de la distance perpendiculaire exacte à la route et de la fraction de progression chronologique
+    const rankedCandidates = [];
+    for (const node of candidatePool) {
+      const match = findDistanceAndProgressionOnPolyline(node.position, polyline);
+      // Le carrefour doit être à moins de 350 mètres de la trajectoire routière réelle
+      if (match.distToRoadKm <= 0.35 && match.fraction >= 0.12 && match.fraction <= 0.88) {
+        const roadInfo = getRoadSegmentInfrastructure(origNode, node, city);
+        // Priorité aux meilleures routes bitumées et aux grands axes
+        const roadQualityBonus = (roadInfo.roadQualityScore || 80) / 100.0;
+        rankedCandidates.push({
+          node,
+          fraction: match.fraction,
+          distToRoadKm: match.distToRoadKm,
+          roadQualityBonus,
+        });
+      }
+    }
+
+    // 4. Tri : en mode "comfort" on priorise les meilleures routes bitumées,
+    //          en mode "speed" on priorise la proximité au trajet (chemin le plus court)
+    rankedCandidates.sort((a, b) => {
+      if (routeMode === "speed") {
+        // Moins la distance au trajet est grande, mieux c'est
+        return a.distToRoadKm - b.distToRoadKm || a.fraction - b.fraction;
+      }
+      // Mode comfort : combo qualité bitume + position sur l'axe
+      const scoreA = a.roadQualityBonus - a.distToRoadKm * 2;
+      const scoreB = b.roadQualityBonus - b.distToRoadKm * 2;
+      return scoreB - scoreA || a.fraction - b.fraction;
+    });
+    // Retrier dans l'ordre chronologique après le tri par qualité
+    rankedCandidates.sort((a, b) => a.fraction - b.fraction);
+
+    // 5. Sélection avec espacement minimum et limitation selon la distance
+    const selectedIntermediates = [];
+    for (const item of rankedCandidates) {
+      if (selectedIntermediates.length >= maxIntermediates) break;
+      const tooClose = selectedIntermediates.some(
+        (sel) => calculateDistanceKm(sel.node.position, item.node.position) < minSpacing
+      );
+      if (!tooClose) {
+        selectedIntermediates.push(item);
+      }
+    }
+
+    // Fallback : si la route est très isolée, projection vectorielle adaptative
+    if (selectedIntermediates.length === 0 && maxIntermediates > 0) {
+      const dx = destPos[0] - origPos[0];
+      const dy = destPos[1] - origPos[1];
+      const lenSq = dx * dx + dy * dy || 0.00001;
+      const maxCorridorWidthKm = Math.min(0.60, Math.max(0.25, directKm * 0.18));
+
+      const fallbackRanked = candidatePool
+        .map((n) => {
+          const px = n.position[0] - origPos[0];
+          const py = n.position[1] - origPos[1];
+          const t = (px * dx + py * dy) / lenSq;
+          const projX = origPos[0] + t * dx;
+          const projY = origPos[1] + t * dy;
+          const distToCorridor = calculateDistanceKm(n.position, [projX, projY]);
+          const dOrig = calculateDistanceKm(origPos, n.position);
+          const dDest = calculateDistanceKm(n.position, destPos);
+          const detourRatio = (dOrig + dDest) / (directKm || 0.1);
+          return { node: n, t, distToCorridor, detourRatio };
+        })
+        .filter((item) => item.t >= 0.15 && item.t <= 0.85 && item.distToCorridor <= maxCorridorWidthKm && item.detourRatio <= 1.20)
+        .sort((a, b) => a.t - b.t);
+
+      for (const item of fallbackRanked) {
+        if (selectedIntermediates.length >= maxIntermediates) break;
+        const tooClose = selectedIntermediates.some(
+          (sel) => calculateDistanceKm(sel.node.position, item.node.position) < minSpacing
+        );
+        if (!tooClose) {
+          selectedIntermediates.push(item);
+        }
+      }
+    }
+
+    return [origNode, ...selectedIntermediates.map((item) => item.node), destNode];
+  }
+
+  /**
+   * Diagnostic prédictif complet pour un trajet futur (Ex: Aller au CRADAT ou au Collège Vogt à 17h)
    */
   static async predictTripAndHazards({
     city = "Yaoundé",
@@ -411,6 +821,7 @@ export class AiTrafficEngine {
     destination = "Carrefour CRADAT",
     departureHour = 17,
     departureDate = new Date().toISOString(),
+    routeMode = "comfort", // "comfort" = routes bitumées prioritaires | "speed" = plus court chemin
   }) {
     const isDouala = city.toLowerCase().includes("douala");
     const allNodes = isDouala ? DOUALA_NODES : YAOUNDE_NODES;
@@ -423,7 +834,6 @@ export class AiTrafficEngine {
     const normalizedMinute = Math.round((departureHour % 1) * 60);
 
     // Règle d'or : Toute prédiction doit être dans le futur (temps minimum = temps actuel).
-    // Si l'utilisateur choisit pour aujourd'hui une heure déjà écoulée, on bascule automatiquement sur demain.
     const isToday = dateObj.toDateString() === now.toDateString();
     let isPastTimeToday = false;
     let isTomorrow = false;
@@ -441,139 +851,350 @@ export class AiTrafficEngine {
     }
 
     const dayOfWeek = dateObj.getDay();
+    const dayFactor = [1, 2, 3, 4, 5].includes(dayOfWeek) ? 1.05 : 0.88;
     const formattedTime = `${normalizedHour.toString().padStart(2, "0")}h${normalizedMinute.toString().padStart(2, "0")}`;
 
     // 1. Météo exacte prévue à cette heure précise par Open-Meteo pour la bonne date
     const targetWeather = await getForecastForHour(city, normalizedHour, dateObj.toISOString());
 
-    // 2. Recherche du nœud d'arrivée et de départ
+    // 2. Recherche et résolution universelle du nœud d'arrivée et de départ
     const findMatchingNode = (query) => {
       if (!query) return null;
-      const q = query.toLowerCase();
-      return allNodes.find((n) => n.name.toLowerCase().includes(q) || n.id.toLowerCase().includes(q)) || null;
+      const q = query.trim();
+      const qLower = q.toLowerCase();
+
+      // Vérification dans allNodes
+      const direct = allNodes.find((n) => n.name.toLowerCase().includes(qLower) || n.id.toLowerCase().includes(qLower));
+      if (direct) return direct;
+
+      // Vérification dans CITY_LANDMARKS
+      const cityLandmarks = CITY_LANDMARKS[city] || CITY_LANDMARKS[isDouala ? "Douala" : "Yaoundé"];
+      for (const [key, val] of Object.entries(cityLandmarks)) {
+        if (key.toLowerCase().includes(qLower) || qLower.includes(key.toLowerCase())) {
+          return {
+            id: `landmark_${key.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+            name: key,
+            position: val.pos,
+            district: val.district,
+            congestionValue: 65,
+            averageSpeedKmh: 20,
+          };
+        }
+      }
+
+      // Résolution via resolveCoordinates
+      const coords = resolveCoordinates(q, city);
+      if (coords) {
+        return {
+          id: `custom_${qLower.replace(/[^a-z0-9]/g, "_")}`,
+          name: q,
+          position: coords,
+          congestionValue: 60,
+          averageSpeedKmh: 22,
+        };
+      }
+      return null;
     };
 
     const destNode = findMatchingNode(destination) || {
       id: "dest_custom",
       name: destination,
-      position: isDouala ? [4.053, 9.708] : [3.860, 11.503],
-      congestionValue: 80,
-      averageSpeedKmh: 12,
+      position: isDouala ? [4.0530, 9.7080] : [3.8600, 11.5030],
+      congestionValue: 75,
+      averageSpeedKmh: 14,
     };
 
     const origNode = findMatchingNode(origin) || {
       id: "orig_custom",
       name: origin,
-      position: isDouala ? [4.042, 9.691] : [3.864, 11.519],
+      position: isDouala ? [4.0430, 9.6910] : [3.8640, 11.5190],
       congestionValue: 50,
       averageSpeedKmh: 25,
     };
 
-    // 3. Détection des événements affectant ce trajet à cette heure
-    const autoEvents = this.autoDetectContextualEvents(normalizedHour, dayOfWeek, targetWeather);
-    const isDestCradat = destNode.name.toLowerCase().includes("cradat") || destNode.name.toLowerCase().includes("ngoa");
-    const isDestMokolo = destNode.name.toLowerCase().includes("mokolo") || destNode.name.toLowerCase().includes("mboppi");
+    // 3. Résolution complète du corridor routier et des carrefours traversés
+    const corridorNodes = await AiTrafficEngine.resolveRouteCorridorWaypoints(city, origNode, destNode, allNodes, routeMode);
+    
+    let cumulativeNominalMinutes = 0;
+    let cumulativeDelayMinutes = 0;
+    const corridorWaypoints = [];
+    let criticalBottleneck = null;
+    let maxBottleneckCongestion = 0;
 
-    const matchedEvents = autoEvents.filter((ev) => {
-      if (isDestCradat && (ev.id === "university_cradat_rush" || ev.id === "flash_flood_vulnerable")) return true;
-      if (isDestMokolo && ev.id === "market_day") return true;
-      return !ev.targetedNodes || ev.targetedNodes.some((id) => destNode.id.includes(id) || origNode.id.includes(id));
-    });
+    for (let i = 0; i < corridorNodes.length; i++) {
+      const node = corridorNodes[i];
+      const isStart = i === 0;
+      const isEnd = i === corridorNodes.length - 1;
 
-    // 4. Calcul de l'engorgement et du statut de la route
-    const hourFactor = getHourlyBaseFactor(normalizedHour);
-    const dayFactor = getDayOfWeekFactor(dayOfWeek);
-    const eventBoost = matchedEvents.reduce((acc, ev) => acc + ev.baseCongestionBoost, 0);
+      // Distance et durée nominale du segment
+      const prevNode = i > 0 ? corridorNodes[i - 1] : node;
+      const prevPos = prevNode.position;
+      const segDistKm = calculateDistanceKm(prevPos, node.position);
+      const segmentNominalMin = isStart ? 0 : Math.max(2, Math.round(segDistKm * 2.8));
+      cumulativeNominalMinutes += segmentNominalMin;
 
-    let calculatedCongestion = Math.round(
-      (destNode.congestionValue * 0.5 + eventBoost * 0.6) *
-        hourFactor *
-        dayFactor *
-        targetWeather.congestionMultiplier
-    );
-    calculatedCongestion = Math.min(99, Math.max(15, calculatedCongestion));
+      // Calcul précis de l'heure d'arrivée estimée (ETA) sur ce carrefour
+      const etaTotalMinutes = normalizedMinute + cumulativeNominalMinutes + cumulativeDelayMinutes;
+      const etaHourFloat = normalizedHour + (etaTotalMinutes / 60.0);
+      const etaHourInt = Math.floor(etaHourFloat) % 24;
+      const etaMinInt = Math.floor((etaHourFloat % 1) * 60);
+      const etaFormatted = `${etaHourInt.toString().padStart(2, "0")}h${etaMinInt.toString().padStart(2, "0")}`;
 
-    // Statut précis de la route
-    const isBarricadedOrBlocked = calculatedCongestion >= 88 || (targetWeather.rainMm >= 25 && isDestCradat);
-    let roadStatus = "FLUID";
-    let roadStatusLabel = "Voie fluide et dégagée";
-    let statusColor = "#10B981";
+      // Facteur horaire et météo à l'heure exacte d'arrivée sur ce carrefour
+      const nodeHourFactor = getHourlyBaseFactor(etaHourFloat % 24);
 
-    if (isBarricadedOrBlocked) {
-      roadStatus = "BLOCKED_OR_JAMMED";
-      roadStatusLabel = "Route saturée / Risque d'axe bloqué";
-      statusColor = "#DC2626";
-    } else if (calculatedCongestion >= 70) {
-      roadStatus = "HEAVY_CONGESTION";
-      roadStatusLabel = "Forts ralentissements & engorgement";
-      statusColor = "#EA580C";
-    } else if (calculatedCongestion >= 40) {
-      roadStatus = "MODERATE";
-      roadStatusLabel = "Ralentissement modéré";
-      statusColor = "#F59E0B";
+      const nodeNameLower = (node.name || "").toLowerCase();
+      const nodeIdLower = (node.id || "").toLowerCase();
+
+      const isNodeCradat = nodeIdLower.includes("cradat") || nodeNameLower.includes("cradat") || nodeNameLower.includes("ngoa");
+      const isNodeMokolo = nodeIdLower.includes("mokolo") || nodeNameLower.includes("mokolo") || nodeIdLower.includes("mboppi") || nodeNameLower.includes("mboppi");
+      const isNodeNlongkak = nodeIdLower.includes("nlongkak") || nodeNameLower.includes("nlongkak");
+      const isNodeMvan = nodeIdLower.includes("mvan") || nodeNameLower.includes("mvan");
+      const isNodeDeido = nodeIdLower.includes("deido") || nodeNameLower.includes("deido");
+      const isNodeNdokoti = nodeIdLower.includes("ndokoti") || nodeNameLower.includes("ndokoti");
+      const isSchoolOrCollege = nodeNameLower.includes("vogt") || nodeNameLower.includes("leclerc") || nodeNameLower.includes("retraite") || nodeNameLower.includes("libermann") || nodeNameLower.includes("lycee") || nodeNameLower.includes("college");
+
+      // Détection des obstacles et événements précis sur ce carrefour à cette heure
+      const nodeObstacles = [];
+
+      // A. Sortie d'amphis & campus universitaire (CRADAT / Ngoa-Ekélé / IUT)
+      if (isNodeCradat && (etaHourFloat >= 16.25 && etaHourFloat <= 19.5)) {
+        nodeObstacles.push({
+          id: "cradat_rush",
+          icon: "🎓",
+          title: "Sortie massive des amphis Université Yaoundé I",
+          description: `À ${etaFormatted}, traversées denses d'étudiants, taxis en double file et attroupements saturant le carrefour CRADAT.`,
+          severity: "critical",
+          timeFormatted: etaFormatted,
+        });
+      }
+
+      // B. Sortie des lycées & collèges
+      if (isSchoolOrCollege && ((etaHourFloat >= 7.0 && etaHourFloat <= 8.25) || (etaHourFloat >= 15.5 && etaHourFloat <= 17.75))) {
+        nodeObstacles.push({
+          id: "school_rush",
+          icon: "🎒",
+          title: `Affluence scolaire & dépose-minute (${node.name})`,
+          description: `À ${etaFormatted}, attente de parents d'élèves, bus scolaires et flux de motos-taxis aux abords de l'établissement.`,
+          severity: "warning",
+          timeFormatted: etaFormatted,
+        });
+      }
+
+      // C. Grand marché populaire (Mokolo, Mboppi, Sandaga)
+      if (isNodeMokolo && (etaHourFloat >= 9.5 && etaHourFloat <= 17.5)) {
+        nodeObstacles.push({
+          id: "market_rush",
+          icon: "🛒",
+          title: "Forte affluence marchande & déchargements",
+          description: `À ${etaFormatted}, camions de vivres, pousseurs et concentration de motos-taxis sur la chaussée.`,
+          severity: etaHourFloat >= 11 && etaHourFloat <= 16 ? "critical" : "warning",
+          timeFormatted: etaFormatted,
+        });
+      }
+
+      // D. Risque d'inondation bas-fonds
+      if ((isNodeCradat || isNodeNlongkak || isNodeDeido || isNodeNdokoti) && (targetWeather.rainMm >= 8 || targetWeather.precipitationProbability >= 70)) {
+        nodeObstacles.push({
+          id: "flash_flood",
+          icon: "🌊",
+          title: "Risque de chaussée submergée",
+          description: `Bas-fond vulnérable aux fortes averses. Passage au pas obligatoire vers ${etaFormatted}.`,
+          severity: targetWeather.rainMm >= 20 ? "critical" : "warning",
+          timeFormatted: etaFormatted,
+        });
+      }
+
+      // E. Travaux de voirie / Réfection
+      if ((isNodeNlongkak || nodeIdLower.includes("nsam") || isNodeNdokoti) && (etaHourFloat >= 8 && etaHourFloat <= 18)) {
+        nodeObstacles.push({
+          id: "road_works",
+          icon: "🚧",
+          title: "Travaux d'assainissement / Voirie",
+          description: `Chantier et rétrécissement temporaire de voie créant un goulot vers ${etaFormatted}.`,
+          severity: "warning",
+          timeFormatted: etaFormatted,
+        });
+      }
+
+      // F. Affluence des gares routières
+      if (isNodeMvan && ((etaHourFloat >= 6.5 && etaHourFloat <= 9.0) || (etaHourFloat >= 16.5 && etaHourFloat <= 19.5))) {
+        nodeObstacles.push({
+          id: "intercity_terminal",
+          icon: "🚌",
+          title: "Affluence des gares routières (Mvan)",
+          description: `Départs de bus interurbains et manœuvres d'embarquement vers ${etaFormatted}.`,
+          severity: "warning",
+          timeFormatted: etaFormatted,
+        });
+      }
+
+      // G. Pointe standard
+      if (nodeObstacles.length === 0 && ((etaHourFloat >= 7.0 && etaHourFloat <= 9.0) || (etaHourFloat >= 16.5 && etaHourFloat <= 19.5))) {
+        nodeObstacles.push({
+          id: "school_office_rush",
+          icon: "🚦",
+          title: "Heure de pointe (Bureaux & Activités)",
+          description: `Forte concentration de circulation au carrefour vers ${etaFormatted}.`,
+          severity: "info",
+          timeFormatted: etaFormatted,
+        });
+      }
+
+      // Identification de la meilleure route et qualité de la chaussée
+      const roadInfra = getRoadSegmentInfrastructure(prevNode, node, city);
+
+      // Calcul individualisé du score de congestion à ce carrefour
+      const rawBase = node.congestionValue || AiTrafficEngine.getLandmarkBaseCongestion(node);
+      const nodeBoost = nodeObstacles.reduce((sum, o) => sum + (o.severity === "critical" ? 35 : o.severity === "warning" ? 18 : 8), 0);
+      let nodeCongestion = Math.round(
+        (rawBase * 0.70 + nodeBoost * 0.45) *
+          nodeHourFactor *
+          dayFactor *
+          targetWeather.congestionMultiplier
+      );
+      nodeCongestion = Math.min(99, Math.max(12, nodeCongestion));
+
+      // Calcul réaliste de la vitesse sur le segment et du retard cumulé
+      const currentSpeedKmh = Math.max(8, Math.round(42 * (1 - (nodeCongestion / 125))));
+      const actualSegmentMin = isStart ? 0 : Math.max(1, Math.round((segDistKm / currentSpeedKmh) * 60));
+      const nodeDelayMin = isStart ? 0 : Math.max(0, actualSegmentMin - segmentNominalMin + (nodeBoost > 0 ? 2 : 0));
+      cumulativeDelayMinutes += nodeDelayMin;
+
+      let nodeStatus = "FLUID";
+      let nodeStatusLabel = "Fluide";
+      let nodeColor = "#10B981";
+
+      if (nodeCongestion >= 85 || nodeObstacles.some((o) => o.severity === "critical")) {
+        nodeStatus = "BLOCKED_OR_JAMMED";
+        nodeStatusLabel = "Saturé / Bloqué";
+        nodeColor = "#DC2626";
+      } else if (nodeCongestion >= 68) {
+        nodeStatus = "HEAVY_CONGESTION";
+        nodeStatusLabel = "Très dense";
+        nodeColor = "#EA580C";
+      } else if (nodeCongestion >= 40) {
+        nodeStatus = "MODERATE";
+        nodeStatusLabel = "Ralenti";
+        nodeColor = "#F59E0B";
+      }
+
+      const waypointData = {
+        stepIndex: i + 1,
+        id: node.id,
+        name: node.name,
+        position: node.position,
+        isOrigin: isStart,
+        isDestination: isEnd,
+        estimatedArrival: etaFormatted,
+        relativeMinutesFromStart: Math.round(etaTotalMinutes - normalizedMinute),
+        congestionScore: nodeCongestion,
+        status: nodeStatus,
+        statusLabel: nodeStatusLabel,
+        statusColor: nodeColor,
+        segmentNominalMin,
+        delayAtNodeMin: nodeDelayMin,
+        obstacles: nodeObstacles,
+        roadName: roadInfra.roadName,
+        roadType: roadInfra.roadType,
+        roadQualityScore: roadInfra.roadQualityScore,
+        pavementStatus: roadInfra.pavementStatus,
+        surfaceAdvantage: roadInfra.surfaceAdvantage,
+        isRecommendedBestRoute: true,
+        advice: isNodeCradat && nodeCongestion >= 70
+          ? "Contourner par le Plateau Ngoa-Ekellé / CHU."
+          : (nodeObstacles.length > 0 ? nodeObstacles[0].description : `Axe ${roadInfra.roadName} praticable et goudronné.`),
+      };
+
+      corridorWaypoints.push(waypointData);
+
+      if (!isStart && (!criticalBottleneck || nodeCongestion > maxBottleneckCongestion)) {
+        maxBottleneckCongestion = nodeCongestion;
+        criticalBottleneck = {
+          nodeId: node.id,
+          nodeName: node.name,
+          etaFormatted,
+          congestionScore: nodeCongestion,
+          statusLabel: nodeStatusLabel,
+          statusColor: nodeColor,
+          obstacles: nodeObstacles,
+          mainReason: nodeObstacles.length > 0 ? nodeObstacles[0].title : "Affluence de pointe",
+          detourAdvice: isNodeCradat
+            ? "Déviation conseillée : Passer par le haut de Ngoa-Ekellé (Plateau / CHU) ou par Bastos / Dragages pour contourner l'entonnoir du Carrefour CRADAT."
+            : isNodeMokolo
+            ? "Déviation conseillée : Emprunter le Boulevard Jean-Paul II ou le quartier Madagascar en amont."
+            : isNodeNlongkak
+            ? "Déviation conseillée : Contourner par le Boulevard de l'URSS / Bastos."
+            : "Conserver l'itinéraire principal avec vigilance.",
+        };
+      }
     }
 
-    // Calcul du temps de trajet estimé (Base nominale 15 min)
-    const nominalDurationMin = 14;
-    const delayMinutes = Math.round((calculatedCongestion / 100) * 35 + (matchedEvents.length > 0 ? 12 : 0) + (targetWeather.rainMm > 0 ? 8 : 0));
-    const estimatedDurationMin = nominalDurationMin + delayMinutes;
+    // 4. Synthèse globale du trajet
+    const totalEstimatedMin = cumulativeNominalMinutes + cumulativeDelayMinutes;
+    const isCorridorBlocked = maxBottleneckCongestion >= 85 || cumulativeDelayMinutes >= 20;
 
-    // Construction des alertes et explications détaillées
-    const detailedWarnings = [];
+    let overallStatus = "FLUID";
+    let overallStatusLabel = "Trajet fluide dans l'ensemble";
+    let overallStatusColor = "#10B981";
 
-    // Alerte météo
+    if (isCorridorBlocked) {
+      overallStatus = "BLOCKED_OR_JAMMED";
+      overallStatusLabel = "Trajet fortement saturé";
+      overallStatusColor = "#DC2626";
+    } else if (maxBottleneckCongestion >= 68 || cumulativeDelayMinutes >= 12) {
+      overallStatus = "HEAVY_CONGESTION";
+      overallStatusLabel = "Ralentissements majeurs sur le parcours";
+      overallStatusColor = "#EA580C";
+    } else if (maxBottleneckCongestion >= 40) {
+      overallStatus = "MODERATE";
+      overallStatusLabel = "Ralentissements modérés";
+      overallStatusColor = "#F59E0B";
+    }
+
+    // Analyse globale de la qualité de l'infrastructure et de la meilleure route
+    const avgRoadQuality = Math.round(
+      corridorWaypoints.reduce((sum, w) => sum + (w.roadQualityScore || 88), 0) / (corridorWaypoints.length || 1)
+    );
+    const uniqueRoads = [...new Set(corridorWaypoints.map((w) => w.roadName).filter(Boolean))];
+
+    const bestRouteOverview = {
+      recommendedRouteName: `Itinéraire Bitumé Prioritaire (${uniqueRoads.slice(0, 2).join(" • ") || "Axe Principal"})`,
+      averageRoadQualityScore: avgRoadQuality,
+      pavementCondition: avgRoadQuality >= 92 ? "Chaussée bitumée en excellent état" : "Chaussée bitumée standard",
+      primaryAvenues: uniqueRoads,
+      isOptimalRoadChoice: true,
+      whyBestRoute: "Privilégie les grands boulevards bitumés et évite les ruelles dégradées à nids de poule.",
+      surfaceAdvantage: corridorWaypoints[0]?.surfaceAdvantage || "Axe prioritaire bitumé",
+      alternativeDegradedRoute: {
+        name: "Raccourcis par ruelles secondaires",
+        warning: "Déconseillé (+5 à +9 min de retard estimé pour nids de poule, chaussée rétrécie et absence de feux)",
+      },
+    };
+
+    // Collecte des alertes de tous les carrefours du corridor
+    const allCorridorWarnings = [];
     if (targetWeather.rainMm > 0 || targetWeather.precipitationProbability >= 60) {
-      detailedWarnings.push({
+      allCorridorWarnings.push({
         type: "WEATHER",
         icon: targetWeather.icon,
         title: `Météo prévue à ${normalizedHour}h00 : ${targetWeather.label}`,
-        description: `Précipitations prévues (${targetWeather.rainMm} mm, ${targetWeather.precipitationProbability}% de risque). Chaussée très glissante et visibilité réduite.`,
+        description: `Précipitations prévues (${targetWeather.rainMm} mm, ${targetWeather.precipitationProbability}% de risque). Chaussée très glissante.`,
         severity: targetWeather.rainMm >= 20 ? "critical" : "warning",
       });
     }
-
-    // Alerte Événements / Sorties / Campus
-    if (isDestCradat && (normalizedHour >= 16 && normalizedHour <= 19)) {
-      detailedWarnings.push({
-        type: "EVENT",
-        icon: "🎓",
-        title: "Sortie massive des amphis Université Yaoundé I",
-        description: "À 17h, forte affluence d'étudiants, stationnements sauvages de taxis et attroupements créant un goulet d'étranglement au carrefour CRADAT.",
-        severity: "critical",
-      });
-    }
-
-    if (matchedEvents.some((e) => e.id === "funeral_cortege")) {
-      detailedWarnings.push({
-        type: "EVENT",
-        icon: "⚰️",
-        title: "Cortège funèbre & levée de corps",
-        description: "Ralentissement accentué sur l'axe par un cortège funéraire et occupation latérale de chaussée.",
-        severity: "warning",
-      });
-    }
-
-    // Alerte Inondation bas-fonds
-    if (isDestCradat && targetWeather.rainMm >= 10) {
-      detailedWarnings.push({
-        type: "FLOOD",
-        icon: "🌊",
-        title: "Alerte Inondation : Bas-fonds du CRADAT",
-        description: "Accumulation d'eau au bas du carrefour. Passage au pas obligatoire ou axe impraticable pour les berlines.",
-        severity: "critical",
-      });
-    }
-
-    // 5. Proposition de déviation intelligente
-    let detourAdvice = "Conserver l'itinéraire principal.";
-    if (isDestCradat) {
-      detourAdvice = "Déviation conseillée : Passer par le haut de Ngoa-Ekellé (Plateau / CHU) ou par Bastos / Dragages pour contourner l'entonnoir du Carrefour CRADAT.";
-    } else if (isDestMokolo) {
-      detourAdvice = "Déviation conseillée : Emprunter le Boulevard Jean-Paul II ou le quartier Madagascar en amont.";
-    } else if (destNode.id.includes("nlongkak")) {
-      detourAdvice = "Déviation conseillée : Contourner par le Boulevard de l'URSS / Bastos.";
-    } else if (isDouala && destNode.id.includes("deido")) {
-      detourAdvice = "Déviation conseillée : Passer par le Boulevard de la République ou la pénétrante Est.";
+    for (const wp of corridorWaypoints) {
+      for (const obs of wp.obstacles) {
+        if (obs.severity === "critical" || obs.severity === "warning") {
+          allCorridorWarnings.push({
+            type: "OBSTACLE",
+            icon: obs.icon,
+            title: `${wp.name} (${wp.estimatedArrival}) : ${obs.title}`,
+            description: obs.description,
+            severity: obs.severity,
+          });
+        }
+      }
     }
 
     // Recommandation d'heure optimale
@@ -584,25 +1205,14 @@ export class AiTrafficEngine {
     const horizonsMin = [15, 30, 45, 60, 90, 120];
     const isPeakHour = (normalizedHour >= 7 && normalizedHour <= 9) || (normalizedHour >= 16.5 && normalizedHour <= 19.5);
     const rainAmount = targetWeather.rainMm || 0.0;
-    const hasEventOnRoute = matchedEvents.length > 0;
-    const isRoadDegraded = destNode.id.includes("mvan") || destNode.id.includes("mokolo") || destNode.id.includes("ndokoti") || destNode.id.includes("marche");
+    const isRoadDegraded = corridorWaypoints.some((w) => w.name.toLowerCase().includes("mvan") || w.name.toLowerCase().includes("mokolo") || w.name.toLowerCase().includes("ndokoti"));
 
     const timelinePoints = horizonsMin.map((h) => {
       const hTarget = normalizedHour + (h / 60.0);
       const hFactor = getHourlyBaseFactor(hTarget % 24);
-      const currentHFactor = getHourlyBaseFactor(normalizedHour % 24);
-
-      // Détection dynamique d'événements à cet horizon futur
-      const autoEventsAtH = this.autoDetectContextualEvents(hTarget % 24, dayOfWeek, targetWeather);
-      const matchedAtH = autoEventsAtH.filter((ev) => {
-        if (isDestCradat && (ev.id === "university_cradat_rush" || ev.id === "flash_flood_vulnerable")) return true;
-        if (isDestMokolo && ev.id === "market_day") return true;
-        return !ev.targetedNodes || ev.targetedNodes.some((id) => destNode.id.includes(id) || origNode.id.includes(id));
-      });
-      const eventBoostAtH = matchedAtH.reduce((acc, ev) => acc + ev.baseCongestionBoost, 0);
 
       let horizonCongestion = Math.round(
-        (destNode.congestionValue * 0.5 + eventBoostAtH * 0.6) *
+        (maxBottleneckCongestion * 0.5 + (criticalBottleneck?.obstacles?.length ? 30 : 0) * 0.5) *
           hFactor *
           dayFactor *
           targetWeather.congestionMultiplier
@@ -621,12 +1231,13 @@ export class AiTrafficEngine {
     const peak = timelinePoints.reduce((maxP, p) => (p.score > maxP.score ? p : maxP), timelinePoints[0]);
     const causes = [];
     if (rainAmount >= 2.0) causes.push(rainAmount >= 20 ? "un orage violent" : "la pluie");
-    if (isDestCradat && (normalizedHour >= 16.25 && normalizedHour <= 19.5)) causes.push("la sortie des cours et amphis");
-    if (isDestMokolo && (normalizedHour >= 10 && normalizedHour <= 17)) causes.push("l'affluence du grand marché");
-    if (hasEventOnRoute && causes.length === 0) causes.push("un évènement à proximité");
-    if (isPeakHour && causes.length === 0) causes.push("l'affluence de pointe");
+    if (criticalBottleneck && criticalBottleneck.obstacles.length > 0) {
+      causes.push(criticalBottleneck.obstacles[0].title.toLowerCase());
+    } else if (isPeakHour) {
+      causes.push("l'affluence de pointe");
+    }
 
-    // Calcul dynamique de la confiance IA (dépend de la précision temporelle et de la météo)
+    // Calcul dynamique de la confiance IA
     const peakMin = peak.horizon_minutes || 15;
     let confidence = 0.88;
     if (targetWeather && targetWeather.rainMm !== undefined) confidence += 0.04;
@@ -634,7 +1245,19 @@ export class AiTrafficEngine {
     confidence -= (peakMin / 120.0) * 0.08;
     confidence = Math.min(0.94, Math.max(0.74, parseFloat(confidence.toFixed(2))));
 
-    const alertMessage = buildAlertMessage(destNode.name, { peak, causes });
+    // Message d'alerte naturel centré sur le point critique du parcours
+    let alertMessage = null;
+    if (criticalBottleneck && (criticalBottleneck.congestionScore >= 68 || isCorridorBlocked)) {
+      const nature = criticalBottleneck.congestionScore >= 85 ? "un blocage important" : "un fort ralentissement";
+      alertMessage = `Sur votre trajet vers ${destNode.name}, ${nature} est prévu à ${criticalBottleneck.nodeName} vers ${criticalBottleneck.etaFormatted}`;
+      if (criticalBottleneck.obstacles.length > 0) {
+        alertMessage += ` en raison de : ${criticalBottleneck.obstacles[0].title.toLowerCase()}.`;
+      } else {
+        alertMessage += ` à cause de l'affluence de pointe.`;
+      }
+    } else {
+      alertMessage = buildAlertMessage(destNode.name, { peak, causes });
+    }
 
     return {
       city: isDouala ? "Douala" : "Yaoundé",
@@ -646,19 +1269,21 @@ export class AiTrafficEngine {
       isPastTimeAdjusted: isPastTimeToday,
       departureTimeFormatted: formattedTime,
       weatherAtTargetHour: targetWeather,
-      congestionScore: calculatedCongestion,
-      roadStatus,
-      roadStatusLabel,
-      statusColor,
-      nominalDurationMinutes: nominalDurationMin,
-      estimatedDurationMinutes: estimatedDurationMin,
-      delayMinutes,
-      isRoadBlocked: isBarricadedOrBlocked,
-      activeEventsOnRoute: matchedEvents.map((e) => ({ id: e.id, label: e.shortLabel, icon: e.icon, description: e.description })),
-      warnings: detailedWarnings,
-      detourRecommendation: detourAdvice,
-      bestDepartureAdvice: `Pour éviter ce pic de ${calculatedCongestion}% à ${normalizedHour}h, il est fortement conseillé de partir vers ${optimalHourText} (-${Math.max(15, delayMinutes - 5)} min économisées).`,
-      // Nouveaux enrichissements IA
+      congestionScore: maxBottleneckCongestion,
+      roadStatus: overallStatus,
+      roadStatusLabel: overallStatusLabel,
+      statusColor: overallStatusColor,
+      nominalDurationMinutes: cumulativeNominalMinutes,
+      estimatedDurationMinutes: totalEstimatedMin,
+      delayMinutes: cumulativeDelayMinutes,
+      isRoadBlocked: isCorridorBlocked,
+      activeEventsOnRoute: allCorridorWarnings.map((w, idx) => ({ id: `w_${idx}`, label: w.title, icon: w.icon, description: w.description })),
+      warnings: allCorridorWarnings,
+      corridorWaypoints,
+      bestRouteOverview,
+      criticalBottleneck,
+      detourRecommendation: criticalBottleneck?.detourAdvice || "Conserver l'itinéraire principal.",
+      bestDepartureAdvice: `Pour éviter le goulot de ${maxBottleneckCongestion}% à ${criticalBottleneck?.nodeName || destNode.name}, il est conseillé de partir vers ${optimalHourText} (-${Math.max(12, cumulativeDelayMinutes - 4)} min économisées).`,
       timeline: {
         points: timelinePoints,
         peak,
@@ -668,7 +1293,7 @@ export class AiTrafficEngine {
         factors: {
           isPeakHour,
           rainMm: rainAmount,
-          hasEvent: hasEventOnRoute,
+          hasEvent: allCorridorWarnings.length > 0,
           roadDegraded: isRoadDegraded,
         },
       },

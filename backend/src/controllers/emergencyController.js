@@ -1,6 +1,8 @@
 import { broadcastEmergencyUpdate, broadcastEmergencyCancel } from "../services/websocketServer.js";
 import dbService from "../services/dbService.js";
+import { sendPushNotification } from "../services/pushService.js";
 import { CITY_LANDMARKS, fetchOsrmRoutes } from "./routeController.js";
+import db from "../services/database.js";
 
 // Contrôleur de gestion des missions de secours & régulation d'onde verte (Green Wave) dynamique
 
@@ -453,6 +455,22 @@ export const dispatchEmergencyMission = async (req, res) => {
 
     // Broadcast WebSocket en direct
     broadcastEmergencyUpdate(activeEmergencyMission);
+
+    // ★ Push Notification FCM (Arrière-plan)
+    try {
+      const usersInCity = await db.all("SELECT fcm_token FROM users WHERE LOWER(city) = LOWER(?) AND fcm_token IS NOT NULL", [city || "Yaoundé"]);
+      const tokens = usersInCity.map(u => u.fcm_token).filter(t => t);
+      if (tokens.length > 0) {
+        sendPushNotification(
+          tokens,
+          activeEmergencyMission.broadcastAlert.title,
+          activeEmergencyMission.broadcastAlert.message,
+          { type: "emergency", missionId: activeEmergencyMission.id }
+        );
+      }
+    } catch (pushErr) {
+      console.error("[FCM Trigger Error in Emergency]", pushErr.message);
+    }
 
     res.status(201).json({
       success: true,

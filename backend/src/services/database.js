@@ -110,6 +110,10 @@ export async function initDatabaseSchema() {
       time_saved_min INTEGER NOT NULL DEFAULT 0,
       co2_saved_kg REAL NOT NULL DEFAULT 0.0,
       channel TEXT DEFAULT 'whatsapp',
+      username TEXT,
+      bio TEXT DEFAULT 'Conducteur quotidien engagé pour une mobilité fluide.',
+      avatar TEXT,
+      fcm_token TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

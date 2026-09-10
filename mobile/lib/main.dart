@@ -5,9 +5,15 @@ import 'core/theme/app_theme.dart';
 import 'providers/city_flow_provider.dart';
 import 'screens/home_navigation_screen.dart';
 import 'screens/auth_screen.dart';
+import 'core/services/firebase_messaging_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialisation du service Firebase Cloud Messaging
+  await FirebaseMessagingService().initialize();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

@@ -66,6 +66,8 @@ export const predictTrip = async (req, res) => {
       ? parseFloat(req.query.departureHour)
       : 17;
     const departureDate = req.body.departureDate || req.query.departureDate || new Date().toISOString();
+    // Préférence de l'utilisateur : "comfort" (routes bitumées prioritaires) ou "speed" (plus court chemin)
+    const routeMode = req.body.routeMode || req.query.routeMode || "comfort";
 
     const result = await AiTrafficEngine.predictTripAndHazards({
       city,
@@ -73,6 +75,7 @@ export const predictTrip = async (req, res) => {
       destination,
       departureHour,
       departureDate,
+      routeMode,
     });
 
     res.json(result);

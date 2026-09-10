@@ -45,6 +45,14 @@ ios/Runner/GeneratedPluginRegistrant.m
 .DS_Store
 Thumbs.db
 
+# Secrets & Credentials
+**/firebase-service-account.json
+**/google-services.json
+
+# SQLite temp files
+*.db-wal
+*.db-shm
+
 # Reports & Scratch
 *.docx
 generate_report.py

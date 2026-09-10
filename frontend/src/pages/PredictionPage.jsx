@@ -11,7 +11,9 @@ import {
   Waves,
   Sparkles,
   ShieldAlert,
+  Lock,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { useCity } from "../context/CityContext";
 import { usePredictions } from "../context/PredictionContext.jsx";
 import "./PredictionPage.css";
@@ -88,6 +90,7 @@ function MapBounds({ routeGeo, departureCoords, destinationCoords }) {
 
 function PredictionPage() {
   const { selectedCity, setSelectedCity, currentCityData } = useCity();
+  const { isPremium } = useAuth();
   const [selectedWeather, setSelectedWeather] = useState("dry");
   const [selectedHour, setSelectedHour] = useState(new Date().getHours());
   const [destination, setDestination] = useState(""); // Destination input
@@ -316,6 +319,21 @@ function PredictionPage() {
     };
     fetchRouteData();
   }, [departureCoords, destinationCoords]);
+
+  const handleSelectAlternative = (clickedIdx) => {
+    setRouteAlternatives(prev => {
+      const newAlts = [...prev];
+      const clicked = newAlts.splice(clickedIdx, 1)[0];
+      newAlts.unshift(clicked);
+      
+      setRouteGeo(clicked.geometry);
+      setRouteDetails({
+        distance: clicked.distance,
+        duration: clicked.duration
+      });
+      return newAlts;
+    });
+  };
 
   const fallbackPredictions = [
     { horizon: "+15 min", congestionPercentage: 45, status: "" },
@@ -674,10 +692,13 @@ function PredictionPage() {
                         <Polyline
                           key={`alt-${idx}`}
                           positions={positions}
-                          color="#94a3b8"
-                          weight={4}
-                          opacity={0.6}
-                          dashArray="5, 10"
+                          color="#64748B"
+                          weight={6}
+                          opacity={0.85}
+                          dashArray="8, 8"
+                          eventHandlers={{
+                            click: () => handleSelectAlternative(idx)
+                          }}
                         />
                       );
                     }
@@ -1029,16 +1050,33 @@ function PredictionPage() {
           {adjustedPredictions.map((p) => {
             const val = p.congestionPercentage;
             const levelClass = getLevelClass(val);
+            const isLocked = !isPremium && p.horizon === "+1 heure";
             return (
-              <article key={p.horizon} className={`prediction-time-card ${levelClass}`}>
-                <span className="prediction-time">{p.horizon}</span>
-                <strong>{val}%</strong>
-                <div className="prediction-progress">
-                  <span style={{ width: `${val}%` }}></span>
-                </div>
-                <span className="prediction-level">
-                  ● {val > 70 ? "Dense" : val > 40 ? "Modéré" : "Fluide"}
-                </span>
+              <article key={p.horizon} className={`prediction-time-card ${levelClass} ${isLocked ? 'locked' : ''}`}>
+                {isLocked ? (
+                  <>
+                    <div className="premium-lock-overlay">
+                      <Lock size={20} className="lock-icon" />
+                      <span>Premium Citoyen</span>
+                    </div>
+                    <span className="prediction-time blur-text">{p.horizon}</span>
+                    <strong className="blur-text">{val}%</strong>
+                    <div className="prediction-progress blur-text">
+                      <span style={{ width: `${val}%` }}></span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="prediction-time">{p.horizon}</span>
+                    <strong>{val}%</strong>
+                    <div className="prediction-progress">
+                      <span style={{ width: `${val}%` }}></span>
+                    </div>
+                    <span className="prediction-level">
+                      ● {val > 70 ? "Dense" : val > 40 ? "Modéré" : "Fluide"}
+                    </span>
+                  </>
+                )}
               </article>
             );
           })}

@@ -40,6 +40,7 @@ export function AuthProvider({ children }) {
       trustScore: 85,
       score: 85,
       token: "jwt_cityflow_default",
+      subscriptionPlan: "free", // "free", "premium_b2c", "premium_b2b"
     };
   });
 
@@ -242,6 +243,11 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("cityflow_user");
   };
 
+  // Helpers pour les privilèges Premium
+  const isPremiumCitizen = user?.subscriptionPlan === "premium_b2c";
+  const isPremiumEnterprise = user?.subscriptionPlan === "premium_b2b";
+  const isPremium = isPremiumCitizen || isPremiumEnterprise;
+
   return (
     <AuthContext.Provider
       value={{
@@ -260,6 +266,9 @@ export function AuthProvider({ children }) {
         deleteAccount,
         logout,
         setUser,
+        isPremiumCitizen,
+        isPremiumEnterprise,
+        isPremium,
       }}
     >
       {children}

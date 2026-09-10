@@ -35,8 +35,9 @@ import {
   VolumeX,
   FastForward,
   Pause,
-  X,
   Maximize2,
+  Lock,
+  Plus,
 } from "lucide-react";
 import {
   MapContainer,
@@ -51,6 +52,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
 // Landmarks will be fetched from backend API
 import EmergencyAlertOverlay from "../components/EmergencyAlertOverlay";
 import wsService from "../services/websocketService";
@@ -116,6 +118,7 @@ function speakInstruction(text, voiceEnabled = true) {
 
 export default function RoutesPage() {
   const { selectedCity, setSelectedCity } = useCity();
+  const { isPremium } = useAuth();
   const [rawCityLandmarks, setRawCityLandmarks] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -520,6 +523,28 @@ export default function RoutesPage() {
             </div>
           </div>
 
+          {/* PREMIUM FEATURES (Locked for free users) */}
+          <div className="premium-routing-features">
+            <button 
+              className={`premium-feature-btn ${isPremium ? '' : 'locked'}`}
+              onClick={() => {
+                if (!isPremium) alert("Débloquez le mode Premium pour ajouter plusieurs étapes !");
+              }}
+            >
+              {!isPremium ? <Lock size={14} className="lock-icon" /> : <Plus size={14} />}
+              <span>Ajouter une étape</span>
+            </button>
+            <button 
+              className={`premium-feature-btn eco ${isPremium ? '' : 'locked'}`}
+              onClick={() => {
+                if (!isPremium) alert("Débloquez le mode Premium pour activer le trajet écologique !");
+              }}
+            >
+              {!isPremium ? <Lock size={14} className="lock-icon" /> : <Leaf size={14} />}
+              <span>Mode Éco-trajet</span>
+            </button>
+          </div>
+
           <button
             className="calc-route-btn"
             onClick={() => fetchRoutes(departure, destination, departureCoords, destinationCoords)}
@@ -871,10 +896,10 @@ export default function RoutesPage() {
                     <Polyline
                       positions={r.coordinates}
                       pathOptions={{
-                        color: "#94A3B8",
-                        weight: 5,
-                        opacity: 0.65,
-                        dashArray: "6, 8",
+                        color: "#64748B",
+                        weight: 6,
+                        opacity: 0.85,
+                        dashArray: "8, 8",
                       }}
                       eventHandlers={{
                         click: () => setSelectedRoute(r),

@@ -122,7 +122,6 @@ const DISCOUNT_REWARDS = [
 
 export default function CommunityPage() {
   const { selectedCity } = useCity();
-  const [activeTab, setActiveTab] = useState("reports"); // 'reports' | 'rewards'
   const [reports, setReports] = useState([]);
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -169,12 +168,30 @@ export default function CommunityPage() {
         const data = await reportsRes.json();
         setReports(data.reports || []);
       }
+      
       if (profileRes && profileRes.ok) {
         const pData = await profileRes.json();
         setProfile(pData);
+      } else {
+        // Fallback mock profile in case backend is offline, so the UI still renders
+        setProfile({
+          id: "user_current",
+          name: "Citoyen Test",
+          points: 380,
+          trustScore: 85,
+          trust: { score: 85, level: "Très fiable", icon: "⭐", color: "#2563EB", description: "Utilisateur très fiable" }
+        });
       }
     } catch (err) {
       console.error("Erreur chargement données communautaires", err);
+      // Ensure profile is set even on network error
+      setProfile({
+        id: "user_current",
+        name: "Citoyen Test",
+        points: 380,
+        trustScore: 85,
+        trust: { score: 85, level: "Très fiable", icon: "⭐", color: "#2563EB", description: "Utilisateur très fiable" }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -387,138 +404,11 @@ export default function CommunityPage() {
         </button>
       </section>
 
-      {/* NAVIGATION ONGLETS */}
-      <nav className="community-tabs-nav" aria-label="Navigation Communauté">
-        <button
-          className={`tab-btn ${activeTab === "reports" ? "active" : ""}`}
-          onClick={() => setActiveTab("reports")}
-        >
-          <AlertTriangle size={18} />
-          <span>Signalements en Direct ({reports.length})</span>
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "rewards" ? "active" : ""}`}
-          onClick={() => setActiveTab("rewards")}
-        >
-          <Award size={18} />
-          <span>Tarifs & Réductions par Points</span>
-          <span className="tab-discount-tag">{userPoints} pts dispo</span>
-        </button>
-      </nav>
-
       {/* ===================================================================
-          CONTENU ONGLET 1 : SIGNALEMENTS EN DIRECT
+          CONTENU : TARIFS & RÉDUCTIONS PAR POINTS
           =================================================================== */}
-      {activeTab === "reports" && (
-        <section className="reports-section">
-          {/* BARRE DE FILTRES */}
-          <div className="reports-filter-bar">
-            <div className="filter-chips">
-              <button
-                className={`filter-chip ${filterCategory === "all" ? "active" : ""}`}
-                onClick={() => setFilterCategory("all")}
-              >
-                Tous ({reports.length})
-              </button>
-              {Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => {
-                const count = reports.filter((r) => r.category === key).length;
-                return (
-                  <button
-                    key={key}
-                    className={`filter-chip ${filterCategory === key ? "active" : ""}`}
-                    onClick={() => setFilterCategory(key)}
-                  >
-                    <cfg.icon size={15} color={cfg.color} />
-                    <span>{cfg.label} ({count})</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* LISTE DES SIGNALEMENTS */}
-          {isLoading ? (
-            <div className="community-loading-box">
-              <div className="spinner"></div>
-              <p>Chargement des signalements en direct...</p>
-            </div>
-          ) : filteredReports.length === 0 ? (
-            <div className="empty-reports-card">
-              <ShieldCheck size={48} color="#2563EB" />
-              <h3>Voies fluides ! Aucun incident actif</h3>
-              <p>Soyez le premier à avertir les autres conducteurs en cas de ralentissement.</p>
-              <button className="btn-empty-action" onClick={() => setShowModal(true)}>
-                <PlusCircle size={16} /> Signaler un aléa
-              </button>
-            </div>
-          ) : (
-            <div className="reports-grid">
-              {filteredReports.map((report) => {
-                const cat = CATEGORY_CONFIG[report.category] || CATEGORY_CONFIG.accident;
-                const sev = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG.moderate;
-                const CatIcon = cat.icon;
-
-                return (
-                  <article key={report.id} className="report-card">
-                    <div className="report-card-header">
-                      <div className="report-category-pill" style={{ borderColor: `${cat.color}40`, background: `${cat.color}15` }}>
-                        <CatIcon size={16} color={cat.color} />
-                        <span style={{ color: cat.color }}>{cat.label}</span>
-                      </div>
-                      <span className={`severity-badge ${sev.class}`}>{sev.label}</span>
-                    </div>
-
-                    <h3 className="report-title">{report.title}</h3>
-
-                    <div className="report-location">
-                      <MapPin size={15} />
-                      <span>{report.locationDescription}</span>
-                    </div>
-
-                    <div className="report-meta">
-                      <div className="meta-author">
-                        <span className="author-dot"></span>
-                        <span>{report.author || "Citoyen"} ({report.city})</span>
-                      </div>
-                      <div className="meta-time">
-                        <Clock size={13} />
-                        <span>{new Date(report.reportedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
-                    </div>
-
-                    <div className="report-actions">
-                      <button
-                        className="btn-vote confirm"
-                        onClick={() => handleVote(report.id, "confirm")}
-                        title="Confirmer ce signalement (+5 pts attribués)"
-                      >
-                        <ThumbsUp size={15} />
-                        <span>Confirmer ({report.confirmationsCount || 0}) <strong>+5 pts</strong></span>
-                      </button>
-
-                      <button
-                        className="btn-vote resolve"
-                        onClick={() => handleVote(report.id, "resolved")}
-                        title="Indiquer que la voie est dégagée (+5 pts)"
-                      >
-                        <CheckCircle size={15} />
-                        <span>Voie dégagée <strong>+5 pts</strong></span>
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ===================================================================
-          CONTENU ONGLET 2 : TARIFS & RÉDUCTIONS PAR POINTS DÉFINITIVES
-          =================================================================== */}
-      {activeTab === "rewards" && profile && (
-        <section className="rewards-section">
+      {profile && (
+        <section className="rewards-section" style={{ marginTop: "30px" }}>
           {/* BANDEAU 1 : SCORE DE CONFIANCE (SUR 100) & SOLDE DE POINTS */}
           <div className="trust-points-dashboard-card">
             {/* Colonne Score de Confiance */}
@@ -795,7 +685,7 @@ export default function CommunityPage() {
                         <strong className="final-price-amount">
                           {isFree ? "1 MOIS GRATUIT" : `${finalPrice.toLocaleString()} FCFA`}
                         </strong>
-                        <span className="price-period">/ mois (pour 30 pers.)</span>
+                        <span className="price-period">/ mois</span>
                       </div>
 
                       {discountPct > 0 && !isFree && (
@@ -823,7 +713,7 @@ export default function CommunityPage() {
                       <CreditCard size={18} />
                       <span>
                         {isFree
-                          ? `Activer le mois Gratuit Flotte (-${pointsCost} pts)`
+                          ? `Activer mon mois Gratuit (-${pointsCost} pts)`
                           : `Souscrire (${finalPrice.toLocaleString()} FCFA ${pointsCost > 0 ? `• -${pointsCost} pts` : ""})`}
                       </span>
                     </button>
@@ -834,6 +724,115 @@ export default function CommunityPage() {
           </div>
         </section>
       )}
+
+      {/* ===================================================================
+          CONTENU : SIGNALEMENTS EN DIRECT
+          =================================================================== */}
+      <section className="reports-section">
+
+          {/* BARRE DE FILTRES */}
+          <div className="reports-filter-bar">
+            <div className="filter-chips">
+              <button
+                className={`filter-chip ${filterCategory === "all" ? "active" : ""}`}
+                onClick={() => setFilterCategory("all")}
+              >
+                Tous ({reports.length})
+              </button>
+              {Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => {
+                const count = reports.filter((r) => r.category === key).length;
+                return (
+                  <button
+                    key={key}
+                    className={`filter-chip ${filterCategory === key ? "active" : ""}`}
+                    onClick={() => setFilterCategory(key)}
+                  >
+                    <cfg.icon size={15} color={cfg.color} />
+                    <span>{cfg.label} ({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* LISTE DES SIGNALEMENTS */}
+          {isLoading ? (
+            <div className="community-loading-box">
+              <div className="spinner"></div>
+              <p>Chargement des signalements en direct...</p>
+            </div>
+          ) : filteredReports.length === 0 ? (
+            <div className="empty-reports-card">
+              <ShieldCheck size={48} color="#2563EB" />
+              <h3>Voies fluides ! Aucun incident actif</h3>
+              <p>Soyez le premier à avertir les autres conducteurs en cas de ralentissement.</p>
+              <button className="btn-empty-action" onClick={() => setShowModal(true)}>
+                <PlusCircle size={16} /> Signaler un aléa
+              </button>
+            </div>
+          ) : (
+            <div className="reports-grid">
+              {filteredReports.map((report) => {
+                const cat = CATEGORY_CONFIG[report.category] || CATEGORY_CONFIG.accident;
+                const sev = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG.moderate;
+                const CatIcon = cat.icon;
+
+                return (
+                  <article key={report.id} className="report-card">
+                    <div className="report-card-header">
+                      <div className="report-category-pill" style={{ borderColor: `${cat.color}40`, background: `${cat.color}15` }}>
+                        <CatIcon size={16} color={cat.color} />
+                        <span style={{ color: cat.color }}>{cat.label}</span>
+                      </div>
+                      <span className={`severity-badge ${sev.class}`}>{sev.label}</span>
+                    </div>
+
+                    <h3 className="report-title">{report.title}</h3>
+
+                    <div className="report-location">
+                      <MapPin size={15} />
+                      <span>{report.locationDescription}</span>
+                    </div>
+
+                    <div className="report-meta">
+                      <div className="meta-author">
+                        <span className="author-dot"></span>
+                        <span>{report.author || "Citoyen"} ({report.city})</span>
+                      </div>
+                      <div className="meta-time">
+                        <Clock size={13} />
+                        <span>{new Date(report.reportedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                    </div>
+
+                    <div className="report-actions">
+                      <button
+                        className="btn-vote confirm"
+                        onClick={() => handleVote(report.id, "confirm")}
+                        title="Confirmer ce signalement (+5 pts attribués)"
+                      >
+                        <ThumbsUp size={15} />
+                        <span>Confirmer ({report.confirmationsCount || 0}) <strong>+5 pts</strong></span>
+                      </button>
+
+                      <button
+                        className="btn-vote resolve"
+                        onClick={() => handleVote(report.id, "resolved")}
+                        title="Indiquer que la voie est dégagée (+5 pts)"
+                      >
+                        <CheckCircle size={15} />
+                        <span>Voie dégagée <strong>+5 pts</strong></span>
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+
 
       {/* ===================================================================
           MODAL : SOUSCRIPTION & RÈGLEMENT SÉCURISÉ

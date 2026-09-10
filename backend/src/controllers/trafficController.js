@@ -1,5 +1,6 @@
 import { YAOUNDE_NODES, DOUALA_NODES } from "../data/cityData.js";
-import { broadcastTrafficPulse } from "../services/websocketServer.js";
+import { broadcastTrafficPulse, broadcastPrediction } from "../services/websocketServer.js";
+import { getCurrentWeather } from "../services/weatherService.js";
 
 // État dynamique en mémoire
 let liveYaoundeNodes = JSON.parse(JSON.stringify(YAOUNDE_NODES));
@@ -60,6 +61,41 @@ const updateLiveTrafficState = () => {
   // Broadcast push via WebSockets
   broadcastTrafficPulse("Yaoundé", liveYaoundeNodes);
   broadcastTrafficPulse("Douala", liveDoualaNodes);
+
+  // Compute and broadcast predictions with weather data
+  const computeAndBroadcast = async (cityName, nodes) => {
+    const avgCongestion = Math.round(
+      nodes.reduce((acc, n) => acc + n.congestionValue, 0) / nodes.length
+    );
+    let weather = {};
+    try {
+      weather = await getCurrentWeather(cityName);
+    } catch (e) {
+      console.warn(`Weather fetch failed for ${cityName}:`, e.message);
+    }
+    const predictionData = {
+      city: cityName,
+      timestamp: new Date().toISOString(),
+      isLive: true,
+      weather,
+      summary: {
+        now: avgCongestion,
+        in15m: Math.min(100, Math.round(avgCongestion * 1.06)),
+        in30m: Math.min(100, Math.round(avgCongestion * 1.14)),
+        in60m: Math.max(10, Math.round(avgCongestion * 0.88)),
+      },
+      nodesPredictions: nodes.map((n) => ({
+        id: n.id,
+        name: n.name,
+        current: n.congestionValue,
+        predictions: n.predictions,
+      })),
+    };
+    broadcastPrediction(cityName, predictionData);
+  };
+  // Fire-and-forget async calls
+  computeAndBroadcast("Yaoundé", liveYaoundeNodes);
+  computeAndBroadcast("Douala", liveDoualaNodes);
 };
 
 // Démarrer la boucle de simulation toutes les 3 secondes

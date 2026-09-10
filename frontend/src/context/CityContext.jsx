@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import wsService from "../services/websocketService";
+import { CITY_LANDMARKS } from "../data/cityData";
 
 const CityContext = createContext();
 

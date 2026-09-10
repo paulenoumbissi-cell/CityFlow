@@ -157,3 +157,15 @@ export function broadcastEmergencyCancel() {
     type: "EMERGENCY_MISSION_CANCELLED",
   });
 }
+
+/**
+ * Broadcast latest traffic prediction for a city.
+ * The payload includes the same structure as the /predictions endpoint.
+ */
+export function broadcastPrediction(city, predictionData) {
+  broadcastEvent({
+    type: "TRAFFIC_PREDICTION",
+    city,
+    prediction: predictionData,
+  }, city);
+}

@@ -42,12 +42,35 @@ export const searchMapPlaces = async (req, res) => {
       return res.status(400).json({ error: "Le paramètre 'q' (recherche) est requis." });
     }
 
+    // OSM search
     const places = await searchPlaces(q, city);
+
+    // Local landmarks from CITY_LANDMARKS
+    const cityLandmarksData = CITY_LANDMARKS[city] ? CITY_LANDMARKS[city] : CITY_LANDMARKS["Yaoundé"];
+    const landmarkEntries = Object.entries(cityLandmarksData).map(([name, data]) => ({
+      name,
+      category: data.category || "landmark",
+      district: data.district || "",
+      desc: data.desc || "",
+      position: data.pos,
+      lat: data.pos[0],
+      lng: data.pos[1],
+    }));
+
+    // Merge OSM places with landmarks, avoiding duplicates by name
+    const combined = [...places];
+    const existingNames = new Set(places.map(p => p.name?.toLowerCase()));
+    for (const lm of landmarkEntries) {
+      if (!existingNames.has(lm.name.toLowerCase())) {
+        combined.push(lm);
+      }
+    }
+
     res.json({
       city,
       query: q,
-      count: places.length,
-      results: places,
+      count: combined.length,
+      results: combined,
     });
   } catch (err) {
     console.error("[searchMapPlaces Error]", err);

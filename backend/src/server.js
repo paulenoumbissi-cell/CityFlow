@@ -11,6 +11,7 @@ import aiRoutes from "./routes/aiRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import emergencyRoutes from "./routes/emergencyRoutes.js";
 import mapRoutes from "./routes/mapRoutes.js";
+import weatherRoutes from "./routes/weatherRoutes.js";
 import { initWebSocketServer } from "./services/websocketServer.js";
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Routes API
 app.use("/api/traffic", trafficRoutes);
+app.use("/api/weather", weatherRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/auth", authRoutes);

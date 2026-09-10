@@ -16,6 +16,7 @@ import AuthPage from "./pages/AuthPage";
 import AboutPage from "./pages/AboutPage";
 import CommunityPage from "./pages/CommunityPage";
 import { CityProvider, useCity } from "./context/CityContext";
+import { PredictionProvider } from "./context/PredictionContext.jsx";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { apiService, fetchTrafficNodes, calculateRoute } from "./services/api";
@@ -438,28 +439,30 @@ function Home() {
 function App() {
   return (
     <ThemeProvider>
-      <CityProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <div className="app">
-              <Navbar />
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/carte" element={<MapPage />} />
-                <Route path="/routes" element={<RoutesPage />} />
-                <Route path="/prediction" element={<PredictionPage />} />
-                <Route path="/communaute" element={<CommunityPage />} />
-                <Route path="/urgences" element={<EmergencyPage />} />
-                <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/profil" element={<ProfilePage />} />
-                <Route path="/parametres" element={<SettingsPage />} />
-                <Route path="/connexion" element={<AuthPage />} />
-                <Route path="/a-propos" element={<AboutPage />} />
-              </Routes>
-            </div>
-          </BrowserRouter>
-        </AuthProvider>
-      </CityProvider>
+      <PredictionProvider>
+        <CityProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <div className="app">
+                <Navbar />
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/carte" element={<MapPage />} />
+                  <Route path="/routes" element={<RoutesPage />} />
+                  <Route path="/prediction" element={<PredictionPage />} />
+                  <Route path="/communaute" element={<CommunityPage />} />
+                  <Route path="/urgences" element={<EmergencyPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/profil" element={<ProfilePage />} />
+                  <Route path="/parametres" element={<SettingsPage />} />
+                  <Route path="/connexion" element={<AuthPage />} />
+                  <Route path="/a-propos" element={<AboutPage />} />
+                </Routes>
+              </div>
+            </BrowserRouter>
+          </AuthProvider>
+        </CityProvider>
+      </PredictionProvider>
     </ThemeProvider>
   );
 }

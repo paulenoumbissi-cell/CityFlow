@@ -730,6 +730,54 @@
 }
 
 
+/* Layout for map sidebar */
+.prediction-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.prediction-main {
+  flex: 1;
+}
+.prediction-map-sidebar {
+  flex: 0 0 350px;
+  max-width: 350px;
+  min-height: 300px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.toggle-map-btn {
+  background: var(--cityflow-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s ease;
+}
+.toggle-map-btn:hover {
+  opacity: 0.9;
+}
+/* Mobile: stack map above content */
+@media (max-width: 700px) {
+  .prediction-layout {
+    flex-direction: column;
+  }
+  .prediction-map-sidebar {
+    order: -1; /* appear first */
+    width: 100%;
+    max-width: none;
+    min-height: 250px;
+  }
+}
+
+
 /* RESPONSIVE */
 
 @media (max-width: 1050px) {
@@ -991,4 +1039,36 @@ body.dark .info-text h3 {
 [data-theme="dark"] .info-text p,
 body.dark .info-text p {
   color: #cbd5e1;
+}
+
+/* LEAFLET LAYERS CONTROL CUSTOMIZATION */
+.prediction-map-sidebar .leaflet-control-layers {
+  background: rgba(15, 23, 42, 0.9) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.prediction-map-sidebar .leaflet-control-layers-list {
+  color: #f8fafc;
+}
+
+.prediction-map-sidebar .leaflet-control-layers-base label {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.prediction-map-sidebar .leaflet-control-layers-base label span {
+  font-size: 13px;
+  font-family: 'Inter', 'Outfit', 'Segoe UI', sans-serif;
+}
+
+.prediction-map-sidebar .leaflet-control-layers-separator {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }

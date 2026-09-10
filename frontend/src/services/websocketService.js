@@ -29,11 +29,12 @@ class CityFlowWebSocketService {
       };
 
       this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this._emit(data.type, data);
-          this._emit("*", data); // Écouteur global
-        } catch (err) {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('[WS] received raw message →', data);
+            this._emit(data.type, data);
+            this._emit("*", data); // Écouteur global
+          } catch (err) {
           console.error("❌ [CityFlow WebSocket] Erreur décodage message", err);
         }
       };

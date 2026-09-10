@@ -51,7 +51,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
-import { CITY_LANDMARKS } from "../data/cityData";
+// Landmarks will be fetched from backend API
 import EmergencyAlertOverlay from "../components/EmergencyAlertOverlay";
 import wsService from "../services/websocketService";
 import apiService from "../services/api";
@@ -116,7 +116,38 @@ function speakInstruction(text, voiceEnabled = true) {
 
 export default function RoutesPage() {
   const { selectedCity, setSelectedCity } = useCity();
-  const rawCityLandmarks = CITY_LANDMARKS[selectedCity] || CITY_LANDMARKS["Yaoundé"] || [];
+  const [rawCityLandmarks, setRawCityLandmarks] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+
+
+  // Load static landmarks for default dropdown values
+  useEffect(() => {
+    fetch(`${API_BASE}/landmarks/${selectedCity}`)
+      .then((res) => res.json())
+      .then((data) => setRawCityLandmarks(data.landmarks || []))
+      .catch((err) => console.error('Failed to load landmarks', err));
+  }, [selectedCity]);
+
+  // Perform dynamic search (OSM + local) when user types a query
+  useEffect(() => {
+    if (!searchQuery) {
+      setSearchResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`${API_BASE}/search?q=${encodeURIComponent(searchQuery)}&city=${selectedCity}`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        const transformed = (data.results || []).map((r) => ({
+          ...r,
+          pos: r.position || (r.lat !== undefined && r.lng !== undefined ? [r.lat, r.lng] : null),
+        }));
+        setSearchResults(transformed);
+      })
+      .catch((err) => console.error('Search error', err));
+    return () => controller.abort();
+  }, [searchQuery, selectedCity]);
 
   const dropdownRef = useRef(null);
   const autoSimTimerRef = useRef(null);
@@ -128,7 +159,8 @@ export default function RoutesPage() {
 
   // Suggestions Dropdown State
   const [activeDropdown, setActiveDropdown] = useState(null); // 'departure' | 'destination' | null
-  const [searchQuery, setSearchQuery] = useState("");
+  // Duplicate searchQuery removed – using the earlier declaration
+  // searchQuery state defined earlier
   const [activeCategoryFilter, setActiveCategoryFilter] = useState("all");
 
   const [routes, setRoutes] = useState([]);
@@ -364,11 +396,11 @@ export default function RoutesPage() {
   };
 
   // Filtrage des suggestions pour le Dropdown
-  const filteredLandmarks = rawCityLandmarks.filter((item) => {
+  const filteredLandmarks = (searchQuery ? searchResults : rawCityLandmarks).filter((item) => {
     const matchesCategory = activeCategoryFilter === "all" || item.category === activeCategoryFilter;
     const matchesQuery =
       !searchQuery ||
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.district?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.desc?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesQuery;

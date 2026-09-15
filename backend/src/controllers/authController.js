@@ -170,7 +170,14 @@ export const verifyOtp = async (req, res) => {
   const finalChannel = channel || (storedOtp ? storedOtp.channel : isEmail ? "email" : "whatsapp");
 
   if (!user) {
-    const finalRole = role || (storedOtp ? storedOtp.role : "citizen");
+    let finalRole = role || (storedOtp ? storedOtp.role : "citizen");
+    let finalAccountStatus = (finalRole === 'emergency' || finalRole === 'traffic_manager') ? 'pending' : 'approved';
+
+    if (cleanId === 'admin@cityflow.cm' || cleanId === '699000000') {
+      finalRole = 'admin';
+      finalAccountStatus = 'approved';
+    }
+
     const userName = name || (storedOtp ? storedOtp.name : isEmail ? cleanId.split("@")[0] : `Utilisateur ${cleanId.slice(-4)}`);
     const newId = "usr_" + Date.now();
 
@@ -181,11 +188,12 @@ export const verifyOtp = async (req, res) => {
       phone: isEmail ? "+237 699 00 11 22" : cleanId,
       email: isEmail ? cleanId : `${userName.toLowerCase().replace(/\s+/g, "")}@cityflow.cm`,
       password: password || "password123",
-      bio: "Conducteur engagé pour une mobilité fluide.",
+      bio: "Administrateur principal du réseau.",
       avatar: null,
       city: city || (storedOtp ? storedOtp.city : "Yaoundé"),
       role: finalRole,
       role_label: getRoleLabel(finalRole),
+      account_status: finalAccountStatus,
       vehicle_type: vehicleType || (storedOtp ? storedOtp.vehicleType : "Voiture particulière"),
       points: 380,
       trust_score: 85,
@@ -201,10 +209,10 @@ export const verifyOtp = async (req, res) => {
       await db.run(
         `
         INSERT INTO users (
-          id, name, username, phone, email, password, bio, avatar, city, role, role_label, vehicle_type,
+          id, name, username, phone, email, password, bio, avatar, city, role, role_label, account_status, vehicle_type,
           points, trust_score, trips_count, time_saved_min, co2_saved_kg, channel, created_at, updated_at
         ) VALUES (
-          @id, @name, @username, @phone, @email, @password, @bio, @avatar, @city, @role, @role_label, @vehicle_type,
+          @id, @name, @username, @phone, @email, @password, @bio, @avatar, @city, @role, @role_label, @account_status, @vehicle_type,
           @points, @trust_score, @trips_count, @time_saved_min, @co2_saved_kg, @channel, @created_at, @updated_at
         )
       `,
@@ -216,6 +224,11 @@ export const verifyOtp = async (req, res) => {
       user = newUserObj;
     }
   } else {
+    // Si c'est l'admin, on s'assure qu'il garde ses droits
+    if (cleanId === 'admin@cityflow.cm' || cleanId === '699000000') {
+      await db.run("UPDATE users SET role = 'admin', account_status = 'approved' WHERE id = ?", [user.id]);
+    }
+    
     // Mettre à jour l'utilisateur existant
     await db.run(
       `
@@ -254,6 +267,7 @@ export const verifyOtp = async (req, res) => {
     city: user.city,
     role: user.role,
     roleLabel: user.role_label || getRoleLabel(user.role),
+    accountStatus: user.account_status || 'approved',
     vehicleType: user.vehicle_type,
     points: user.points,
     trustScore: user.trust_score,
@@ -370,6 +384,7 @@ export const login = async (req, res) => {
     city: existing.city,
     role: existing.role,
     roleLabel: existing.role_label || getRoleLabel(existing.role),
+    accountStatus: existing.account_status || 'approved',
     vehicleType: existing.vehicle_type,
     points: existing.points,
     trustScore: existing.trust_score,
@@ -434,6 +449,7 @@ export const register = async (req, res) => {
     city,
     role,
     role_label: getRoleLabel(role),
+    account_status: (role === 'emergency' || role === 'traffic_manager') && cleanEmail !== 'admin@cityflow.cm' ? 'pending' : 'approved',
     vehicle_type: vehicleType,
     points: 380,
     trust_score: 85,
@@ -449,10 +465,10 @@ export const register = async (req, res) => {
     await db.run(
       `
       INSERT INTO users (
-        id, name, username, phone, email, password, bio, avatar, city, role, role_label, vehicle_type,
+        id, name, username, phone, email, password, bio, avatar, city, role, role_label, account_status, vehicle_type,
         points, trust_score, trips_count, time_saved_min, co2_saved_kg, channel, created_at, updated_at
       ) VALUES (
-        @id, @name, @username, @phone, @email, @password, @bio, @avatar, @city, @role, @role_label, @vehicle_type,
+        @id, @name, @username, @phone, @email, @password, @bio, @avatar, @city, @role, @role_label, @account_status, @vehicle_type,
         @points, @trust_score, @trips_count, @time_saved_min, @co2_saved_kg, @channel, @created_at, @updated_at
       )
     `,
@@ -469,6 +485,7 @@ export const register = async (req, res) => {
     user: {
       ...newUser,
       roleLabel: newUser.role_label,
+      accountStatus: newUser.account_status,
       trustScore: newUser.trust_score,
       token,
     },

@@ -84,6 +84,11 @@ export async function initDatabaseSchema() {
       const sql = fs.readFileSync(pgSchemaPath, "utf-8");
       try {
         await pgPool.query(sql);
+        try {
+          await pgPool.query("ALTER TABLE users ADD COLUMN account_status TEXT NOT NULL DEFAULT 'approved'");
+        } catch (e) {
+          // Column might already exist
+        }
         console.log("[CityFlow Database] 🐘 Schéma des tables PostgreSQL synchronisé avec succès");
       } catch (err) {
         console.warn("[CityFlow Database] Avertissement init schéma PostgreSQL :", err.message);
@@ -110,6 +115,7 @@ export async function initDatabaseSchema() {
       time_saved_min INTEGER NOT NULL DEFAULT 0,
       co2_saved_kg REAL NOT NULL DEFAULT 0.0,
       channel TEXT DEFAULT 'whatsapp',
+      account_status TEXT NOT NULL DEFAULT 'approved',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -231,6 +237,13 @@ export async function initDatabaseSchema() {
   `;
 
   sqliteDb.exec(schemaSql);
+  
+  try {
+    sqliteDb.exec("ALTER TABLE users ADD COLUMN account_status TEXT NOT NULL DEFAULT 'approved'");
+  } catch (e) {
+    // Column might already exist, ignore error
+  }
+
   console.log("[CityFlow Database] 💾 Schéma des tables SQLite initialisé avec succès");
 
   // Seeder SQLite

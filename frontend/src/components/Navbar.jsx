@@ -5,6 +5,7 @@ import {
   Bell, 
   MapPin, 
   Siren, 
+  ShieldAlert,
   LogIn, 
   Settings, 
   ChevronDown,
@@ -26,7 +27,7 @@ import "../index.css";
 function Navbar() {
   const location = useLocation();
   const { selectedCity, setSelectedCity } = useCity();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, role } = useAuth();
   const { toggleTheme, isDark } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -217,15 +218,30 @@ function Navbar() {
           </span>
         </Link>
 
-        {/* URGENCES */}
-        <Link
-          to="/urgences"
-          className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
-          onClick={closeAllMenus}
-        >
-          <Siren size={16} />
-          Urgences
-        </Link>
+        {/* URGENCES (Caché pour les citoyens) */}
+        {(role === 'emergency' || role === 'traffic_manager' || role === 'police' || role === 'admin') && (
+          <Link
+            to="/urgences"
+            className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
+            onClick={closeAllMenus}
+          >
+            <Siren size={16} />
+            Urgences
+          </Link>
+        )}
+
+        {/* ADMIN */}
+        {role === 'admin' && (
+          <Link
+            to="/admin"
+            className={`nav-link ${location.pathname === "/admin" ? "active" : ""}`}
+            style={{ display: "flex", alignItems: "center", gap: "6px", color: "#3b82f6", fontWeight: "600" }}
+            onClick={closeAllMenus}
+          >
+            <ShieldAlert size={16} />
+            Admin
+          </Link>
+        )}
       </nav>
 
       {/* DROITE : VILLE, NOTIFICATIONS, PARAMÈTRES (PETITE ICÔNE) & PROFIL */}

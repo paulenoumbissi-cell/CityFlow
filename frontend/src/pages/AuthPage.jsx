@@ -30,8 +30,8 @@ function AuthPage() {
   const navigate = useNavigate();
   const { login, register, sendOtpCode, verifyOtpCode, resendOtpCode, isLoading } = useAuth();
 
-  // Mode d'affichage : "login" (Connexion standard), "register" (Inscription), "forgot" (Mot de passe oublié)
-  const [viewMode, setViewMode] = useState("login"); // "login" | "register" | "forgot"
+  // Mode d'affichage : "profile_selection" (Choix du rôle), "login" (Connexion standard), "register" (Inscription), "forgot" (Mot de passe oublié)
+  const [viewMode, setViewMode] = useState("profile_selection"); // "profile_selection" | "login" | "register" | "forgot"
 
   // Sous-étape pour l'inscription / récupération (1 = Coordonnées, 2 = Code OTP, 3 = Test Anti-Robot & Finalisation)
   const [otpStep, setOtpStep] = useState(1);
@@ -403,6 +403,50 @@ function AuthPage() {
         )}
 
         {/* ========================================================================= */}
+        {/* VUE 0 : CHOIX DU PROFIL (NOUVEAU) */}
+        {/* ========================================================================= */}
+        {viewMode === "profile_selection" && (
+          <div className="glass-body-form profile-selection-view">
+            <div className="glass-sub-header">
+              <h2>Qui êtes-vous ?</h2>
+              <p>Sélectionnez votre profil pour accéder à votre espace CityFlow.</p>
+            </div>
+            
+            <div className="profile-choice-grid">
+              <button 
+                type="button" 
+                className="profile-choice-card citizen-card"
+                onClick={() => {
+                  setRole("citizen");
+                  setViewMode("login");
+                }}
+              >
+                <div className="profile-icon-wrapper">
+                  <User size={32} />
+                </div>
+                <h3>Citoyen / Conducteur</h3>
+                <p>Navigation standard, prédictions et communauté.</p>
+              </button>
+
+              <button 
+                type="button" 
+                className="profile-choice-card emergency-card"
+                onClick={() => {
+                  setRole("emergency");
+                  setViewMode("login");
+                }}
+              >
+                <div className="profile-icon-wrapper emergency">
+                  <ShieldCheck size={32} />
+                </div>
+                <h3>Services d'Urgence</h3>
+                <p>Accès sécurisé pour hôpitaux, police et pompiers.</p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* VUE 1 : PAGE DE CONNEXION PRINCIPALE (LOGO + NOM + MOT DE PASSE + BOUTON) */}
         {/* ========================================================================= */}
         {viewMode === "login" && (
@@ -615,7 +659,7 @@ function AuthPage() {
                 </div>
 
                 <div className="glass-row-2">
-                  <div className="glass-field">
+                  <div className="glass-field" style={{ display: 'none' }}>
                     <label>Profil</label>
                     <select value={role} onChange={(e) => setRole(e.target.value)}>
                       <option value="citizen">🚗 Citoyen / Conducteur</option>

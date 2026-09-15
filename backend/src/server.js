@@ -12,6 +12,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import emergencyRoutes from "./routes/emergencyRoutes.js";
 import mapRoutes from "./routes/mapRoutes.js";
 import weatherRoutes from "./routes/weatherRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import { initWebSocketServer } from "./services/websocketServer.js";
 
 dotenv.config();
@@ -34,6 +35,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/map", mapRoutes);
 app.use("/api", reportRoutes);
 app.use("/api/emergency", emergencyRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

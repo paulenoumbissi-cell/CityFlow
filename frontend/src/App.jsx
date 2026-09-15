@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Link, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useNavigate, Navigate } from "react-router-dom";
 import { Sparkles, Activity, Clock3, TrendingUp, MapPin, Zap } from "lucide-react";
 
 import Navbar from "./components/Navbar";
@@ -16,9 +16,10 @@ import AuthPage from "./pages/AuthPage";
 import AboutPage from "./pages/AboutPage";
 import CommunityPage from "./pages/CommunityPage";
 import AiTrainingPage from "./pages/AiTrainingPage";
+import AdminPage from "./pages/AdminPage";
 import { CityProvider, useCity } from "./context/CityContext";
 import { PredictionProvider } from "./context/PredictionContext.jsx";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { apiService, fetchTrafficNodes, calculateRoute } from "./services/api";
 import "./index.css";
@@ -26,6 +27,7 @@ import "./index.css";
 function Home() {
   const navigate = useNavigate();
   const { selectedCity, setSelectedCity } = useCity();
+  const { role } = useAuth();
   const [startPoint, setStartPoint] = useState("");
   const [endPoint, setEndPoint] = useState("");
 
@@ -420,7 +422,9 @@ function Home() {
             <div>
               <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--cityflow-muted, #94a3b8)", textTransform: "uppercase", display: "block", marginBottom: "12px" }}>Services</span>
               <div className="footer-links-col" style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
-                <Link to="/urgences" style={{ color: "#ef4444", fontWeight: "600" }}>Couloirs d'urgence 🚨</Link>
+                {(role === 'emergency' || role === 'traffic_manager' || role === 'police') && (
+                  <Link to="/urgences" style={{ color: "#ef4444", fontWeight: "600" }}>Couloirs d'urgence 🚨</Link>
+                )}
                 <Link to="/notifications" className="footer-link">Centre d'alertes</Link>
                 <Link to="/a-propos" className="footer-link">À propos du projet</Link>
                 <Link to="/parametres" className="footer-link">Paramètres</Link>
@@ -437,6 +441,20 @@ function Home() {
   );
 }
 
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { isAuthenticated, role } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/connexion" replace />;
+  }
+  
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
+
 function App() {
   return (
     <ThemeProvider>
@@ -452,7 +470,22 @@ function App() {
                   <Route path="/routes" element={<RoutesPage />} />
                   <Route path="/prediction" element={<PredictionPage />} />
                   <Route path="/communaute" element={<CommunityPage />} />
-                  <Route path="/urgences" element={<EmergencyPage />} />
+                  <Route 
+                    path="/urgences" 
+                    element={
+                      <ProtectedRoute allowedRoles={['emergency', 'traffic_manager', 'police']}>
+                        <EmergencyPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminPage />
+                      </ProtectedRoute>
+                    } 
+                  />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/profil" element={<ProfilePage />} />
                   <Route path="/parametres" element={<SettingsPage />} />

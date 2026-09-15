@@ -245,6 +245,7 @@ export function AuthProvider({ children }) {
         isAuthenticated: !!user && !!user?.isAuthenticated,
         role: user?.role || "citizen",
         roleLabel: user?.roleLabel || "Conducteur / Citoyen",
+        accountStatus: user?.accountStatus || "approved",
         isLoading,
         error,
         sendOtpCode,

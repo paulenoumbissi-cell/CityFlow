@@ -472,6 +472,40 @@ class CityFlowApiService {
   updateProfile(data) {
     return updateUserProfile(data);
   }
+
+  // ============================================================================
+  // ADMIN API
+  // ============================================================================
+  async getPendingAdminUsers() {
+    try {
+      const res = await fetch(`${this.baseUrl}/admin/users/pending`);
+      if (!res.ok) throw new Error("Erreur fetch pending users");
+      return await res.json();
+    } catch (err) {
+      console.warn("[Admin API Error]", err.message);
+      return { success: false, users: [] };
+    }
+  }
+
+  async approveAdminUser(id) {
+    try {
+      const res = await fetch(`${this.baseUrl}/admin/users/${id}/approve`, { method: "POST" });
+      return await res.json();
+    } catch (err) {
+      console.warn("[Admin API Error]", err.message);
+      return { success: false };
+    }
+  }
+
+  async rejectAdminUser(id) {
+    try {
+      const res = await fetch(`${this.baseUrl}/admin/users/${id}/reject`, { method: "POST" });
+      return await res.json();
+    } catch (err) {
+      console.warn("[Admin API Error]", err.message);
+      return { success: false };
+    }
+  }
 }
 
 export const apiService = new CityFlowApiService();

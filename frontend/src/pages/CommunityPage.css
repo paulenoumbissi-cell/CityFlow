@@ -1766,3 +1766,56 @@ body.dark .btn-cancel {
   color: #94a3b8;
 }
 
+.plan-tabs-container {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.plan-tab-btn {
+  padding: 12px 24px;
+  border-radius: 30px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-tab-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.plan-tab-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+[data-theme="dark"] .plan-tab-btn,
+body.dark .plan-tab-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .plan-tab-btn:hover,
+body.dark .plan-tab-btn:hover {
+  background: #0f172a;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .plan-tab-btn.active,
+body.dark .plan-tab-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}

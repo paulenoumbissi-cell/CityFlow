@@ -140,6 +140,7 @@ export default function CommunityPage() {
   // Sélection du palier de réduction appliqué par formule
   const [selectedRewardCitizen, setSelectedRewardCitizen] = useState(null); // null | 'tier_100' | 'tier_300' | 'tier_600'
   const [selectedRewardEnterprise, setSelectedRewardEnterprise] = useState(null);
+  const [planTab, setPlanTab] = useState("b2c");
 
   // Modal de nouveau signalement
   const [showModal, setShowModal] = useState(false);
@@ -537,11 +538,26 @@ export default function CommunityPage() {
             <div className="plans-heading">
               <h2>💳 Les Abonnements Premium & Réductions Débloquées</h2>
               <p>Sélectionnez une réduction disponible selon votre solde de points pour l'appliquer immédiatement sur l'abonnement.</p>
+
+              <div className="plan-tabs-container">
+                <button 
+                  className={`plan-tab-btn ${planTab === "b2c" ? "active" : ""}`}
+                  onClick={() => setPlanTab("b2c")}
+                >
+                  👤 Pour les Particuliers
+                </button>
+                <button 
+                  className={`plan-tab-btn ${planTab === "b2b" ? "active" : ""}`}
+                  onClick={() => setPlanTab("b2b")}
+                >
+                  🏢 Pour les Entreprises
+                </button>
+              </div>
             </div>
 
             <div className="plans-cards-grid">
               {/* CARTE 1 : 👤 Premium Citoyen (2 000 FCFA / mois - 1 personne) */}
-              {(() => {
+              {planTab === "b2c" && (() => {
                 const plan = SUBSCRIPTION_PLANS[0];
                 const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardCitizen);
                 const discountPct = activeTier ? activeTier.discountPercent : 0;
@@ -641,7 +657,7 @@ export default function CommunityPage() {
               })()}
 
               {/* CARTE 2 : 🏢 Premium Entreprise (50 000 FCFA / mois - 30 personnes) */}
-              {(() => {
+              {planTab === "b2b" && (() => {
                 const plan = SUBSCRIPTION_PLANS[1];
                 const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardEnterprise);
                 const discountPct = activeTier ? activeTier.discountPercent : 0;

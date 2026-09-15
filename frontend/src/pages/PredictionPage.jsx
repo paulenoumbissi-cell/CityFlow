@@ -17,12 +17,25 @@ import { useAuth } from "../context/AuthContext";
 import { useCity } from "../context/CityContext";
 import { usePredictions } from "../context/PredictionContext.jsx";
 import "./PredictionPage.css";
+import { apiService } from "../services/api";
 import { getWeatherByLocation } from "../services/weatherApi.js";
 import { fetchMapConfig } from "../services/mapApi.js";
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, LayersControl, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { YAOUNDE_NODES, DOUALA_NODES } from "../data/cityData.js";
 import { fetchRoute } from "../services/routeApi.js";
+
+const formatETA = (minutes) => {
+  try {
+    const minParsed = parseFloat(minutes);
+    if (isNaN(minParsed) || minParsed <= 0) return "--:--";
+    const d = new Date(Date.now() + minParsed * 60000);
+    if (isNaN(d.getTime())) return "--:--";
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (err) {
+    return "--:--";
+  }
+};
 
 const WEATHER_OPTIONS = [
   { key: "dry", label: "Temps sec", icon: Sun, color: "#f59e0b" },
@@ -572,7 +585,7 @@ function PredictionPage() {
           </p>
           {/* Show weather from WebSocket or location-based lookup */}
           {weatherInfo && (
-            <div className="weather-summary-card" style={{ marginTop: "20px", padding: "16px 24px", background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(12px)", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.1)", display: "flex", alignItems: "center", gap: "28px", color: "#f8fafc", width: "fit-content", boxShadow: "0 4px 15px rgba(0,0,0,0.2)" }}>
+            <div className="weather-summary-card" style={{ marginTop: "20px", padding: "16px 24px", background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(12px)", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.1)", display: "flex", alignItems: "center", gap: "28px", color: "var(--cityflow-text)", width: "fit-content", boxShadow: "0 4px 15px rgba(0,0,0,0.2)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <CloudRain size={24} color="#38bdf8" />
                 <span style={{ fontSize: "16px", fontWeight: "600" }}>{weatherInfo.condition}</span>
@@ -582,10 +595,10 @@ function PredictionPage() {
                 <span style={{ fontSize: "22px", fontWeight: "700", color: "#fcd34d" }}>{weatherInfo.temperature}°C</span>
               </div>
               <div style={{ width: "1px", height: "24px", background: "rgba(255,255,255,0.2)" }}></div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#cbd5e1" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--cityflow-muted)" }}>
                 <span>💧 {weatherInfo.precipitation} mm</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#cbd5e1" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--cityflow-muted)" }}>
                 <span>💨 {weatherInfo.windSpeed} m/s</span>
               </div>
             </div>
@@ -773,7 +786,7 @@ function PredictionPage() {
                     padding: "12px 16px",
                     borderRadius: "8px",
                     border: "1px solid rgba(255, 255, 255, 0.2)",
-                    color: "#f8fafc",
+                    color: "var(--cityflow-text)",
                     boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)"
@@ -781,10 +794,10 @@ function PredictionPage() {
                     <div style={{ fontSize: "14px", fontWeight: "600", marginBottom: "6px", color: "#34d399", display: "flex", alignItems: "center", gap: "6px" }}>
                       <MapPin size={16} /> Résumé du trajet
                     </div>
-                    <div style={{ fontSize: "13px", color: "#cbd5e1", marginBottom: "2px" }}>
-                      Distance : <strong style={{ color: "#fff" }}>{(routeAlternatives[0].distance / 1000).toFixed(1)} km</strong>
+                    <div style={{ fontSize: "13px", color: "var(--cityflow-muted)", marginBottom: "2px" }}>
+                      Distance : <strong style={{ color: "var(--cityflow-text)" }}>{(routeAlternatives[0].distance / 1000).toFixed(1)} km</strong>
                     </div>
-                    <div style={{ fontSize: "13px", color: "#cbd5e1" }}>
+                    <div style={{ fontSize: "13px", color: "var(--cityflow-muted)" }}>
                       Temps estimé : <strong style={{ color: "#fcd34d" }}>{formatDuration(calculateEstimatedDuration(routeAlternatives[0]))}</strong>
                     </div>
                   </div>
@@ -800,7 +813,7 @@ function PredictionPage() {
               ))}
             </datalist>
 
-            <label className="input-label" style={{ fontWeight: 600, color: "#f8fafc", fontSize: "14px" }}>
+            <label className="input-label" style={{ fontWeight: 600, color: "var(--cityflow-text)", fontSize: "14px" }}>
               Heure:
               <input
                 type="time"
@@ -812,7 +825,7 @@ function PredictionPage() {
                 className="prediction-time-input"
               />
             </label>
-            <label className="input-label" style={{ fontWeight: 600, color: "#f8fafc", fontSize: "14px" }}>
+            <label className="input-label" style={{ fontWeight: 600, color: "var(--cityflow-text)", fontSize: "14px" }}>
               Destination:
               <input
                 type="text"
@@ -823,7 +836,7 @@ function PredictionPage() {
                 className="prediction-destination-input"
               />
             </label>
-            <label className="input-label" style={{ fontWeight: 600, color: "#f8fafc", fontSize: "14px" }}>
+            <label className="input-label" style={{ fontWeight: 600, color: "var(--cityflow-text)", fontSize: "14px" }}>
               Départ:
               <div style={{ display: "flex", gap: "8px" }}>
                 <input
@@ -865,7 +878,7 @@ function PredictionPage() {
               Calculer l'itinéraire & Prédictions
             </button>
             {routeAlternatives.length > 0 && (
-              <div style={{ marginTop: "12px", padding: "16px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", color: "#f8fafc", fontSize: "14px" }}>
+              <div style={{ marginTop: "12px", padding: "16px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", color: "var(--cityflow-text)", fontSize: "14px" }}>
                 <h4 style={{ margin: "0 0 12px 0", display: "flex", alignItems: "center", gap: "8px", color: "#34d399", fontSize: "15px" }}>
                   <MapPin size={18} /> Options d'itinéraires
                 </h4>
@@ -895,29 +908,33 @@ function PredictionPage() {
                   <div key={idx} style={{ marginBottom: "10px", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "10px" }}>
                     <strong>Itinéraire {idx + 1}</strong>
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
-                      <span style={{ color: "#cbd5e1" }}>Distance :</span>
+                      <span style={{ color: "var(--cityflow-muted)" }}>Distance :</span>
                       <span>{(alt.distance / 1000).toFixed(1)} km</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ color: "#cbd5e1" }}>Temps normal :</span>
+                      <span style={{ color: "var(--cityflow-muted)" }}>Temps normal :</span>
                       <span>{Math.round(alt.duration / 60)} min</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "4px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
                       <span style={{ color: "#fcd34d", fontWeight: "500" }}>Temps estimé (IA + Trafic) :</span>
                       <span style={{ color: "#fcd34d" }}>{formatDuration(calculateEstimatedDuration(alt))}</span>
                     </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "4px" }}>
+                      <span style={{ color: "var(--cityflow-muted)" }}>Arrivée prévue :</span>
+                      <span style={{ color: "var(--cityflow-text)", fontWeight: "bold" }}>{formatETA(calculateEstimatedDuration(alt) / 60)}</span>
+                    </div>
                     
                     {/* Météo à l'heure indiquée */}
                     {weatherInfo && (
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontSize: "13px" }}>
-                        <span style={{ color: "#cbd5e1" }}>Météo à {String(selectedHour).padStart(2, "0")}:00 :</span>
+                        <span style={{ color: "var(--cityflow-muted)" }}>Météo à {String(selectedHour).padStart(2, "0")}:00 :</span>
                         <span style={{ color: "#60a5fa" }}>{weatherInfo.temperature}°C, {WEATHER_OPTIONS.find(w => w.key === selectedWeather)?.label || "Clair"}</span>
                       </div>
                     )}
 
                     {/* Segmentation visuelle de la congestion */}
                     <div style={{ marginTop: "10px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#cbd5e1", marginBottom: "4px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--cityflow-muted)", marginBottom: "4px" }}>
                         <span>Segments de congestion sur l'itinéraire :</span>
                       </div>
                       <div style={{ display: 'flex', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
@@ -934,7 +951,7 @@ function PredictionPage() {
                     <span style={{ display: "block", color: "#fca5a5", fontSize: "13px", marginBottom: "6px", fontWeight: "600" }}>
                       ⚠️ Zones de ralentissement majeures :
                     </span>
-                    <strong style={{ color: "#f8fafc", fontSize: "14px" }}>
+                    <strong style={{ color: "var(--cityflow-text)", fontSize: "14px" }}>
                       {congestedZones.join(" et ")}
                     </strong>
                   </div>
@@ -975,7 +992,7 @@ function PredictionPage() {
                   className={`weather-chip ${isSelected ? "active" : ""}`}
                   onClick={() => setSelectedWeather(opt.key)}
                 >
-                  <Icon size={16} color={isSelected ? "#ffffff" : opt.color} />
+                  <Icon size={16} color={isSelected ? "var(--cityflow-surface)" : opt.color} />
                   <span>{opt.label}</span>
                 </button>
               );
@@ -985,11 +1002,11 @@ function PredictionPage() {
 
         <div className="ai-time-selector" style={{ marginTop: "24px" }}>
           <span className="sim-label">Impact Horaire en temps réel :</span>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "12px", background: "rgba(255,255,255,0.05)", padding: "16px", borderRadius: "8px", borderLeft: `4px solid ${timeStatus.color}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "12px", background: "var(--cityflow-border-subtle)", padding: "16px", borderRadius: "8px", borderLeft: `4px solid ${timeStatus.color}` }}>
              <Clock3 size={24} color={timeStatus.color} />
              <div>
-               <strong style={{ display: "block", color: "#f8fafc", fontSize: "15px" }}>{timeStatus.label} ({String(selectedHour).padStart(2, "0")}:00)</strong>
-               <span style={{ fontSize: "13px", color: "#cbd5e1" }}>{timeStatus.desc}</span>
+               <strong style={{ display: "block", color: "var(--cityflow-text)", fontSize: "15px" }}>{timeStatus.label} ({String(selectedHour).padStart(2, "0")}:00)</strong>
+               <span style={{ fontSize: "13px", color: "var(--cityflow-muted)" }}>{timeStatus.desc}</span>
              </div>
           </div>
         </div>

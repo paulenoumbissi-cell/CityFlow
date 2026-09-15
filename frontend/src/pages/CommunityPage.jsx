@@ -13,6 +13,10 @@ import {
   Wrench,
   Construction,
   Droplets,
+  MessageSquare,
+  Camera,
+  Navigation,
+  CheckCircle2,
   AlertCircle,
   TrendingUp,
   Percent,
@@ -31,6 +35,7 @@ import {
   X,
 } from "lucide-react";
 import { useCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
 import wsService from "../services/websocketService";
 import "./CommunityPage.css";
 
@@ -59,7 +64,7 @@ const SUBSCRIPTION_PLANS = [
     category: "b2c",
     name: "Premium Citoyen",
     subtitle: "Mobilité intelligente et guidage optimisé",
-    priceFcfa: 2000,
+    priceFcfa: 500,
     period: "par mois",
     beneficiaries: "1 personne",
     features: [
@@ -74,7 +79,7 @@ const SUBSCRIPTION_PLANS = [
     category: "b2b",
     name: "Premium Entreprise",
     subtitle: "Flottes d'entreprises, livraisons & équipes",
-    priceFcfa: 50000,
+    priceFcfa: 12000,
     period: "par mois",
     beneficiaries: "30 personnes",
     features: [
@@ -95,8 +100,8 @@ const DISCOUNT_REWARDS = [
     isFreeMonth: false,
     label: "5 % de réduction",
     description: "Sur le prochain abonnement",
-    citizenPrice: 1900,
-    enterprisePrice: 47500,
+    citizenPrice: 475,
+    enterprisePrice: 11400,
   },
   {
     id: "tier_300",
@@ -105,8 +110,8 @@ const DISCOUNT_REWARDS = [
     isFreeMonth: false,
     label: "15 % de réduction",
     description: "Sur le prochain abonnement",
-    citizenPrice: 1700,
-    enterprisePrice: 42500,
+    citizenPrice: 425,
+    enterprisePrice: 10200,
   },
   {
     id: "tier_600",
@@ -121,6 +126,11 @@ const DISCOUNT_REWARDS = [
 ];
 
 export default function CommunityPage() {
+  const { 
+    user,
+    updateSubscriptionPlan,
+    updatePoints
+  } = useAuth();
   const { selectedCity } = useCity();
   const [reports, setReports] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -320,6 +330,15 @@ export default function CommunityPage() {
       const data = await res.json();
       if (res.ok) {
         showToast(data.message);
+        
+        // Mettre à jour l'état local global
+        if (data.subscription && data.subscription.category) {
+          updateSubscriptionPlan(data.subscription.category === "b2b" ? "premium_b2b" : "premium_b2c");
+        }
+        if (data.remainingPoints !== undefined) {
+          updatePoints(data.remainingPoints);
+        }
+
         setSubscribeModal(null);
         fetchData();
       } else {
@@ -830,7 +849,6 @@ export default function CommunityPage() {
             </div>
           )}
         </section>
-      )}
 
 
 

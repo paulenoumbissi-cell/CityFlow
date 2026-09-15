@@ -63,6 +63,10 @@ function ProfilePage() {
   });
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/connexion");
+      return;
+    }
     if (user) {
       setEditData({
         name: user.name || "",
@@ -681,9 +685,14 @@ function ProfilePage() {
             <p style={{ margin: "6px 0 12px", fontSize: "13px", color: "#1e3a8a" }}>
               Accès complet à la supervision géospatiale, au paramétrage du modèle IA et aux alertes d'anomalies en direct.
             </p>
-            <Link to="/carte" style={{ background: "#2563eb", color: "white", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textDecoration: "none", display: "inline-block" }}>
-              Superviser la Carte du Trafic →
-            </Link>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <Link to="/carte" style={{ background: "#2563eb", color: "white", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textDecoration: "none", display: "inline-block" }}>
+                Superviser la Carte du Trafic →
+              </Link>
+              <Link to="/entrainement-ia" style={{ background: "#0f172a", color: "#38bdf8", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textDecoration: "none", display: "inline-block", border: "1px solid #334155" }}>
+                Entraînement Modèle IA 🔮
+              </Link>
+            </div>
           </div>
         )}
 
@@ -748,19 +757,19 @@ function ProfilePage() {
             <div className="profile-stats-grid">
               <div className="profile-stat-box">
                 <Route size={22} className="stat-icon-color" />
-                <strong>{user.tripsCount || 47}</strong>
+                <strong>{user.tripsCount !== undefined ? user.tripsCount : 47}</strong>
                 <span>Trajets calculés</span>
               </div>
 
               <div className="profile-stat-box">
                 <Clock size={22} className="stat-icon-color" />
-                <strong>{user.timeSavedMin || 184} min</strong>
+                <strong>{user.timeSavedMin !== undefined ? user.timeSavedMin : 184} min</strong>
                 <span>Temps gagné</span>
               </div>
 
               <div className="profile-stat-box">
                 <Sparkles size={22} className="stat-icon-color" />
-                <strong>{user.co2SavedKg || 14.2} kg</strong>
+                <strong>{user.co2SavedKg !== undefined ? user.co2SavedKg : 14.2} kg</strong>
                 <span>CO₂ économisé</span>
               </div>
             </div>
@@ -782,29 +791,40 @@ function ProfilePage() {
           </div>
 
           <div className="trip-list">
-            {recentTrips.map((trip, index) => (
-              <div className="trip-item" key={index}>
-                <div className="trip-route">
-                  <div className="trip-point">
-                    <span className="trip-dot start"></span>
-                    <strong>{trip.departure}</strong>
-                  </div>
-
-                  <div className="trip-line"></div>
-
-                  <div className="trip-point">
-                    <span className="trip-dot destination"></span>
-                    <strong>{trip.destination}</strong>
-                  </div>
-                </div>
-
-                <div className="trip-details">
-                  <strong>{trip.duration}</strong>
-                  <span>{trip.distance}</span>
-                  <small>{trip.date}</small>
-                </div>
+            {(!user.tripsCount || user.tripsCount === 0) ? (
+              <div style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
+                <Route size={48} color="#cbd5e1" style={{ margin: "0 auto 12px" }} />
+                <h3 style={{ fontSize: "16px", color: "#334155", marginBottom: "8px", fontWeight: "700" }}>Aucun trajet récent</h3>
+                <p style={{ fontSize: "14px", lineHeight: "1.5" }}>C'est le moment de planifier votre premier itinéraire fluide pour gagner du temps !</p>
+                <Link to="/routes" style={{ display: "inline-block", marginTop: "16px", background: "#00875a", color: "white", padding: "8px 16px", borderRadius: "8px", textDecoration: "none", fontSize: "13px", fontWeight: "700" }}>
+                  Aller sur la Carte
+                </Link>
               </div>
-            ))}
+            ) : (
+              recentTrips.slice(0, user.tripsCount).map((trip, index) => (
+                <div className="trip-item" key={index}>
+                  <div className="trip-route">
+                    <div className="trip-point">
+                      <span className="trip-dot start"></span>
+                      <strong>{trip.departure}</strong>
+                    </div>
+
+                    <div className="trip-line"></div>
+
+                    <div className="trip-point">
+                      <span className="trip-dot destination"></span>
+                      <strong>{trip.destination}</strong>
+                    </div>
+                  </div>
+
+                  <div className="trip-details">
+                    <strong>{trip.duration}</strong>
+                    <span>{trip.distance}</span>
+                    <small>{trip.date}</small>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 

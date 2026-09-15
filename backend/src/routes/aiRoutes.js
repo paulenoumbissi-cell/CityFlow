@@ -1,5 +1,5 @@
 import express from "express";
-import { getAiForecast, getAiAnomalies, getWeatherConditions, getLocalEvents } from "../controllers/aiController.js";
+import { getAiForecast, getAiAnomalies, getWeatherConditions, getLocalEvents, simulateTraining } from "../controllers/aiController.js";
 
 const router = express.Router();
 
@@ -14,6 +14,8 @@ router.get("/weather-options", getWeatherConditions);
 
 // GET /api/ai/events
 router.get("/events", getLocalEvents);
+// POST /api/ai/train
+router.post("/train", simulateTraining);
 
 export default router;
 

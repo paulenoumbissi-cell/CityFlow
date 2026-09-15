@@ -16,32 +16,8 @@ export function AuthProvider({ children }) {
         console.error(e);
       }
     }
-    // Utilisateur initial connecté par défaut pour navigation fluide
-    return {
-      id: "usr_current",
-      name: "Paul Enoumbissi",
-      username: "paul_237",
-      email: "paul.enoumbissi@cityflow.cm",
-      phone: "+237699123456",
-      bio: "Conducteur quotidien engagé pour une mobilité fluide à Yaoundé et Douala.",
-      avatar: null,
-      phoneVerified: true,
-      authChannel: "whatsapp",
-      role: "citizen",
-      roleLabel: "Conducteur / Citoyen",
-      city: "Yaoundé",
-      vehicleType: "Voiture particulière",
-      initials: "PE",
-      isAuthenticated: true,
-      tripsCount: 47,
-      timeSavedMin: 184,
-      co2SavedKg: 14.2,
-      points: 380,
-      trustScore: 85,
-      score: 85,
-      token: "jwt_cityflow_default",
-      subscriptionPlan: "free", // "free", "premium_b2c", "premium_b2b"
-    };
+    // Aucun utilisateur connecté par défaut
+    return null;
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -108,15 +84,15 @@ export function AuthProvider({ children }) {
   };
 
   // Renvoi du code OTP
-  const resendOtpCode = async ({ identifier, phone, email, channel }) => {
+  const resendOtpCode = async (identifier, phone, email, channel) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await resendOtp({ identifier, phone, email, channel });
+      const res = await resendOtp(identifier, phone, email, channel);
       setIsLoading(false);
       return res;
     } catch (err) {
-      setError(err.message || "Erreur de renvoi du code");
+      setError(err.message || "Erreur de renvoi du code OTP");
       setIsLoading(false);
       throw err;
     }
@@ -243,6 +219,20 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("cityflow_user");
   };
 
+  const updateSubscriptionPlan = (newPlan) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      return { ...prev, subscriptionPlan: newPlan };
+    });
+  };
+
+  const updatePoints = (newPoints) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      return { ...prev, points: newPoints };
+    });
+  };
+
   // Helpers pour les privilèges Premium
   const isPremiumCitizen = user?.subscriptionPlan === "premium_b2c";
   const isPremiumEnterprise = user?.subscriptionPlan === "premium_b2b";
@@ -259,7 +249,9 @@ export function AuthProvider({ children }) {
         error,
         sendOtpCode,
         verifyOtpCode,
+        verifyOtp: verifyOtpCode,
         resendOtpCode,
+        resendOtp: resendOtpCode,
         login,
         register,
         updateProfile,
@@ -269,6 +261,8 @@ export function AuthProvider({ children }) {
         isPremiumCitizen,
         isPremiumEnterprise,
         isPremium,
+        updateSubscriptionPlan,
+        updatePoints,
       }}
     >
       {children}

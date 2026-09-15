@@ -15,6 +15,7 @@ import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import AboutPage from "./pages/AboutPage";
 import CommunityPage from "./pages/CommunityPage";
+import AiTrainingPage from "./pages/AiTrainingPage";
 import { CityProvider, useCity } from "./context/CityContext";
 import { PredictionProvider } from "./context/PredictionContext.jsx";
 import { AuthProvider } from "./context/AuthContext";
@@ -456,6 +457,7 @@ function App() {
                   <Route path="/profil" element={<ProfilePage />} />
                   <Route path="/parametres" element={<SettingsPage />} />
                   <Route path="/connexion" element={<AuthPage />} />
+                  <Route path="/entrainement-ia" element={<AiTrainingPage />} />
                   <Route path="/a-propos" element={<AboutPage />} />
                 </Routes>
               </div>

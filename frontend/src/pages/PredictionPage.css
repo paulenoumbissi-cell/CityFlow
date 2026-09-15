@@ -32,7 +32,7 @@
 .prediction-page-header h1 {
   margin: 8px 0;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 34px;
   font-weight: 800;
@@ -56,9 +56,9 @@
 
   padding: 11px 15px;
 
-  background: #ffffff;
+  background: var(--cityflow-surface);
 
-  border: 1px solid #e2e9e5;
+  border: 1px solid var(--cityflow-border);
   border-radius: 11px;
 
   color: #087f5b;
@@ -70,7 +70,7 @@
 
   background: transparent;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 13px;
   font-weight: 700;
@@ -90,19 +90,19 @@
 
   padding: 25px;
 
-  background: #ffffff;
+  background: var(--cityflow-surface);
 
-  border: 1px solid #e5ebe8;
+  border: 1px solid var(--cityflow-border);
   border-radius: 19px;
 
-  box-shadow: 0 7px 25px rgba(23, 32, 51, 0.05);
+  box-shadow: 0 7px 25px rgba(0, 0, 0, 0.12);
   margin-top: 20px;
 }
 
 /* SIMULATEUR IA */
 .ai-simulator-card {
-  background: #ffffff;
-  border: 1px solid #e2e9e5;
+  background: var(--cityflow-surface);
+  border: 1px solid var(--cityflow-border);
   border-radius: 18px;
   padding: 22px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.04);
@@ -176,7 +176,7 @@
 .weather-chip.active {
   background: #00875a;
   border-color: #00875a;
-  color: #ffffff;
+  color: var(--cityflow-surface);
   box-shadow: 0 4px 12px rgba(0, 135, 90, 0.25);
 }
 
@@ -199,7 +199,7 @@
 
 .ai-recom-badge {
   background: #00875a;
-  color: #ffffff;
+  color: var(--cityflow-surface);
   font-size: 9px;
   font-weight: 800;
   padding: 2px 7px;
@@ -250,7 +250,7 @@
 
   margin: 0 10px 0 0;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 29px;
 }
@@ -316,7 +316,7 @@
 .page-section-heading h2 {
   margin: 6px 0 0;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 21px;
 }
@@ -347,12 +347,12 @@
 .prediction-time-card {
   padding: 20px;
 
-  background: #ffffff;
+  background: var(--cityflow-surface);
 
-  border: 1px solid #e5ebe8;
+  border: 1px solid var(--cityflow-border);
   border-radius: 16px;
 
-  box-shadow: 0 5px 18px rgba(23, 32, 51, 0.04);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
 }
 
 .prediction-time {
@@ -371,7 +371,7 @@
 
   margin-bottom: 13px;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 27px;
 }
@@ -431,12 +431,12 @@
 
   padding: 22px;
 
-  background: #ffffff;
+  background: var(--cityflow-surface);
 
-  border: 1px solid #e5ebe8;
+  border: 1px solid var(--cityflow-border);
   border-radius: 18px;
 
-  box-shadow: 0 5px 18px rgba(23, 32, 51, 0.04);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
 }
 
 .chart-y-axis {
@@ -467,7 +467,7 @@
   left: 0;
   right: 0;
 
-  border-top: 1px dashed #e2e9e5;
+  border-top: 1px dashed var(--cityflow-border);
 }
 
 .chart-grid-line.one {
@@ -500,7 +500,7 @@
 
   background: #087f5b;
 
-  border: 3px solid #ffffff;
+  border: 3px solid var(--cityflow-surface);
 
   border-radius: 50%;
 
@@ -548,7 +548,7 @@
 .chart-values strong {
   margin-bottom: 4px;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 12px;
 }
@@ -572,12 +572,12 @@
 .prediction-zone-card {
   padding: 18px;
 
-  background: #ffffff;
+  background: var(--cityflow-surface);
 
-  border: 1px solid #e5ebe8;
+  border: 1px solid var(--cityflow-border);
   border-radius: 15px;
 
-  box-shadow: 0 5px 18px rgba(23, 32, 51, 0.04);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
 }
 
 .zone-header {
@@ -599,7 +599,7 @@
 .zone-header h3 {
   margin: 0;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 14px;
 }
@@ -638,7 +638,7 @@
 }
 
 .zone-value strong {
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 24px;
 }
@@ -703,7 +703,7 @@
   width: 48px;
   height: 48px;
 
-  background: #ffffff;
+  background: var(--cityflow-surface);
 
   border-radius: 13px;
 
@@ -713,7 +713,7 @@
 .prediction-info-card h2 {
   margin: 6px 0 8px;
 
-  color: #172033;
+  color: var(--cityflow-text);
 
   font-size: 17px;
 }
@@ -910,7 +910,7 @@ body.dark .weather-chip:hover {
 body.dark .weather-chip.active {
   background: #2563eb;
   border-color: #2563eb;
-  color: #ffffff;
+  color: var(--cityflow-surface);
 }
 
 [data-theme="dark"] .ai-recommendation-box,
@@ -1072,41 +1072,40 @@ body.dark .info-text p {
 .prediction-map-sidebar .leaflet-control-layers-separator {
   border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
- / *   P R E M I U M   L O C K   S T Y L E S   * / 
- . p r e d i c t i o n - t i m e - c a r d . l o c k e d   { 
-     p o s i t i o n :   r e l a t i v e ; 
-     o v e r f l o w :   h i d d e n ; 
-     b a c k g r o u n d :   r g b a ( 1 5 ,   2 3 ,   4 2 ,   0 . 4 ) ; 
-     b o r d e r - c o l o r :   r g b a ( 2 5 5 ,   2 5 5 ,   2 5 5 ,   0 . 0 5 ) ; 
- } 
- 
- . p r e d i c t i o n - t i m e - c a r d . l o c k e d   . b l u r - t e x t   { 
-     f i l t e r :   b l u r ( 4 p x ) ; 
-     o p a c i t y :   0 . 5 ; 
-     u s e r - s e l e c t :   n o n e ; 
- } 
- 
- . p r e m i u m - l o c k - o v e r l a y   { 
-     p o s i t i o n :   a b s o l u t e ; 
-     t o p :   0 ; 
-     l e f t :   0 ; 
-     w i d t h :   1 0 0 % ; 
-     h e i g h t :   1 0 0 % ; 
-     d i s p l a y :   f l e x ; 
-     f l e x - d i r e c t i o n :   c o l u m n ; 
-     a l i g n - i t e m s :   c e n t e r ; 
-     j u s t i f y - c o n t e n t :   c e n t e r ; 
-     g a p :   8 p x ; 
-     b a c k g r o u n d :   r g b a ( 1 5 ,   2 3 ,   4 2 ,   0 . 6 ) ; 
-     b a c k d r o p - f i l t e r :   b l u r ( 2 p x ) ; 
-     z - i n d e x :   1 0 ; 
-     c o l o r :   # f b b f 2 4 ; 
-     f o n t - w e i g h t :   6 0 0 ; 
-     f o n t - s i z e :   1 3 p x ; 
-     t e x t - a l i g n :   c e n t e r ; 
- } 
- 
- . p r e m i u m - l o c k - o v e r l a y   . l o c k - i c o n   { 
-     c o l o r :   # f b b f 2 4 ; 
- }  
- 
+/* PREMIUM LOCK STYLES */
+.prediction-time-card.locked {
+  position: relative;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.4);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.prediction-time-card.locked .blur-text {
+  filter: blur(4px);
+  opacity: 0.5;
+  user-select: none;
+}
+
+.premium-lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+  color: #fbbf24;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+}
+
+.premium-lock-overlay .lock-icon {
+  color: #fbbf24;
+}

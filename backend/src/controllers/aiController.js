@@ -53,3 +53,38 @@ export const getLocalEvents = (req, res) => {
   });
 };
 
+export const simulateTraining = (req, res) => {
+  const { epochs = 10, datasetSize = 4250, learningRate = 0.01 } = req.body;
+
+  // Simulate an AI training process which adjusts the internal weights
+  // For now, we return mock logs and updated weight examples.
+  
+  const logs = [];
+  let loss = 1.45;
+  for (let i = 1; i <= epochs; i++) {
+    loss = loss * (0.85 + Math.random() * 0.1);
+    logs.push({
+      epoch: i,
+      loss: parseFloat(loss.toFixed(4)),
+      accuracy: parseFloat((min(0.98, 0.70 + (i / epochs) * 0.28)).toFixed(4))
+    });
+  }
+
+  function min(a, b) { return a < b ? a : b; }
+
+  const updatedWeights = [
+    { factor: "heavy_rain_congestion", oldWeight: 1.75, newWeight: 1.82 },
+    { factor: "market_day_speed", oldWeight: 0.58, newWeight: 0.54 },
+    { factor: "evening_peak_multiplier", oldWeight: 1.85, newWeight: 1.88 }
+  ];
+
+  res.json({
+    status: "success",
+    message: "Training simulation completed",
+    datasetProcessed: datasetSize,
+    finalLoss: loss.toFixed(4),
+    trainingLogs: logs,
+    updatedWeights,
+    timestamp: new Date().toISOString()
+  });
+};

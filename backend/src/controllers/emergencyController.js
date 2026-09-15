@@ -613,8 +613,8 @@ export const calculateCustomEmergencyCorridor = async (req, res) => {
 
     const cityKey = city && city.toLowerCase().includes("douala") ? "Douala" : "Yaoundé";
 
-    const startPos = originCoords || resolveCoordinates(origin, cityKey);
-    const endPos = destCoords || resolveCoordinates(destination, cityKey);
+    const startPos = originCoords || await resolveCoordinates(origin, cityKey);
+    const endPos = destCoords || await resolveCoordinates(destination, cityKey);
 
     const originLabel = typeof origin === "string" ? origin : "Position de Départ";
     const destLabel = typeof destination === "string" ? destination : "Centre Hospitalier";

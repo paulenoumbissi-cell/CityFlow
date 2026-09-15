@@ -38,6 +38,7 @@ import {
   Maximize2,
   Lock,
   Plus,
+  X,
 } from "lucide-react";
 import {
   MapContainer,
@@ -58,6 +59,18 @@ import EmergencyAlertOverlay from "../components/EmergencyAlertOverlay";
 import wsService from "../services/websocketService";
 import apiService from "../services/api";
 import "./RoutesPage.css";
+
+const formatETA = (minutes) => {
+  try {
+    const minParsed = parseFloat(minutes);
+    if (isNaN(minParsed) || minParsed <= 0) return "--:--";
+    const d = new Date(Date.now() + minParsed * 60000);
+    if (isNaN(d.getTime())) return "--:--";
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (err) {
+    return "--:--";
+  }
+};
 
 const API_BASE = "http://localhost:3000/api";
 
@@ -126,7 +139,7 @@ export default function RoutesPage() {
 
   // Load static landmarks for default dropdown values
   useEffect(() => {
-    fetch(`${API_BASE}/landmarks/${selectedCity}`)
+    fetch(`${API_BASE}/routes/landmarks?city=${selectedCity}`)
       .then((res) => res.json())
       .then((data) => setRawCityLandmarks(data.landmarks || []))
       .catch((err) => console.error('Failed to load landmarks', err));
@@ -139,7 +152,7 @@ export default function RoutesPage() {
       return;
     }
     const controller = new AbortController();
-    fetch(`${API_BASE}/search?q=${encodeURIComponent(searchQuery)}&city=${selectedCity}`, { signal: controller.signal })
+    fetch(`${API_BASE}/routes/search-places?q=${encodeURIComponent(searchQuery)}&city=${selectedCity}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         const transformed = (data.results || []).map((r) => ({
@@ -357,13 +370,13 @@ export default function RoutesPage() {
       autoSimTimerRef.current = setInterval(() => {
         setNavStepIndex((prev) => {
           const next = prev + 1;
-          if (next >= selectedRoute.steps.length) {
+          if (next >= (selectedRoute.steps?.length || 1)) {
             setNavCompleted(true);
             setIsAutoSimulating(false);
             speakInstruction("Vous êtes arrivé à votre destination. Trajet terminé avec succès.", voiceEnabled);
             return prev;
           } else {
-            const nextStep = selectedRoute.steps[next];
+            const nextStep = selectedRoute.steps ? selectedRoute.steps[next] : null;
             if (nextStep) {
               speakInstruction(nextStep.spokenText || nextStep.instruction, voiceEnabled);
             }
@@ -382,13 +395,12 @@ export default function RoutesPage() {
     };
   }, [isNavigating, isAutoSimulating, selectedRoute, navCompleted, voiceEnabled]);
 
-  // Étape suivante manuelle
   const handleNextStep = () => {
     if (!selectedRoute) return;
-    if (navStepIndex < selectedRoute.steps.length - 1) {
+    if (navStepIndex < (selectedRoute.steps?.length || 1) - 1) {
       const next = navStepIndex + 1;
       setNavStepIndex(next);
-      const nextStep = selectedRoute.steps[next];
+      const nextStep = selectedRoute.steps ? selectedRoute.steps[next] : null;
       if (nextStep) {
         speakInstruction(nextStep.spokenText || nextStep.instruction, voiceEnabled);
       }
@@ -412,10 +424,12 @@ export default function RoutesPage() {
   const currentModeInfo = multimodal.find((m) => m.mode === activeMode) || multimodal[0];
 
   // Calcul du temps restant estimé en navigation
-  const remainingSteps = selectedRoute ? selectedRoute.steps.length - navStepIndex : 1;
-  const remainingMinutes = Math.max(1, Math.round((selectedRoute?.durationMinutes || 15) * (remainingSteps / (selectedRoute?.steps.length || 1))));
+  const safeStepsLength = selectedRoute?.steps?.length || 1;
+  const remainingSteps = selectedRoute?.steps ? Math.max(1, safeStepsLength - navStepIndex) : 1;
+  const parsedDuration = parseInt(selectedRoute?.durationMinutes) || 15;
+  const remainingMinutes = Math.max(1, Math.round(parsedDuration * (remainingSteps / safeStepsLength)));
   const arrivalDate = new Date(Date.now() + remainingMinutes * 60 * 1000);
-  const arrivalTimeStr = arrivalDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const arrivalTimeStr = !isNaN(arrivalDate.getTime()) ? arrivalDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--";
 
   return (
     <div className="routes-page">
@@ -643,7 +657,7 @@ export default function RoutesPage() {
                     <div className="pill-text">
                       <span className="pill-name">{m.label}</span>
                       <span className="pill-meta">
-                        <strong>{m.durationMinutes} min</strong> • {m.costLabel}
+                        <strong>{m.durationMinutes} min</strong> • {formatETA(m.durationMinutes)} • {m.costLabel}
                       </span>
                     </div>
                   </button>
@@ -664,14 +678,14 @@ export default function RoutesPage() {
               </div>
               <div className="maneuver-text-box">
                 <span className="maneuver-dist">
-                  Dans {selectedRoute.steps[navStepIndex]?.distance || "150 m"}
+                  Dans {selectedRoute.steps?.[navStepIndex]?.distance || "150 m"}
                 </span>
                 <strong className="maneuver-instruction">
-                  {selectedRoute.steps[navStepIndex]?.instruction || "Suivez la direction indiquée"}
+                  {selectedRoute.steps?.[navStepIndex]?.instruction || "Suivez la direction indiquée"}
                 </strong>
-                {selectedRoute.steps[navStepIndex + 1] && (
+                {selectedRoute.steps?.[navStepIndex + 1] && (
                   <span className="maneuver-next-hint">
-                    Puis : {selectedRoute.steps[navStepIndex + 1]?.instruction}
+                    Puis : {selectedRoute.steps?.[navStepIndex + 1]?.instruction}
                   </span>
                 )}
               </div>
@@ -777,8 +791,10 @@ export default function RoutesPage() {
                     )}
                   </div>
                   <div className="route-time-duration">
-                    <strong>{route.durationMinutes} min</strong>
-                    <span>{route.distanceKm} km</span>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                      <strong>{route.durationMinutes} min</strong>
+                      <span style={{ fontSize: "13px", color: "#475569" }}>{route.distanceKm} km • Arrivée ~{formatETA(route.durationMinutes)}</span>
+                    </div>
                   </div>
                 </div>
 

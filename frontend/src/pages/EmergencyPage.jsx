@@ -29,9 +29,9 @@ import {
   History,
   ShieldAlert,
   Sliders,
-  Crosshair,
+  Crosshair, Layers, CloudRain, Thermometer, ThermometerSun, AlertOctagon, Navigation2, 
 } from "lucide-react";
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap, Marker, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap, useMapEvents, Marker, Tooltip, LayersControl, LayerGroup, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
@@ -178,6 +178,25 @@ function MapController({ coords, vehiclePos, cameraFollow, selectedCorridor }) {
   return null;
 }
 
+
+const MapClickHandler = ({ selectingMode, setCustomOriginCoords, setCustomOriginText, setSelectingMode, setCustomDestinationCoords, setCustomDestinationText, setSelectedHospital }) => {
+  useMapEvents({
+    click(e) {
+      if (selectingMode === 'origin') {
+        setCustomOriginCoords([e.latlng.lat, e.latlng.lng]);
+        setCustomOriginText(`[${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}]`);
+        setSelectingMode(null);
+      } else if (selectingMode === 'destination') {
+        setCustomDestinationCoords([e.latlng.lat, e.latlng.lng]);
+        setCustomDestinationText(`[${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}]`);
+        setSelectedHospital(null);
+        setSelectingMode(null);
+      }
+    }
+  });
+  return null;
+};
+
 export default function EmergencyPage() {
   const { selectedCity } = useCity();
 
@@ -195,6 +214,9 @@ export default function EmergencyPage() {
   const [hospitals, setHospitals] = useState([]);
   const [selectedHospital, setSelectedHospital] = useState(null);
   const [customOriginText, setCustomOriginText] = useState("");
+  const [customDestinationText, setCustomDestinationText] = useState("");
+  const [customDestinationCoords, setCustomDestinationCoords] = useState(null);
+  const [selectingMode, setSelectingMode] = useState(null);
   const [isLocatingUser, setIsLocatingUser] = useState(false);
   const [customOriginCoords, setCustomOriginCoords] = useState(null);
   const [customRoutePreview, setCustomRoutePreview] = useState(null);
@@ -211,6 +233,13 @@ export default function EmergencyPage() {
   const [currentSpeedKmh, setCurrentSpeedKmh] = useState(76);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [cameraFollow, setCameraFollow] = useState(true);
+  const [mapType, setMapType] = useState('standard');
+  const [weatherData, setWeatherData] = useState({ temp: 28, condition: 'Dégagé', icon: ThermometerSun });
+  const [congestionLevel, setCongestionLevel] = useState('Fluide');
+  const [etaText, setEtaText] = useState('14:32');
+  const [v2xAlerted, setV2xAlerted] = useState(0);
+  const [activeFlotilla, setActiveFlotilla] = useState([]);
+  const [isMajorIncident, setIsMajorIncident] = useState(false);
 
   // Sound Engine (Web Audio API Native 2-Tone Siren)
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -523,17 +552,19 @@ export default function EmergencyPage() {
 
   // 2. Calculer un corridor sur-mesure (Point A -> Hôpital)
   const handleCalculateCustom = async () => {
-    if (!selectedHospital) return;
+    if (!selectedHospital && !customDestinationText.trim()) return;
     const currentCity = selectedCity === "all" ? "Yaoundé" : selectedCity;
     const originQuery = customOriginText.trim() || (customOriginCoords ? "Position GPS Actuelle" : "Poste Centrale");
+    const destQuery = customDestinationText.trim() || (selectedHospital ? selectedHospital.name : "Centre-Ville");
+    const destCoordsFinal = customDestinationCoords ? customDestinationCoords : (customDestinationText.trim() ? null : (selectedHospital ? selectedHospital.position : null));
 
     try {
       setIsCalculatingRoute(true);
       const data = await apiService.calculateCustomEmergencyCorridor({
         origin: originQuery,
         originCoords: customOriginCoords,
-        destination: selectedHospital.name,
-        destCoords: selectedHospital.position,
+        destination: destQuery,
+        destCoords: destCoordsFinal,
         city: currentCity,
         vehicleType: selectedVehicle.id,
       });
@@ -565,7 +596,7 @@ export default function EmergencyPage() {
         setActiveMission(res.mission);
         setSimProgress(0);
         setIsSimPaused(false);
-        speakAnnouncement(`Priorité d'urgence activée vers ${selectedHospital.name}. Onde verte en cours.`);
+        speakAnnouncement(`Priorité d'urgence activée vers ${customRoutePreview.destination}. Onde verte en cours.`);
         startSirenSound();
       }
     } catch (err) {
@@ -957,7 +988,34 @@ export default function EmergencyPage() {
                 </div>
               </div>
 
-              {/* Choix de l'Hôpital */}
+              
+              {/* Destination Personnalisée */}
+              <div className="form-group-custom">
+                <label className="input-label">Destination (Lieu exact ou sélectionner un hôpital) :</label>
+                <div className="input-with-action">
+                  <input
+                    type="text"
+                    className="input-custom-text"
+                    placeholder="Ex: Hôpital Général, Carrefour Warda..."
+                    value={customDestinationText}
+                    onChange={(e) => { 
+                      setCustomDestinationText(e.target.value); 
+                      setSelectedHospital(null); 
+                      setCustomDestinationCoords(null);
+                    }}
+                  />
+                  <button
+                    className={`btn-geoloc ${selectingMode === 'destination' ? 'active-select' : ''}`}
+                    onClick={() => setSelectingMode(selectingMode === 'destination' ? null : 'destination')}
+                    title="Cliquer sur la carte pour choisir la destination"
+                  >
+                    <Crosshair size={16} />
+                    <span>Carte</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Choix de l'Hôpital (Optionnel) */}
               <div className="form-group-custom">
                 <label className="input-label">Hôpital / Centre de Réanimation de Destination :</label>
                 <div className="hospitals-selector-grid">
@@ -994,7 +1052,7 @@ export default function EmergencyPage() {
                 <button
                   className="btn-calculate-route"
                   onClick={handleCalculateCustom}
-                  disabled={isCalculatingRoute || !selectedHospital}
+                  disabled={isCalculatingRoute || (!selectedHospital && !customDestinationText.trim())}
                 >
                   <Activity size={18} />
                   <span>{isCalculatingRoute ? "Calcul OSRM en cours..." : "Calculer le Corridor & l'Onde Verte"}</span>
@@ -1218,13 +1276,14 @@ export default function EmergencyPage() {
                 center={mapCenter}
                 zoom={13.5}
                 scrollWheelZoom={true}
-                className="emergency-leaflet-container"
+                className={`emergency-leaflet-container ${selectingMode ? "crosshair-cursor-map" : ""}`}
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png"
                 />
 
+                <MapClickHandler selectingMode={selectingMode} setCustomOriginCoords={setCustomOriginCoords} setCustomOriginText={setCustomOriginText} setSelectingMode={setSelectingMode} setCustomDestinationCoords={setCustomDestinationCoords} setCustomDestinationText={setCustomDestinationText} setSelectedHospital={setSelectedHospital} />
                 <MapController
                   coords={activeCoordinates}
                   vehiclePos={currentVehiclePosition}
@@ -1286,6 +1345,11 @@ export default function EmergencyPage() {
                   </Marker>
                 )}
 
+                {/* ALTERNATIVE ROUTES / FLOTILLA */}
+                {isMajorIncident && activeFlotilla.map((flot, idx) => (
+                   <Polyline key={'flot-'+idx} positions={flot.coords} color={flot.color} weight={4} dashArray="8, 8" opacity={0.6} />
+                ))}
+                
                 {/* Marqueurs des Carrefours / Feux Tricolores */}
                 {currentIntersections.map((int, idx) => {
                   const isGreenWave = int.state === "green_wave";

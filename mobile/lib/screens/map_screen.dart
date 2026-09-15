@@ -1274,7 +1274,7 @@ class _MapScreenState extends State<MapScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => WazeReportGridModal(
         selectedCity: provider.selectedCity,
-        onReportSubmitted: (category, severity, title, location) async {
+        onReportSubmitted: (category, severity, title, location, photoBase64) async {
           final scaffoldMessenger = ScaffoldMessenger.of(context);
           final pos = provider.userRealPosition ?? provider.currentCityCenter;
 
@@ -1284,6 +1284,7 @@ class _MapScreenState extends State<MapScreen> {
             category: category,
             severity: severity,
             position: pos,
+            photoBase64: photoBase64,
           );
 
           scaffoldMessenger.showSnackBar(

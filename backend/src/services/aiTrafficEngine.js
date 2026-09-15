@@ -186,6 +186,39 @@ export const LOCAL_EVENTS = {
     description: "Blocage momentané des grands boulevards pour le passage de convois sécurisés et d'autorités.",
     targetedNodes: ["yde_poste_centrale", "yde_bastos", "yde_warda", "dla_bonanjo"],
   },
+  church_sunday_rush: {
+    id: "church_sunday_rush",
+    label: "Sortie des Églises & Paroisses (Dimanche)",
+    shortLabel: "Sortie Églises",
+    icon: "⛪",
+    baseCongestionBoost: 38,
+    speedFactor: 0.55,
+    typicalDays: [0], // Dimanche uniquement
+    description: "Forte affluence piétonne et stationnement sauvage aux abords des basiliques et grandes paroisses en fin de matinée.",
+    targetedNodes: ["yde_mvolye", "yde_mokolo", "yde_biyem_assi", "dla_akwa", "dla_deido"],
+  },
+  heavy_trucks_port_jam: {
+    id: "heavy_trucks_port_jam",
+    label: "Embouteillage de Gros Porteurs / Grumiers",
+    shortLabel: "Gros Porteurs",
+    icon: "🚛",
+    baseCongestionBoost: 60,
+    speedFactor: 0.20,
+    typicalDays: [1, 2, 3, 4, 5],
+    description: "Camions de marchandises et grumiers bloquant la circulation, fréquent près du port autonome et des zones industrielles.",
+    targetedNodes: ["dla_bonaberi", "dla_ndokoti", "dla_zone_portuaire", "yde_nsam", "yde_ahala"],
+  },
+  potholes_degraded_road: {
+    id: "potholes_degraded_road",
+    label: "Axe Fortement Dégradé (Nids de poule)",
+    shortLabel: "Nids de poule",
+    icon: "🕳️",
+    baseCongestionBoost: 25,
+    speedFactor: 0.45,
+    typicalDays: [0, 1, 2, 3, 4, 5, 6], // Permanent
+    description: "Trafic ralenti à cause d'une chaussée fortement dégradée obligeant les véhicules à slalomer ou rouler au pas.",
+    targetedNodes: ["yde_ekounou", "yde_mendong", "dla_bepanda", "dla_makepe"],
+  }
 };
 
 // --- INFRASTRUCTURE ROUTIÈRE & QUALITÉ DES CHAUSSÉES DE YAOUNDÉ ET DOUALA ---

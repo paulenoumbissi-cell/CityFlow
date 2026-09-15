@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../constants/city_data.dart';
@@ -123,11 +124,35 @@ class LocationService {
   }
 
   /// Obtient un flux de positions GPS continues pour la navigation en temps réel
-  static Stream<Position> getPositionStream() {
+  /// Utilise la précision maximale et le foreground service Android pour un suivi fiable
+  static Stream<Position> getPositionStream({bool navigationMode = false}) {
+    if (Platform.isAndroid) {
+      return Geolocator.getPositionStream(
+        locationSettings: AndroidSettings(
+          accuracy: navigationMode
+              ? LocationAccuracy.bestForNavigation
+              : LocationAccuracy.high,
+          distanceFilter: navigationMode ? 1 : 3,
+          forceLocationManager: false,
+          intervalDuration: navigationMode
+              ? const Duration(milliseconds: 500)
+              : const Duration(seconds: 1),
+          foregroundNotificationConfig: const ForegroundNotificationConfig(
+            notificationTitle: 'CityFlow Navigation',
+            notificationText: 'Guidage GPS en cours...',
+            enableWakeLock: true,
+          ),
+        ),
+      );
+    }
+
+    // iOS et autres plateformes
     return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 2,
+      locationSettings: LocationSettings(
+        accuracy: navigationMode
+            ? LocationAccuracy.bestForNavigation
+            : LocationAccuracy.high,
+        distanceFilter: navigationMode ? 1 : 3,
       ),
     );
   }

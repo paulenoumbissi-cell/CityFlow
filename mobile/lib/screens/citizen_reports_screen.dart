@@ -60,13 +60,14 @@ class _CitizenReportsScreenState extends State<CitizenReportsScreen>
       backgroundColor: Colors.transparent,
       builder: (ctx) => WazeReportGridModal(
         selectedCity: provider.selectedCity,
-        onReportSubmitted: (category, severity, title, location) async {
+        onReportSubmitted: (category, severity, title, location, photoBase64) async {
           final scaffoldMessenger = ScaffoldMessenger.of(context);
           final ok = await provider.addCitizenReport(
             title: title,
             locationDescription: location,
             category: category,
             severity: severity,
+            photoBase64: photoBase64,
           );
           scaffoldMessenger.showSnackBar(
             SnackBar(

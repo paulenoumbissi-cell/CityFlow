@@ -140,8 +140,20 @@ export default function CommunityPage() {
     category: "trafficBlock",
     severity: "moderate",
     locationDescription: "",
+    photoBase64: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, photoBase64: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Modal de souscription avec paiement
   const [subscribeModal, setSubscribeModal] = useState(null); // { plan, rewardTier }
@@ -272,6 +284,7 @@ export default function CommunityPage() {
           category: "trafficBlock",
           severity: "moderate",
           locationDescription: "",
+          photoBase64: null,
         });
         fetchData();
       } else {
@@ -1037,6 +1050,23 @@ export default function CommunityPage() {
                   onChange={(e) => setFormData({ ...formData, locationDescription: e.target.value })}
                   required
                 />
+              </div>
+
+              {/* Photo optionnelle */}
+              <div className="form-group">
+                <label>Joindre une photo (optionnel)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="photo-upload-input"
+                />
+                {formData.photoBase64 && (
+                  <div className="photo-preview-msg" style={{ color: "#10B981", fontSize: "0.85rem", marginTop: "5px" }}>
+                    <CheckCircle size={14} style={{ display: "inline", marginRight: "4px" }} />
+                    Photo jointe avec succès.
+                  </div>
+                )}
               </div>
 
               {/* Règle Anti-Abus Reminder */}

@@ -1,0 +1,144 @@
+TROISIÈME PARTIE : ÉTUDE TECHNIQUE ET IMPLÉMENTATION DE LA SOLUTION
+CHAPITRE 1 : ÉTUDE TECHNIQUE
+Ce chapitre présente l’étude technique de CityFlow, depuis l’identification des besoins nécessaires à sa réalisation jusqu’à la conception générale et détaillée de la solution. Il décrit les ressources matérielles et logicielles mobilisées, les choix technologiques effectués, les fonctionnalités attendues ainsi que l’architecture retenue pour assurer le fonctionnement de l’application. L’objectif est de disposer d’une base technique cohérente avant de passer à l’implémentation de la solution.
+1.1. ANALYSE TECHNIQUE
+1.1.1. Spécification des besoins
+La spécification des besoins constitue une étape essentielle de la conception de CityFlow. Elle permet de traduire les besoins identifiés auprès des utilisateurs en exigences techniques et fonctionnelles pouvant être prises en compte lors de la réalisation de l’application. Les besoins retenus sont regroupés en besoins matériels, logiciels, cartographiques, météorologiques, en données, humains et réseau.
+a) Besoins matériels
+La réalisation de CityFlow nécessite des ordinateurs suffisamment performants pour assurer le développement, la compilation, le débogage et les tests de l’application. Les postes de travail doivent notamment permettre l’exécution simultanée de l’environnement de développement, des outils de programmation, des émulateurs Android et des services nécessaires au backend.
+Des smartphones Android sont également nécessaires pour tester l’application dans des conditions proches de son utilisation réelle. Ces équipements permettent notamment de vérifier l’affichage, la géolocalisation, les performances de l’interface et le comportement des fonctionnalités de navigation.
+Pour les fonctionnalités liées à la localisation, les terminaux de test doivent disposer d’un GPS fonctionnel. Les tests peuvent être complétés par des émulateurs lorsque certaines configurations doivent être reproduites de manière contrôlée.
+b) Besoins logiciels et outils de développement
+Le développement de CityFlow repose sur plusieurs outils logiciels correspondant aux différentes composantes de la solution. L’application mobile est développée avec Flutter et le langage Dart. Android Studio est utilisé comme environnement de développement intégré (IDE) pour éditer le projet, gérer les dépendances, compiler l’application, exécuter les émulateurs et effectuer les tests et le débogage sur les terminaux Android. [Source : Android Developers, documentation officielle d’Android Studio, 2026.]
+Le backend repose sur Node.js et expose les services nécessaires à l’application. Express.js peut être utilisé pour structurer les API, tandis que les WebSockets assurent les échanges en temps réel nécessaires notamment aux alertes d’urgence. PostgreSQL et SQLite sont retenus pour la gestion des données relatives aux utilisateurs, aux itinéraires, aux incidents et aux signalements. 
+Les outils de gestion de versions, notamment Git et GitHub, permettent de conserver l’historique du code source, de gérer les différentes versions et de faciliter le travail collaboratif entre les membres de l’équipe.
+c) Services cartographiques
+CityFlow nécessite un service cartographique pour l’affichage des cartes, la localisation des utilisateurs et le calcul des itinéraires. Le projet s’appuie sur des données cartographiques issues notamment d’OpenStreetMap et sur des outils de visualisation tels que Leaflet. Le moteur OSRM (Open Source Routing Machine) est utilisé pour le calcul des itinéraires et permet d’adapter le routage aux informations disponibles sur l’état du réseau routier.
+d) Service météorologique
+Les conditions météorologiques peuvent influencer fortement la circulation, notamment pendant les épisodes de fortes pluies. CityFlow prévoit donc l’intégration d’une API météorologique afin de récupérer les informations relatives aux conditions de pluie et aux autres paramètres utiles. Ces données peuvent être exploitées pour informer les utilisateurs et contribuer, lorsque cela est techniquement possible, à l’amélioration de la prédiction des conditions de circulation.
+e) Besoins en données
+Le fonctionnement de CityFlow dépend de la disponibilité de données relatives à la circulation, aux incidents, aux itinéraires, aux conditions météorologiques, aux périodes de forte circulation et aux déplacements. Les signalements effectués par les utilisateurs constituent également une source d’information permettant d’actualiser l’état du réseau routier. L’exploitation de ces données doit respecter les règles applicables à la protection et à la confidentialité des informations des utilisateurs.
+f) Besoins humains
+La réalisation du projet nécessite des compétences complémentaires en développement mobile, développement backend, gestion de bases de données, intelligence artificielle et analyse des données, conception d’interfaces, tests, déploiement et gestion de projet. La répartition des responsabilités facilite le développement parallèle des différents composants de CityFlow.
+g) Besoins réseau
+La solution nécessite une connectivité réseau permettant aux terminaux mobiles de communiquer avec le serveur. Les échanges concernent notamment la transmission des positions, les demandes d’itinéraire, les signalements et les alertes. L’utilisation d’une architecture adaptée aux connexions mobiles doit permettre de limiter la quantité de données échangées et de maintenir un fonctionnement acceptable lorsque la qualité du réseau varie.
+Tableau 1.1 – Synthèse des besoins techniques
+Source : Auteurs, 2026.
+Cette identification montre que les principales ressources nécessaires à la réalisation de CityFlow sont accessibles et compatibles avec une architecture moderne d’application mobile. Toutefois, leur disponibilité doit être accompagnée d’exigences précises concernant les fonctionnalités, la performance, la sécurité et la disponibilité du système.
+1.1.2. Spécifications des besoins fonctionnels
+Les besoins fonctionnels décrivent les services que CityFlow doit fournir à ses utilisateurs. Ils concernent principalement la planification des déplacements, la navigation, les signalements participatifs, la gestion des situations d’urgence et l’administration de la plateforme.
+Source : Auteurs, 2026.
+1.1.3. Spécifications des besoins non fonctionnels
+Les besoins non fonctionnels définissent les contraintes de qualité auxquelles CityFlow doit répondre. Ils concernent notamment la performance, la disponibilité, la sécurité, la facilité d’utilisation, la maintenabilité et l’évolutivité de la solution.
+Source : Auteurs, 2026.
+1.1.4. Conception des modules
+CityFlow adopte une conception modulaire afin de séparer les principales responsabilités du système. Cette organisation facilite l’évolution de la plateforme et limite les dépendances entre les composants.
+Le module de navigation assure la recherche et l’affichage des itinéraires. Le module de prédiction exploite les données disponibles afin d’estimer l’état du trafic. Le module de signalement collecte les informations transmises par les utilisateurs et permet leur prise en compte dans l’évaluation du réseau. Le module d’urgence gère le déclenchement et la diffusion des alertes liées à l’Onde Verte. Enfin, le backend centralise la logique métier, les échanges avec la base de données et les communications avec les services externes.
+Cette séparation permet de traiter les calculs complexes côté serveur et de limiter la charge du terminal mobile. Les résultats nécessaires à l’application sont ensuite transmis sous une forme exploitable par le client.
+1.1.5. Conception de l’application mobile
+L’application CityFlow est conçue selon une architecture client-serveur. Le client mobile, développé avec Flutter et Dart, constitue l’interface utilisée par les usagers. Android Studio intervient comme environnement de développement pour l’édition du code, la compilation, l’exécution et le débogage de l’application sur les environnements Android. [Source : Android Developers, documentation officielle d’Android Studio, 2026.] [Source : Flutter Documentation, 2026.]
+La gestion de l’état de l’application s’appuie sur Provider afin de maintenir la cohérence entre les différentes vues. Les informations relatives au trafic, aux itinéraires, aux signalements et aux alertes peuvent ainsi être répercutées dans les composants concernés de l’interface.
+Le backend assure la réception des requêtes, l’application des règles métier, le traitement des données et la communication avec les services externes. Les WebSockets sont utilisés lorsque des échanges en temps réel sont nécessaires, notamment pour les alertes d’urgence.
+1.1.6. Description fonctionnelle de CityFlow
+Du point de vue fonctionnel, CityFlow s’articule autour de quatre ensembles de services.
+1. Planification et navigation : l’utilisateur renseigne sa destination et, lorsque nécessaire, son heure de départ ou d’arrivée. L’application recherche un itinéraire et présente les possibilités de déplacement en tenant compte des informations disponibles sur le trafic.
+2. Signalements participatifs : l’utilisateur peut déclarer un événement affectant la circulation, par exemple un accident, une inondation ou une route barrée. Le signalement est transmis au serveur afin d’être enregistré et pris en compte dans le traitement du réseau.
+3. Mode urgence et Onde Verte : un utilisateur habilité appartenant aux services de secours peut déclencher le mode urgence. Le serveur identifie le corridor concerné et diffuse une alerte aux usagers situés sur le trajet afin de faciliter le passage du véhicule d’intervention.
+4. Administration et traitement des données : le serveur centralise les données de la plateforme, applique les règles métier, met à jour l’état des segments routiers et fournit les services nécessaires aux applications clientes.
+1.1.7. Motivation des choix technologiques
+Les choix technologiques ont été effectués en fonction des besoins du projet, de la facilité d’intégration, de la performance attendue et de la possibilité de faire évoluer la solution.
+• Flutter et Dart : le choix de Flutter permet de développer l’application mobile à partir d’une base de code unique tout en disposant d’une interface riche et adaptée aux terminaux mobiles. [Source : Flutter Documentation, 2026.]
+• Android Studio : cet IDE a été utilisé pour éditer le projet, gérer le développement Flutter, exécuter l’application sur émulateur ou smartphone Android, consulter les journaux d’exécution et faciliter les opérations de débogage et de test. [Source : Android Developers, documentation officielle d’Android Studio, 2026.]
+• Node.js et Express.js : ils permettent de construire le backend et les API nécessaires à la communication entre l’application mobile et le serveur. [Source : Node.js Documentation, 2026.]
+• WebSockets : cette technologie est adaptée aux échanges nécessitant une notification rapide et bidirectionnelle, notamment dans le cadre de la fonctionnalité Onde Verte.
+• PostgreSQL et SQLite : ces bases de données permettent de conserver les informations relatives aux utilisateurs, aux itinéraires, aux incidents et aux signalements. 
+• OpenStreetMap, Leaflet et OSRM : cet ensemble permet de disposer des données cartographiques, de les afficher et de calculer les itinéraires. [Source : documentation OSRM et outils cartographiques utilisés par le projet, 2026.]
+• Git et GitHub : ils facilitent le suivi des modifications, la collaboration et la conservation des différentes versions du projet.
+1.2. ANALYSE DU MODÈLE DE DÉVELOPPEMENT EMPLOYÉ
+1.2.1. Modèle de développement SCRUM
+Compte tenu de la complexité d’une application de gestion du trafic en temps réel et de la nécessité d’adapter progressivement les fonctionnalités aux résultats des tests, CityFlow est développé selon une démarche Agile Scrum. Cette approche permet d’organiser le travail en itérations courtes et de livrer progressivement des fonctionnalités utilisables.
+Scrum repose notamment sur un Product Backlog, la planification des Sprints, des réunions quotidiennes, une revue de Sprint et une rétrospective. Dans le cadre de CityFlow, cette organisation permet de développer progressivement la cartographie, la navigation, les signalements, la prédiction du trafic et la fonctionnalité Onde Verte.
+1.2.2. Cycle de vie de Scrum appliqué à CityFlow
+Le cycle de développement retenu comprend les étapes suivantes :
+1. Product Backlog : identification et priorisation des fonctionnalités sous forme de besoins et de User Stories.
+2. Sprint Planning : sélection des fonctionnalités prioritaires à réaliser pendant le Sprint.
+3. Sprint et Daily Scrum : développement, intégration et suivi quotidien des travaux.
+4. Sprint Review : présentation de l’incrément réalisé et vérification de son adéquation avec les besoins.
+5. Sprint Retrospective : analyse des difficultés rencontrées et définition des améliorations à apporter au Sprint suivant.
+
+Figure 1.1 – Cycle de développement Scrum appliqué au projet CityFlow.
+Source : conception des auteurs, d’après Schwaber et Sutherland (2020), The Scrum Guide.
+Source : Auteurs, 2026.
+1.2.3. Équipe de développement
+L’organisation de l’équipe s’appuie sur les rôles classiques de Scrum. Le Product Owner porte la vision du produit et priorise les besoins. Le Scrum Master facilite l’application de la démarche et contribue à la résolution des obstacles. L’équipe de développement assure la conception, le développement, l’intégration, les tests et la correction des anomalies.
+1.2.4. Intérêt de Scrum pour CityFlow
+L’utilisation de Scrum permet de réduire les risques liés à un développement long et entièrement séquentiel. Elle facilite notamment l’intégration progressive des fonctionnalités, la détection précoce des anomalies et l’adaptation du produit à partir des résultats des tests. Cette approche est particulièrement pertinente pour CityFlow, dont certaines fonctionnalités, telles que le routage dynamique et les alertes d’urgence, nécessitent des essais et des ajustements successifs.
+1.3. CONCEPTION GÉNÉRALE
+1.3.1. Conception matérielle
+CityFlow étant principalement une solution logicielle, son fonctionnement repose sur des terminaux mobiles, des postes de développement et une infrastructure serveur. Les smartphones assurent la collecte de la position GPS, l’affichage de la carte et l’interaction avec l’utilisateur. Le serveur héberge les services backend et les composants nécessaires au traitement des données.
+Aucun dispositif physique spécifique n’est nécessaire pour le fonctionnement de l’Onde Verte : la fonctionnalité est implémentée au niveau logiciel et repose sur la communication entre les terminaux mobiles et le serveur.
+1.3.2. Architecture de fonctionnement
+1.3.2.1. Architecture matérielle et réseau
+L’architecture matérielle met en relation les smartphones des utilisateurs, le réseau mobile ou Internet et le serveur. Le smartphone fournit les données de localisation et transmet les requêtes. Le réseau assure le transport des données, tandis que le serveur traite les informations et renvoie les résultats vers les terminaux.
+
+Figure 1.2 – Architecture matérielle et réseau de CityFlow.
+Source : conception des auteurs à partir des spécifications techniques du projet CityFlow.
+Source : Auteurs, 2026.
+1.3.2.2. Architecture logicielle
+L’architecture logicielle de CityFlow est organisée autour de plusieurs couches complémentaires. La couche de présentation correspond à l’application Flutter. La couche métier regroupe les services backend et les règles de traitement. La couche de données correspond à PostgreSQL. Les services cartographiques et de routage fournissent les informations nécessaires à la navigation. Enfin, une couche de communication temps réel est utilisée pour les alertes et les événements nécessitant une transmission rapide. 
+
+Figure 1.3 – Architecture logicielle globale de CityFlow.
+Source : conception des auteurs ; documentation officielle Flutter, Node.js et MongoDB. 
+Source : Auteurs, 2026.
+1.3.3. Flux général de fonctionnement
+Lorsqu’un utilisateur demande un itinéraire, l’application mobile transmet sa position, sa destination et les paramètres nécessaires au serveur. Le backend traite la demande, interroge les données disponibles et sollicite le moteur de routage. Le résultat est ensuite retourné à l’application pour affichage.
+Lorsqu’un utilisateur signale un incident, les informations sont transmises au serveur, enregistrées puis exploitées pour actualiser l’état du réseau. Dans le cas d’une urgence, le déclenchement du mode Onde Verte entraîne une diffusion temps réel de l’alerte vers les usagers concernés.
+1.4. CONCEPTION DÉTAILLÉE
+1.4.1. Diagramme de cas d’utilisation
+Le diagramme de cas d’utilisation permet de représenter les interactions entre CityFlow et ses principaux acteurs. Il permet de délimiter les services offerts par la plateforme et de préciser les responsabilités de chaque catégorie d’utilisateur.
+Les principaux acteurs sont l’usager civil, qui utilise les services de navigation et de signalement ; l’utilisateur des services d’urgence, qui dispose de droits supplémentaires pour activer le mode Onde Verte ; et le serveur central, qui assure le traitement automatisé des données, du routage et des alertes.
+Les principaux cas d’utilisation sont : s’authentifier, rechercher un itinéraire, planifier un trajet, lancer la navigation, signaler un incident, consulter les informations de trafic, activer le mode urgence et recevoir une alerte Onde Verte.
+
+Figure 1.4 – Diagramme de cas d’utilisation de CityFlow.
+Source : conception des auteurs à partir des besoins fonctionnels du projet CityFlow.
+Source : Auteurs, 2026.
+1.4.2. Diagramme de séquence
+Les diagrammes de séquence permettent de représenter l’enchaînement temporel des échanges entre les acteurs et les composants du système. Ils permettent notamment de décrire le processus de recherche d’itinéraire, de signalement d’un incident et d’activation de l’Onde Verte.
+Dans le scénario de recherche d’itinéraire, l’utilisateur saisit une destination, l’application transmet la demande au backend, le serveur traite les informations disponibles et sollicite le service de routage. Le résultat est ensuite transmis à l’application mobile pour être présenté à l’utilisateur.
+Dans le scénario d’urgence, l’utilisateur habilité active le mode urgence. Le serveur reçoit l’événement, détermine le corridor d’intervention et transmet une alerte aux usagers concernés. Ceux-ci sont invités à libérer la voie afin de faciliter le passage du véhicule de secours.
+
+Figure 1.5 – Diagramme de séquence de l’activation de l’Onde Verte.
+Source : conception des auteurs à partir du scénario fonctionnel de l’Onde Verte.
+Source : Auteurs, 2026.
+1.4.3. Diagramme de classes
+Le diagramme de classes représente la structure statique de CityFlow. Il permet d’identifier les principales entités, leurs attributs et les relations entre elles. Parmi les entités principales figurent User, CivilUser, EmergencyUser, ScheduledTrip, TrafficEvent et EmergencyMission.
+La classe User constitue la base commune des utilisateurs. Les classes CivilUser et EmergencyUser spécialisent les comportements selon le profil. ScheduledTrip conserve les informations relatives à un trajet planifié. TrafficEvent représente un événement ou incident signalé. EmergencyMission représente une intervention d’urgence et les informations nécessaires à la gestion de son corridor.
+
+Figure 1.6 – Diagramme de classes de CityFlow.
+Source : conception des auteurs à partir du modèle fonctionnel de CityFlow.
+Source : Auteurs, 2026.
+1.4.4. Diagramme d’objets
+Le diagramme d’objets présente des instances concrètes des classes à un instant donné. Dans CityFlow, il peut notamment représenter la situation dans laquelle un utilisateur des services d’urgence déclenche une mission et où un événement de circulation est associé au trajet.
+
+Figure 1.7 – Diagramme d’objets de CityFlow.
+1.4.5. Objectifs de la modélisation
+La modélisation UML constitue une étape importante avant et pendant l’implémentation. Elle permet de clarifier les besoins, de structurer l’architecture et de réduire les risques d’incohérence entre les différentes composantes de la solution.
+Elle permet également de faciliter la communication entre les membres de l’équipe, de documenter le fonctionnement du système et de préparer l’évolution future de CityFlow. Les diagrammes servent ainsi de support à la conception, au développement, aux tests et à la maintenance de l’application.
+1.5. SYNTHÈSE DU CHAPITRE
+L’étude technique de CityFlow a permis d’identifier les ressources nécessaires, de formaliser les besoins fonctionnels et non fonctionnels et de justifier les principaux choix technologiques. L’architecture retenue repose sur une application mobile Flutter développée et testée notamment à l’aide d’Android Studio, un backend Node.js, une base de données PostgreSQL, des services cartographiques et un mécanisme de communication temps réel par WebSockets. [Source : Android Developers, documentation officielle d’Android Studio, 2026.] 
+La démarche Agile Scrum retenue permet de développer progressivement les fonctionnalités et de les valider par itérations. La conception générale et la modélisation UML fournissent enfin le cadre nécessaire à l’implémentation détaillée de la solution. Le chapitre suivant sera consacré à la réalisation et à l’implémentation des différents composants de CityFlow.
+
+Références et sources techniques
+[1] SCHWABER, K. et SUTHERLAND, J. (2020). The Scrum Guide: The Definitive Guide to Scrum. Version officielle, novembre 2020.
+https://scrumguides.org/scrum-guide.html
+[2] FLUTTER. Documentation officielle de Flutter : développement d’applications multiplateformes, widgets, API et architecture.
+https://docs.flutter.dev/
+[3] ANDROID DEVELOPERS. Android Studio : environnement de développement intégré, émulateur et outils de test.
+https://developer.android.com/studio/intro
+[4] NODE.JS. Documentation officielle de Node.js : environnement d’exécution JavaScript côté serveur et API.
+https://nodejs.org/api/
+[5] POSTGRESQL. Documentation officielle : base de données relationnelle, modélisation, opérations CRUD et administration.
+https://www.postgresql.org/docs/
+[6] PROJECT-OSRM. Open Source Routing Machine : moteur de calcul d’itinéraires open source.
+https://project-osrm.org/
+Précision sur les figures : les diagrammes insérés dans ce chapitre sont des productions originales des auteurs réalisées pour représenter l’architecture et les fonctionnalités de CityFlow. Les références externes documentent les méthodes et technologies mobilisées ; elles ne constituent pas des sources de reproduction des figures.

@@ -1,0 +1,119 @@
+TROISIÈME PARTIE : ÉTUDE TECHNIQUE ET IMPLÉMENTATION DE LA SOLUTION
+Cette partie présente la conception technique de CityFlow, puis sa mise en œuvre, son déploiement de test et la validation des principales fonctionnalités.
+CHAPITRE 5 : ÉTUDE TECHNIQUE
+Ce chapitre présente les considérations techniques nécessaires à la réalisation de CityFlow. Il reprend une organisation progressive allant de l’analyse des besoins à la conception générale et détaillée, puis aux choix technologiques et aux exigences de sécurité, de performance et de maintenance. Cette démarche permet de disposer d’une base cohérente avant la phase d’implémentation.
+5.1 Analyse des besoins
+L’analyse des besoins permet de traduire les attentes des utilisateurs en fonctionnalités et en contraintes techniques. Pour CityFlow, elle porte principalement sur la navigation, la planification des trajets, les signalements participatifs, la gestion des situations d’urgence, les alertes et l’administration de la plateforme.
+5.1.1 Description fonctionnelle globale
+CityFlow est une solution mobile de gestion intelligente de la mobilité urbaine. Elle met en relation une application mobile, un backend central, une base de données et des services externes de cartographie, de routage et de météorologie. Le terminal mobile fournit notamment la position GPS et les interactions de l’utilisateur. Le serveur traite les requêtes, applique la logique métier et retourne les résultats nécessaires à l’application.
+La solution prend également en charge un mode d’urgence. Lorsqu’un utilisateur habilité déclenche l’Onde Verte, le système identifie le corridor concerné et diffuse des informations aux usagers situés sur le trajet. Cette fonction repose sur les échanges temps réel entre les terminaux et le serveur.
+5.1.2 Besoins fonctionnels
+Tableau 5.1 – Besoins fonctionnels de CityFlow
+Source : Auteurs, 2026.
+5.1.3 Besoins non fonctionnels
+Tableau 5.2 – Besoins non fonctionnels de CityFlow
+Source : Auteurs, 2026.
+5.2 Conception générale
+La conception générale traduit les besoins précédemment identifiés en une architecture structurée. Elle précise les principaux composants de CityFlow, leurs responsabilités et les échanges nécessaires au fonctionnement de la plateforme.
+5.2.1 Présentation générale de la solution
+La solution s’appuie sur une architecture client-serveur. L’application mobile, développée avec Flutter et Dart, constitue la couche de présentation. Le backend Node.js/Express.js assure la logique métier et les API. MongoDB assure la conservation des données. Les services cartographiques, de routage et météorologiques complètent l’écosystème.
+
+Figure 5.1 – Architecture générale de fonctionnement de CityFlow.
+Source : conception des auteurs, 2026.
+5.2.2 Architecture logicielle en trois tiers
+Pour clarifier la séparation des responsabilités, CityFlow peut être présenté suivant une architecture en trois tiers : présentation, logique métier et données. Cette organisation facilite la maintenance et limite les dépendances directes entre l’interface utilisateur et les données.
+
+Figure 5.2 – Architecture logicielle en trois tiers de CityFlow.
+Source : conception des auteurs, 2026.
+5.3 Conception détaillée
+La conception détaillée précise les composants internes et les interactions entre eux. Elle permet de préparer l’implémentation en décrivant les exigences, les modules, les cas d’utilisation, les échanges temporels, les classes et les états de la fonctionnalité Onde Verte.
+5.3.1 Diagramme des exigences
+Le diagramme des exigences synthétise les attentes fonctionnelles et non fonctionnelles et leur traduction dans la solution CityFlow.
+
+Figure 5.3 – Diagramme des exigences de CityFlow.
+Source : conception des auteurs, 2026.
+5.3.2 Modules de l’application
+Tableau 5.3 – Principaux modules de CityFlow
+Source : Auteurs, 2026.
+5.3.3 Diagramme de cas d’utilisation
+Le diagramme de cas d’utilisation représente les interactions entre les principaux acteurs et CityFlow. Les acteurs retenus sont l’usager civil et le chauffeur d’urgence. Les services principaux couvrent l’authentification, la consultation de la carte, la recherche et la planification d’itinéraires, le signalement d’incidents, les alertes et l’Onde Verte.
+
+Figure 5.4 – Diagramme de cas d’utilisation de CityFlow.
+Source : conception des auteurs, 2026.
+5.3.4 Diagramme de classes
+Le diagramme de classes représente la structure statique du système. La classe User constitue la base commune des utilisateurs. Les classes CivilUser et EmergencyUser spécialisent les comportements selon le profil. ScheduledTrip représente un trajet planifié, TrafficEvent un événement de circulation et EmergencyMission une mission d’urgence associée à un corridor.
+
+Figure 5.5 – Diagramme de classes simplifié de CityFlow.
+Source : conception des auteurs, 2026.
+5.3.5 Diagramme de séquence
+Le diagramme de séquence décrit l’enchaînement temporel d’une activation de l’Onde Verte. Le chauffeur d’urgence active le mode urgence, l’application transmet la demande au backend, celui-ci valide le corridor puis communique avec le système de feux et les usagers concernés. Les retours sont ensuite utilisés pour mettre à jour le statut de l’intervention.
+
+Figure 5.6 – Diagramme de séquence de l’activation de l’Onde Verte.
+Source : conception des auteurs, 2026.
+5.3.6 Diagramme d’états-transition
+Le diagramme d’états-transition permet de représenter les états successifs de la fonctionnalité Onde Verte : état inactif, demande émise, validation, activation, fin de mission ou refus. Cette représentation facilite la compréhension des transitions prévues par le système.
+
+Figure 5.7 – Diagramme d’états-transition de l’Onde Verte.
+Source : conception des auteurs, 2026.
+5.4 Choix des technologies et équipements
+Les choix technologiques ont été effectués en fonction des besoins de mobilité, de communication avec le serveur, de traitement des données, de cartographie, de temps réel et de facilité de développement et de test.
+Tableau 5.4 – Technologies et outils retenus
+Source : Auteurs, 2026.
+5.5 Sécurité, performance et maintenance
+5.5.1 Sécurité
+La sécurité vise à protéger les comptes, les données et les échanges entre l’application et les services du système. Les mesures retenues comprennent l’authentification, le contrôle des accès, la validation des données et la sécurisation des API. Les communications sensibles doivent être protégées par des protocoles sécurisés tels que HTTPS et, pour les échanges temps réel, WSS.
+5.5.2 Performance
+La performance de CityFlow dépend notamment du temps de réponse des API, de la qualité de la connexion mobile, de la quantité de données échangées et de la rapidité du traitement des itinéraires et des alertes. La séparation entre le terminal mobile et le backend permet de déporter les traitements qui ne nécessitent pas d’être réalisés localement.
+5.5.3 Maintenance
+La maintenance porte sur le code, les dépendances, les services externes, les données et les fonctionnalités de l’application. La modularité retenue facilite la correction des anomalies et l’ajout progressif de nouvelles fonctionnalités.
+5.6 Synthèse du chapitre
+Ce chapitre a permis de définir les besoins fonctionnels et non fonctionnels de CityFlow, puis de présenter l’architecture générale et détaillée de la solution. Les principaux composants — application mobile Flutter/Dart, Android Studio pour le développement et les tests Android, backend Node.js/Express.js, MongoDB, services cartographiques et communication temps réel — ont été positionnés selon leurs responsabilités. Les modèles UML proposés servent de support à la phase de réalisation et de validation.
+
+CHAPITRE 6 : DÉPLOIEMENT ET SIMULATION
+Ce chapitre présente la mise en œuvre pratique de CityFlow à partir de l’architecture définie précédemment. Il décrit l’organisation du travail, la préparation de l’environnement de développement, le développement des différents composants, les tests sur émulateur et smartphone Android ainsi que les principales contraintes rencontrées. Les résultats chiffrés de performance ne sont pas présentés lorsqu’aucune mesure n’a été fournie dans les documents de travail.
+6.1 Préparation et organisation
+6.1.1 Répartition des tâches
+Le développement a nécessité une répartition des responsabilités autour de plusieurs domaines : développement mobile, développement backend, gestion des données, intégration des services cartographiques, conception des interfaces, tests et documentation. Cette organisation permet de travailler en parallèle tout en conservant une intégration commune autour du backend.
+Tableau 6.1 – Répartition fonctionnelle des responsabilités
+Source : Auteurs, 2026.
+6.1.2 Mobilisation des ressources
+Les ressources mobilisées comprennent les postes de développement, les smartphones Android, les émulateurs, la connexion Internet, les environnements Flutter et Android Studio, ainsi que les services nécessaires au backend, à la base de données, au routage et à la météo.
+6.1.3 Contraintes identifiées en amont
+Tableau 6.2 – Contraintes et mesures de prise en compte
+Source : Auteurs, 2026.
+6.2 Mise en place de l’environnement de développement
+6.2.1 Installation et configuration des outils
+L’environnement de développement mobile a été configuré autour de Flutter/Dart et d’Android Studio. Android Studio a été utilisé pour éditer le projet, gérer son exécution sur émulateur ou smartphone Android, observer les journaux d’exécution et faciliter le débogage. Le backend a été préparé avec Node.js et Express.js, tandis que MongoDB constitue le système de gestion des données.
+6.2.2 Gestion des versions et collaboration
+Git et GitHub ont été retenus pour le suivi des versions du code source et la collaboration. Cette organisation permet de conserver l’historique des modifications et de limiter les risques liés aux changements simultanés.
+6.3 Développement de l’application mobile
+6.3.1 Création de l’interface utilisateur
+L’interface mobile est développée avec Flutter et Dart. Elle regroupe les écrans nécessaires à l’authentification, à la consultation de la carte, à la recherche d’itinéraire, à la planification du trajet, au signalement d’incidents et à la réception des alertes.
+Les captures réelles des interfaces de CityFlow peuvent être insérées dans cette section lorsque les captures définitives de l’application sont disponibles. Elles ne sont pas reproduites ici afin de ne pas fabriquer de résultats visuels qui ne figurent pas dans les documents fournis.
+6.3.2 Intégration du backend et de la base de données
+Le backend reçoit les requêtes de l’application mobile, applique les règles métier, traite les données et communique avec MongoDB. Les échanges structurés par API REST permettent notamment la gestion des utilisateurs, des trajets et des incidents.
+6.3.3 Intégration de la cartographie, du routage et du temps réel
+Les données cartographiques sont exploitées pour l’affichage et la localisation. Le moteur OSRM est utilisé pour le calcul des itinéraires. Les WebSockets interviennent lorsque des mises à jour rapides sont nécessaires, notamment pour les alertes d’urgence et l’Onde Verte.
+6.3.4 Tests et débogage
+Des tests fonctionnels et des opérations de débogage sont réalisés au cours du développement. Les essais peuvent être effectués sur émulateur Android puis sur smartphone réel afin de vérifier le comportement de l’application dans des conditions plus proches de l’utilisation finale.
+Tableau 6.3 – Scénarios de validation fonctionnelle
+Source : Auteurs, 2026.
+
+Figure 6.1 – Processus de mise en œuvre et de test de CityFlow.
+Source : conception des auteurs, 2026.
+6.4 Déploiement de test
+Le déploiement de test consiste à exécuter l’application sur un environnement Android contrôlé. Android Studio permet de lancer l’application sur un émulateur, tandis que les essais sur smartphone réel permettent de vérifier la compatibilité avec les caractéristiques matérielles et la localisation GPS. Cette étape constitue une validation intermédiaire avant toute mise en production.
+6.5 Limites rencontrées et solutions apportées
+Tableau 6.4 – Principales limites et réponses techniques
+Source : Auteurs, 2026.
+6.6 Synthèse du chapitre
+Le déploiement et la simulation de CityFlow s’appuient sur un environnement de développement composé principalement de Flutter/Dart, Android Studio, Node.js/Express.js, MongoDB, Git/GitHub et des services cartographiques et de routage. Les tests fonctionnels sont conduits sur émulateur et smartphone afin de vérifier progressivement les principales fonctionnalités. Cette phase permet d’identifier les problèmes liés notamment au réseau, au GPS, aux services externes et aux échanges temps réel, et de préparer les corrections nécessaires avant une utilisation à plus grande échelle.
+
+RÉFÉRENCES ET SOURCES TECHNIQUES
+[1] SCHWABER, K. et SUTHERLAND, J. (2020). The Scrum Guide: The Definitive Guide to Scrum.
+[2] FLUTTER. Documentation officielle de Flutter.
+[3] ANDROID DEVELOPERS. Documentation officielle d’Android Studio.
+[4] NODE.JS. Documentation officielle de Node.js.
+[5] MONGODB. Documentation officielle de MongoDB.
+[6] PROJECT-OSRM. Documentation officielle du moteur de routage OSRM.
+Remarque sur les figures et tableaux : les schémas de cette version sont des représentations originales et simplifiées de CityFlow, réalisées pour le présent mémoire. Aucun logo n’est intégré aux schémas. Les tableaux et descriptions sont construits à partir des éléments techniques disponibles dans le document CityFlow fourni.

@@ -247,6 +247,7 @@ class CityFlowMobileApiService {
     required CitizenReportSeverity severity,
     LatLng? position,
     String? author,
+    String? photoBase64,
   }) async {
     final hostsToTry = [_activeBaseUrl, ..._candidateHosts.where((h) => h != _activeBaseUrl)];
     final pos = position ?? const LatLng(3.8480, 11.5021);
@@ -264,6 +265,7 @@ class CityFlowMobileApiService {
             'severity': severity.name,
             'position': [pos.latitude, pos.longitude],
             'author': author ?? 'Paul Enoumbissi',
+            if (photoBase64 != null) 'photoBase64': photoBase64,
           }),
         ).timeout(const Duration(seconds: 3));
 
@@ -2455,113 +2457,72 @@ class CityFlowMobileApiService {
             }
           }
 
-          // Si OSRM n'a renvoyé qu'une route, générer les 2 variantes sécurisées et éco
+          // Si OSRM n'a renvoyé qu'une route, chercher une vraie alternative via waypoint intermédiaire décalé
           if (smartRoutes.length == 1) {
             final base = smartRoutes.first;
-            final ecoCoords = _generateSmoothCoordinates(start, end, 1, pointCount: 36);
-            final secureCoords = _generateSmoothCoordinates(start, end, 2, pointCount: 36);
+            try {
+              // Calculer un point intermédiaire décalé pour forcer un chemin différent
+              final midLat = (start.latitude + end.latitude) / 2;
+              final midLng = (start.longitude + end.longitude) / 2;
+              // Décalage perpendiculaire à la ligne start-end (~500m)
+              final dLat = end.latitude - start.latitude;
+              final dLng = end.longitude - start.longitude;
+              final perpLat = midLat + dLng * 0.08; // ~500-800m de décalage
+              final perpLng = midLng - dLat * 0.08;
 
-            smartRoutes.add(SmartRoute(
-              id: 'route_eco',
-              type: 'eco',
-              title: 'Via Rocade de Contournement Fluide',
-              badge: '🌿 Eco-Score A+ (-35% CO2)',
-              tag: 'Faible émission',
-              durationMinutes: base.durationMinutes + 2,
-              distanceKm: double.parse((base.distanceKm * 1.1).toStringAsFixed(1)),
-              delaySavedMinutes: 3,
-              co2SavedKg: 0.90,
-              ecoScore: 'A+',
-              congestionIndex: 22,
-              color: const Color(0xFF10B981),
-              fluidityLevel: 'fluid',
-              highlights: const ['Vitesse stabilisée sans arrêts fréquents', 'Économie de carburant maximale'],
-              coordinates: ecoCoords,
-              trafficSegments: _buildTrafficSegments(ecoCoords, 0.9),
-              steps: [
-                RouteStepInstruction(
-                  instruction: 'Départ en éco-conduite fluide',
-                  distance: '500 m',
-                  rawDistanceMeters: 500,
-                  action: 'depart',
-                  icon: 'navigation',
-                  maneuverIcon: 'navigation',
-                  spokenText: 'Départ en allure modérée.',
-                  position: ecoCoords.first,
-                ),
-                RouteStepInstruction(
-                  instruction: 'Prendre la rocade de contournement',
-                  distance: '${(base.distanceKm * 0.7).toStringAsFixed(1)} km',
-                  rawDistanceMeters: (base.distanceKm * 700).round(),
-                  action: 'turn',
-                  icon: 'arrow-up-left',
-                  maneuverIcon: 'arrow-up-left',
-                  spokenText: 'Prenez à gauche sur la rocade.',
-                  position: ecoCoords[ecoCoords.length ~/ 2],
-                ),
-                RouteStepInstruction(
-                  instruction: 'Arrivée à destination : $destLabel',
-                  distance: '200 m',
-                  rawDistanceMeters: 200,
-                  action: 'arrive',
-                  icon: 'map-pin',
-                  maneuverIcon: 'map-pin',
-                  spokenText: 'Vous êtes arrivé à votre destination.',
-                  position: ecoCoords.last,
-                ),
-              ],
-            ));
+              final altUri = Uri.parse(
+                'https://router.project-osrm.org/route/v1/driving/'
+                '${start.longitude},${start.latitude};'
+                '$perpLng,$perpLat;'
+                '${end.longitude},${end.latitude}'
+                '?overview=full&geometries=geojson&steps=true',
+              );
 
-            smartRoutes.add(SmartRoute(
-              id: 'route_secure',
-              type: 'secure',
-              title: 'Via Grands Boulevards Éclairés',
-              badge: '🛡️ Voie large & Éclairée',
-              tag: 'Sécurité max',
-              durationMinutes: base.durationMinutes + 4,
-              distanceKm: double.parse((base.distanceKm * 1.15).toStringAsFixed(1)),
-              delaySavedMinutes: 0,
-              co2SavedKg: 0.20,
-              ecoScore: 'B',
-              congestionIndex: 35,
-              color: const Color(0xFF3B82F6),
-              fluidityLevel: 'moderate',
-              highlights: const ['Chaussée bitumée en parfait état', 'Éclairage public continu'],
-              coordinates: secureCoords,
-              trafficSegments: _buildTrafficSegments(secureCoords, 1.1),
-              steps: [
-                RouteStepInstruction(
-                  instruction: 'Départ sur la voie prioritaire',
-                  distance: '400 m',
-                  rawDistanceMeters: 400,
-                  action: 'depart',
-                  icon: 'navigation',
-                  maneuverIcon: 'navigation',
-                  spokenText: 'Départ sur la grande avenue.',
-                  position: secureCoords.first,
-                ),
-                RouteStepInstruction(
-                  instruction: 'Continuer tout droit sur la voie principale',
-                  distance: '${(base.distanceKm * 0.8).toStringAsFixed(1)} km',
-                  rawDistanceMeters: (base.distanceKm * 800).round(),
-                  action: 'straight',
-                  icon: 'straight',
-                  maneuverIcon: 'straight',
-                  spokenText: 'Poursuivez tout droit sur la voie principale.',
-                  position: secureCoords[secureCoords.length ~/ 2],
-                ),
-                RouteStepInstruction(
-                  instruction: 'Arrivée à destination : $destLabel',
-                  distance: '200 m',
-                  rawDistanceMeters: 200,
-                  action: 'arrive',
-                  icon: 'map-pin',
-                  maneuverIcon: 'map-pin',
-                  spokenText: 'Vous êtes arrivé à votre destination.',
-                  position: secureCoords.last,
-                ),
-              ],
-            ));
+              final altResponse = await http.get(altUri).timeout(const Duration(seconds: 4));
+              if (altResponse.statusCode == 200) {
+                final altData = json.decode(altResponse.body);
+                if (altData['code'] == 'Ok' && altData['routes'] != null && (altData['routes'] as List).isNotEmpty) {
+                  final altRoute = (altData['routes'] as List).first;
+                  final altDistKm = double.parse(((altRoute['distance'] as num) / 1000.0).toStringAsFixed(1));
+                  final altDurMin = max(3, ((altRoute['duration'] as num) / 60.0).round());
+                  final altCoords = (altRoute['geometry']?['coordinates'] as List?)
+                      ?.map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
+                      .toList() ?? [];
+
+                  if (altCoords.length >= 2) {
+                    // Fusionner les étapes de tous les legs
+                    final allSteps = <dynamic>[];
+                    for (final leg in (altRoute['legs'] as List? ?? [])) {
+                      allSteps.addAll((leg['steps'] as List?) ?? []);
+                    }
+                    final altSteps = _parseOsrmSteps(allSteps.isNotEmpty ? allSteps : null, destLabel, altCoords);
+                    final altSegments = _buildTrafficSegments(altCoords, 1.0);
+
+                    smartRoutes.add(SmartRoute(
+                      id: 'route_alt_osrm',
+                      type: 'eco',
+                      title: 'Itinéraire Alternatif Réel (OSRM)',
+                      badge: '🌿 Via contournement vérifié',
+                      tag: 'Alternative réelle',
+                      durationMinutes: altDurMin,
+                      distanceKm: altDistKm,
+                      delaySavedMinutes: max(0, base.durationMinutes - altDurMin),
+                      co2SavedKg: 0.50,
+                      ecoScore: altDurMin <= base.durationMinutes ? 'A' : 'B+',
+                      congestionIndex: 25,
+                      color: const Color(0xFF10B981),
+                      fluidityLevel: 'fluid',
+                      highlights: const ['Route alternative réelle vérifiée', 'Tracé routier authentique'],
+                      coordinates: altCoords,
+                      trafficSegments: altSegments,
+                      steps: altSteps,
+                    ));
+                  }
+                }
+              }
+            } catch (_) {
+              // Pas d'alternative OSRM disponible — on garde la route unique
+            }
           }
 
           return smartRoutes;
@@ -2701,8 +2662,17 @@ class CityFlowMobileApiService {
         icon = 'straight';
       }
 
-      final coordIdx = (i / max(1, rawSteps.length - 1) * (coords.length - 1)).round().clamp(0, coords.length - 1);
-      final stepPos = coords.isNotEmpty ? coords[coordIdx] : null;
+      // Position exacte de la manœuvre fournie par OSRM (maneuver.location)
+      LatLng? stepPos;
+      final manLoc = man['location'] as List?;
+      if (manLoc != null && manLoc.length >= 2) {
+        // OSRM renvoie [longitude, latitude]
+        stepPos = LatLng((manLoc[1] as num).toDouble(), (manLoc[0] as num).toDouble());
+      } else {
+        // Fallback : estimation par proportion d'index
+        final coordIdx = (i / max(1, rawSteps.length - 1) * (coords.length - 1)).round().clamp(0, coords.length - 1);
+        stepPos = coords.isNotEmpty ? coords[coordIdx] : null;
+      }
 
       steps.add(RouteStepInstruction(
         instruction: instruction,

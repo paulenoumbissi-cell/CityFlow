@@ -35,7 +35,22 @@ class AppColors {
   static const Color textMuted = Color(0xFF94A3B8);      // Gris clair
   static const Color textOnDark = Colors.white;
 
-  // Gradients
+  // Dark Mode Base & Surfaces (Premium / Cyberpunk style)
+  static const Color darkBackground = Color(0xFF0F172A); // Very deep slate blue
+  static const Color darkSurface = Color(0xFF1E293B);
+  static const Color darkSurfaceLight = Color(0xFF334155);
+  static const Color darkCard = Color(0xFF1E293B);
+  static const Color darkCardBorder = Color(0xFF334155);
+
+  // Dark Mode Texts
+  static const Color darkTextPrimary = Colors.white;
+  static const Color darkTextSecondary = Color(0xFFCBD5E1);
+  static const Color darkTextMuted = Color(0xFF64748B);
+
+  // Glassmorphism effects
+  static const Color glassBackgroundLight = Color(0xB3FFFFFF); // 70% opacity white
+  static const Color glassBackgroundDark = Color(0xB30F172A);  // 70% opacity dark slate
+  
   static const LinearGradient greenBannerGradient = LinearGradient(
     colors: [Color(0xFF064E3B), Color(0xFF065F46)],
     begin: Alignment.topLeft,

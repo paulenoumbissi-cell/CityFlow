@@ -754,9 +754,6 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                           _selectedTripOrigin = val.trim();
                           _isGpsOrigin = false;
                         });
-                        if (_selectedTripDestination.trim().isNotEmpty) {
-                          _runTripPrediction();
-                        }
                       }
                     },
                   );
@@ -893,7 +890,6 @@ class _TrafficPredictionScreenState extends State<TrafficPredictionScreen> {
                     onSubmitted: (val) {
                       if (val.trim().isNotEmpty) {
                         setState(() => _selectedTripDestination = val.trim());
-                        _runTripPrediction();
                       }
                     },
                   );

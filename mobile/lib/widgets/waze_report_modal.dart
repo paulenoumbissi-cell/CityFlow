@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/citizen_report.dart';
+import '../core/constants/app_colors.dart';
 
 // ===================================================================
 // MODAL DE SIGNALEMENT COMMUNAUTAIRE WAZE (12 CATÉGORIES)
@@ -8,7 +12,7 @@ import '../models/citizen_report.dart';
 
 class WazeReportGridModal extends StatefulWidget {
   final String selectedCity;
-  final Function(CitizenReportCategory, CitizenReportSeverity, String, String) onReportSubmitted;
+  final Function(CitizenReportCategory, CitizenReportSeverity, String, String, String?) onReportSubmitted;
 
   const WazeReportGridModal({
     super.key,
@@ -26,6 +30,8 @@ class _WazeReportGridModalState extends State<WazeReportGridModal> {
   String _selectedSubtypeLabel = '';
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+  String? _photoBase64;
+  final ImagePicker _picker = ImagePicker();
 
   int _autoSendSeconds = 6;
   Timer? _countdownTimer;
@@ -152,6 +158,21 @@ class _WazeReportGridModalState extends State<WazeReportGridModal> {
     });
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 50, // On réduit la qualité pour avoir un base64 plus léger
+    );
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _photoBase64 = base64Encode(bytes);
+        // On relance le compteur si on prend une photo
+        _autoSendSeconds = 10;
+      });
+    }
+  }
+
   void _submitReport() {
     _countdownTimer?.cancel();
     Navigator.pop(context);
@@ -169,16 +190,29 @@ class _WazeReportGridModalState extends State<WazeReportGridModal> {
       _selectedSeverity,
       title,
       location,
+      _photoBase64,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F172A), // Fond sombre Waze
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.glassBackgroundDark : AppColors.glassBackgroundLight,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4),
+                width: 1,
+              ),
+            ),
+          ),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -186,7 +220,7 @@ class _WazeReportGridModalState extends State<WazeReportGridModal> {
           child: _selectedCategory == null ? _buildWazeGrid() : _buildWazeSubtypeDetails(),
         ),
       ),
-    );
+    )));
   }
 
   // ÉCRAN 1 : LA GRILLE DES 12 ICÔNES WAZE
@@ -377,6 +411,18 @@ class _WazeReportGridModalState extends State<WazeReportGridModal> {
               fillColor: const Color(0xFF1E293B),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            onPressed: _pickImage,
+            icon: Icon(_photoBase64 != null ? Icons.check_circle : Icons.camera_alt_rounded),
+            label: Text(_photoBase64 != null ? 'Photo jointe' : 'Joindre une photo'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _photoBase64 != null ? Colors.green : const Color(0xFF1E293B),
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(42),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
           const SizedBox(height: 16),

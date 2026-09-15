@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -368,7 +369,7 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
       backgroundColor: Colors.transparent,
       builder: (ctx) => WazeReportGridModal(
         selectedCity: provider.selectedCity,
-        onReportSubmitted: (category, severity, title, location) async {
+        onReportSubmitted: (category, severity, title, location, photoBase64) async {
           final scaffoldMessenger = ScaffoldMessenger.of(context);
           final pos = provider.userRealPosition ?? provider.currentCityCenter;
 
@@ -389,6 +390,7 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
             category: category,
             severity: severity,
             position: pos,
+            photoBase64: photoBase64,
           );
 
           scaffoldMessenger.showSnackBar(
@@ -412,6 +414,95 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
           );
         },
       ),
+    );
+  }
+
+  Widget _buildReportMarker(CitizenReport report) {
+    IconData icon;
+    Color color;
+    switch (report.category) {
+      case CitizenReportCategory.accident:
+        icon = Icons.car_crash_rounded;
+        color = const Color(0xFFEF4444);
+        break;
+      case CitizenReportCategory.trafficJam:
+        icon = Icons.traffic_rounded;
+        color = const Color(0xFFFF9800);
+        break;
+      case CitizenReportCategory.police:
+        icon = Icons.local_police_rounded;
+        color = const Color(0xFF2563EB);
+        break;
+      case CitizenReportCategory.hazard:
+        icon = Icons.warning_amber_rounded;
+        color = const Color(0xFFF59E0B);
+        break;
+      case CitizenReportCategory.roadworks:
+        icon = Icons.construction_rounded;
+        color = const Color(0xFFEA580C);
+        break;
+      case CitizenReportCategory.closure:
+        icon = Icons.block_rounded;
+        color = const Color(0xFFDC2626);
+        break;
+      case CitizenReportCategory.flooding:
+        icon = Icons.water_drop_rounded;
+        color = const Color(0xFF0284C7);
+        break;
+      case CitizenReportCategory.motoRush:
+        icon = Icons.two_wheeler_rounded;
+        color = const Color(0xFFF97316);
+        break;
+      case CitizenReportCategory.funeral:
+        icon = Icons.night_shelter_rounded;
+        color = const Color(0xFF7C3AED);
+        break;
+      case CitizenReportCategory.truckBreakdown:
+        icon = Icons.local_shipping_rounded;
+        color = const Color(0xFFD97706);
+        break;
+      case CitizenReportCategory.trafficLight:
+        icon = Icons.traffic_outlined;
+        color = const Color(0xFFE11D48);
+        break;
+      case CitizenReportCategory.gasStation:
+        icon = Icons.local_gas_station_rounded;
+        color = const Color(0xFF10B981);
+        break;
+      default:
+        icon = Icons.report_problem_rounded;
+        color = const Color(0xFF64748B);
+    }
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Pin pointer base
+        Positioned(
+          bottom: 2,
+          child: Icon(Icons.location_on, color: color, size: 40),
+        ),
+        // Badge background
+        Positioned(
+          bottom: 15,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+        ),
+      ],
     );
   }
 
@@ -448,16 +539,18 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
       });
     }
 
-    // Suivi automatique de la caméra en mode navigation active
+    // Suivi automatique de la caméra en mode navigation active (orientation cap comme Google Maps)
     if (_currentMode == _RoutingMode.activeNavigation) {
       final navPos = provider.currentNavPosition;
+      final navBearing = provider.navBearing;
       if (_lastTrackedNavPos == null ||
           (_lastTrackedNavPos!.latitude - navPos.latitude).abs() > 0.00001 ||
           (_lastTrackedNavPos!.longitude - navPos.longitude).abs() > 0.00001) {
         _lastTrackedNavPos = navPos;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && _currentMode == _RoutingMode.activeNavigation) {
-            _mapController.move(navPos, 16.8);
+            // Carte orientée dans le sens du déplacement : la route à venir est vers le haut
+            _mapController.moveAndRotate(navPos, 17.5, -navBearing);
           }
         });
       }
@@ -659,23 +752,53 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                     // 3) MARQUEURS DE DESTINATION / POINTS D'INTÉRÊTS & BADGES INTERACTIFS WAZE
                     MarkerLayer(
                       markers: [
+                        // ═══════════════════════════════════════════════════════════════
+                        // 1) SIGNALEMENTS COMMUNAUTAIRES (WAZE-STYLE)
+                        // ═══════════════════════════════════════════════════════════════
+                        ...provider.currentCityCitizenReports.map((report) {
+                          return Marker(
+                            point: report.position,
+                            width: 50,
+                            height: 60,
+                            child: _buildReportMarker(report),
+                          );
+                        }),
+
+                        // ═══════════════════════════════════════════════════════════════
+                        // 2) POSITION UTILISATEUR & DESTINATION
+                        // ═══════════════════════════════════════════════════════════════
                         // Position de l'utilisateur (Point Bleu Pulsant) en mode Explore ou Overview ou DestinationDetail
                         if (_currentMode != _RoutingMode.activeNavigation)
                           Marker(
                             point: userPos,
-                            width: 34,
-                            height: 34,
+                            width: 50,
+                            height: 50,
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
-                                Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF00C3FF).withValues(alpha: 0.3),
-                                    shape: BoxShape.circle,
-                                  ),
+                                // Pulsing halo
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0.8, end: 1.5),
+                                  duration: const Duration(seconds: 1),
+                                  curve: Curves.easeInOutSine,
+                                  builder: (context, scale, child) {
+                                    // Use sine function over time to bounce back and forth
+                                    // In a real app we'd use AnimationController with repeat(reverse: true)
+                                    // but TweenAnimationBuilder with onEnd can simulate it too.
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF00C3FF).withValues(alpha: 0.3),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
+                                // Core dot
                                 Container(
                                   width: 16,
                                   height: 16,
@@ -1241,22 +1364,34 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
         snap: true,
         snapSizes: const [0.12, 0.38, 0.88],
         builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 22,
-                  offset: const Offset(0, -4),
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.glassBackgroundDark : AppColors.glassBackgroundLight,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4),
+                      width: 1,
+                    ),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 30,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: ListView(
-                controller: scrollController,
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListView(
+                    controller: scrollController,
                 padding: EdgeInsets.zero,
                 physics: const ClampingScrollPhysics(),
                 children: [
@@ -1424,7 +1559,7 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                 ],
               ),
             ),
-          );
+          )));
         },
       ),
     );
@@ -1797,27 +1932,41 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
       snap: true,
       snapSizes: const [0.12, 0.42, 0.88],
       builder: (BuildContext context, ScrollController scrollController) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
         return ListenableBuilder(
           listenable: _sheetController,
           builder: (context, _) {
             final currentSize = _sheetController.isAttached ? _sheetController.size : 0.42;
             final isCollapsed = currentSize <= 0.20;
 
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.22),
-                    blurRadius: 18,
-                    offset: const Offset(0, -4),
+            return ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.glassBackgroundDark : AppColors.glassBackgroundLight,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4),
+                        width: 1,
+                      ),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 30,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
                   ),
-                ],
+                  child: isCollapsed
+                      ? _buildCollapsedWazeBar(context, provider, activeRoute, scrollController)
+                      : _buildExpandedWazeSheet(context, provider, routes, selectedRoute, scrollController),
+                ),
               ),
-              child: isCollapsed
-                  ? _buildCollapsedWazeBar(context, provider, activeRoute, scrollController)
-                  : _buildExpandedWazeSheet(context, provider, routes, selectedRoute, scrollController),
             );
           },
         );
@@ -3111,7 +3260,7 @@ class _PriorityRoutingScreenState extends State<PriorityRoutingScreen> with Sing
                   foregroundColor: const Color(0xFF007AFF),
                   elevation: 3,
                   onPressed: () {
-                    _mapController.move(navPos, 17.0);
+                    _mapController.moveAndRotate(navPos, 17.5, -provider.navBearing);
                   },
                   child: const Icon(Icons.gps_fixed_rounded, size: 20),
                 ),

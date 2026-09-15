@@ -1,6 +1,8 @@
 import { sendRealEmail, sendRealWhatsApp, sendRealSms } from "../services/notificationService.js";
 import db from "../services/database.js";
 import dbService from "../services/dbService.js";
+import jwt from "jsonwebtoken";
+
 
 // Magasin en mémoire temporaire des codes OTP générés pour validation ultra-rapide
 const otpStore = new Map();
@@ -166,7 +168,6 @@ export const verifyOtp = async (req, res) => {
   // Chercher ou créer l'utilisateur en base
   let user = await findUserInDb(cleanId);
   const now = new Date().toISOString();
-  const token = "jwt_cityflow_otp_" + Date.now() + "_" + Math.random().toString(36).substring(7);
   const finalChannel = channel || (storedOtp ? storedOtp.channel : isEmail ? "email" : "whatsapp");
 
   if (!user) {
@@ -261,8 +262,15 @@ export const verifyOtp = async (req, res) => {
     timeSavedMin: user.time_saved_min,
     co2SavedKg: parseFloat(user.co2_saved_kg) || 0.0,
     verifiedVia: finalChannel.toUpperCase(),
-    token,
   };
+
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET || "cityflow_super_secret_key_2026",
+    { expiresIn: "7d" }
+  );
+  
+  userResponse.token = token;
 
   res.json({
     success: true,
@@ -302,7 +310,11 @@ export const resetPassword = async (req, res) => {
     return res.status(404).json({ error: "Aucun compte trouvé avec cet identifiant. Veuillez vous inscrire." });
   }
 
-  const token = "jwt_cityflow_reset_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET || "cityflow_super_secret_key_2026",
+    { expiresIn: "7d" }
+  );
   const userResponse = {
     id: user.id,
     name: user.name,
@@ -357,7 +369,11 @@ export const login = async (req, res) => {
     });
   }
 
-  const token = "jwt_cityflow_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+  const token = jwt.sign(
+    { id: existing.id, email: existing.email, role: existing.role },
+    process.env.JWT_SECRET || "cityflow_super_secret_key_2026",
+    { expiresIn: "7d" }
+  );
 
   const userResponse = {
     id: existing.id,
@@ -416,11 +432,16 @@ export const register = async (req, res) => {
     });
   }
 
-  const token = "jwt_cityflow_" + Date.now() + "_" + Math.random().toString(36).substring(7);
   const now = new Date().toISOString();
   const newId = "usr_" + Date.now();
   const rawName = name.trim();
   const generatedUsername = rawName.toLowerCase().replace(/[^a-z0-9]/g, "_") + "_" + Math.floor(Math.random() * 1000);
+
+  const token = jwt.sign(
+    { id: newId, email: cleanEmail, role: role },
+    process.env.JWT_SECRET || "cityflow_super_secret_key_2026",
+    { expiresIn: "7d" }
+  );
 
   const newUser = {
     id: newId,

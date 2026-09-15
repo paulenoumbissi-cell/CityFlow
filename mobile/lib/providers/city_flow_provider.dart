@@ -359,7 +359,51 @@ class CityFlowProvider extends ChangeNotifier {
             .toList();
 
         if (routes.isNotEmpty) {
-          _offRouteAlternatives = routes;
+          // ═══════════════════════════════════════════════════════════
+          // AUTO-REROUTE : Appliquer automatiquement la meilleure route
+          // Pas besoin d'action utilisateur — comme Google Maps / Waze
+          // ═══════════════════════════════════════════════════════════
+          final bestRoute = routes.first;
+          _selectedSmartRoute = bestRoute;
+          if (!_smartRoutes.any((r) => r.id == bestRoute.id)) {
+            _smartRoutes = [bestRoute, ...routes.skip(1), ..._smartRoutes];
+          } else {
+            _smartRoutes = [bestRoute, ...routes.skip(1)];
+          }
+          _isOffRoute = false;
+          _offRouteAlternatives.clear();
+          _offRouteConsecutiveDetections = 0;
+          _distanceToRouteMeters = 0.0;
+          _navCoordinateIndex = 0;
+          _navStepIndex = 0;
+          if (bestRoute.coordinates.isNotEmpty) {
+            _navUserPosition = bestRoute.coordinates.first;
+          }
+
+          // Annonce vocale contextuelle avec détails du nouvel itinéraire
+          final durLabel = '${bestRoute.durationMinutes} minutes';
+          final distLabel = '${bestRoute.distanceKm} kilomètres';
+          if (bestRoute.steps.isNotEmpty) {
+            final firstStep = bestRoute.steps.first;
+            final stepText = firstStep.spokenText.isNotEmpty
+                ? firstStep.spokenText
+                : firstStep.instruction;
+            speakInstruction(
+              'Nouvel itinéraire calculé. $distLabel, $durLabel. $stepText',
+            );
+          } else {
+            speakInstruction(
+              'Nouvel itinéraire trouvé. $distLabel, durée estimée $durLabel.',
+            );
+          }
+
+          // Enregistrer la nouvelle route sur le WS pour les alertes géo
+          if (bestRoute.coordinates.length >= 2) {
+            _wsService.registerActiveRoute(
+              routePoints: bestRoute.coordinates,
+              city: _selectedCity,
+            );
+          }
         }
       }
     } catch (e) {
@@ -936,10 +980,10 @@ class CityFlowProvider extends ChangeNotifier {
       speakInstruction(firstStep.spokenText.isNotEmpty ? firstStep.spokenText : firstStep.instruction);
     }
 
-    // Écoute flux GPS temps réel du smartphone
+    // Écoute flux GPS temps réel du smartphone (mode navigation haute fréquence)
     _gpsStreamSub?.cancel();
     try {
-      _gpsStreamSub = LocationService.getPositionStream().listen((Position pos) {
+      _gpsStreamSub = LocationService.getPositionStream(navigationMode: true).listen((Position pos) {
         if (!_isDisposed && _isGpsNavigating && !_isNavAutoSimulating) {
           updateRealGpsPosition(
             LatLng(pos.latitude, pos.longitude),
@@ -1028,21 +1072,26 @@ class CityFlowProvider extends ChangeNotifier {
     });
   }
 
+  /// Projection orthogonale d'un point sur un segment de ligne [a, b]
+  /// Retourne le point projeté snappé sur le segment (pas la droite infinie)
+  LatLng _projectOnSegment(LatLng point, LatLng a, LatLng b) {
+    final dx = b.latitude - a.latitude;
+    final dy = b.longitude - a.longitude;
+    final lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-14) return a; // Segment de longueur nulle
+
+    // t = paramètre de projection clampé [0, 1] pour rester sur le segment
+    final t = (((point.latitude - a.latitude) * dx + (point.longitude - a.longitude) * dy) / lenSq).clamp(0.0, 1.0);
+    return LatLng(
+      a.latitude + t * dx,
+      a.longitude + t * dy,
+    );
+  }
+
   void updateRealGpsPosition(LatLng newPos, {double? speedKmh, double? heading}) {
     if (!_isGpsNavigating || _isDisposed) return;
 
-    // Mise à jour du cap (Bearing)
-    if (heading != null && heading >= 0 && (speedKmh == null || speedKmh > 2.0)) {
-      _navBearing = heading;
-    } else if (_navUserPosition != null) {
-      final dist = const Distance().as(LengthUnit.Meter, _navUserPosition!, newPos);
-      if (dist >= 3.0) {
-        _navBearing = _calculateBearing(_navUserPosition!, newPos);
-      }
-    }
-
     _userRealPosition = newPos;
-    _navUserPosition = newPos;
 
     // Vitesse réelle en km/h
     if (speedKmh != null) {
@@ -1050,6 +1099,11 @@ class CityFlowProvider extends ChangeNotifier {
     }
 
     if (_selectedSmartRoute == null || _selectedSmartRoute!.coordinates.isEmpty) {
+      _navUserPosition = newPos;
+      // Cap basé sur le GPS brut si pas de route
+      if (heading != null && heading >= 0 && (speedKmh == null || speedKmh > 2.0)) {
+        _navBearing = heading;
+      }
       notifyListeners();
       return;
     }
@@ -1057,19 +1111,92 @@ class CityFlowProvider extends ChangeNotifier {
     final coords = _selectedSmartRoute!.coordinates;
     final steps = _selectedSmartRoute!.steps;
 
-    // Projection de la position réelle sur la route
+    // ═══════════════════════════════════════════════════════════════
+    // SNAP-TO-ROAD : Projection orthogonale sur le segment le plus proche
+    // Fenêtre glissante autour de la dernière position connue pour O(1) moyen
+    // ═══════════════════════════════════════════════════════════════
+    final searchRadius = 40; // ±40 points autour de la dernière position
+    final searchStart = max(0, _navCoordinateIndex - 10);
+    final searchEnd = min(coords.length, _navCoordinateIndex + searchRadius);
+
     double minDistance = double.infinity;
-    int closestIdx = _navCoordinateIndex;
-    for (int i = 0; i < coords.length; i++) {
-      final d = const Distance().as(LengthUnit.Meter, newPos, coords[i]);
+    int closestSegIdx = _navCoordinateIndex;
+    LatLng snappedPosition = _navUserPosition ?? newPos;
+
+    // Phase 1 : Recherche dans la fenêtre glissante (rapide, cas courant)
+    for (int i = searchStart; i < searchEnd - 1; i++) {
+      final projected = _projectOnSegment(newPos, coords[i], coords[i + 1]);
+      final d = const Distance().as(LengthUnit.Meter, newPos, projected);
       if (d < minDistance) {
         minDistance = d;
-        closestIdx = i;
+        closestSegIdx = i;
+        snappedPosition = projected;
       }
     }
+
+    // Phase 2 : Si rien de bon dans la fenêtre, recherche globale (rare, ex: GPS jump)
+    if (minDistance > 60.0) {
+      for (int i = 0; i < coords.length - 1; i++) {
+        if (i >= searchStart && i < searchEnd - 1) continue; // Déjà checké
+        final projected = _projectOnSegment(newPos, coords[i], coords[i + 1]);
+        final d = const Distance().as(LengthUnit.Meter, newPos, projected);
+        if (d < minDistance) {
+          minDistance = d;
+          closestSegIdx = i;
+          snappedPosition = projected;
+        }
+      }
+    }
+
     _distanceToRouteMeters = minDistance;
 
-    // Vérification de l'arrivée à destination (< 30 mètres)
+    // ═══════════════════════════════════════════════════════════════
+    // INTERPOLATION FLUIDE : Lissage entre ancienne et nouvelle position
+    // Évite les sauts brusques sur la carte
+    // ═══════════════════════════════════════════════════════════════
+    if (minDistance <= 55.0 && _navUserPosition != null) {
+      final prevPos = _navUserPosition!;
+      final moveDist = const Distance().as(LengthUnit.Meter, prevPos, snappedPosition);
+
+      if (moveDist < 2.0) {
+        // Mouvement trop petit, garder la position actuelle pour éviter le jitter
+        snappedPosition = prevPos;
+      } else if (moveDist < 80.0) {
+        // Interpolation douce : 70% nouvelle position, 30% ancienne
+        snappedPosition = LatLng(
+          prevPos.latitude * 0.3 + snappedPosition.latitude * 0.7,
+          prevPos.longitude * 0.3 + snappedPosition.longitude * 0.7,
+        );
+      }
+      // Si > 80m, on prend la nouvelle position directement (teleport GPS)
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CAP : Basé sur la direction du segment routier (pas du GPS bruité)
+    // ═══════════════════════════════════════════════════════════════
+    if (minDistance <= 55.0) {
+      // Utilisateur sur la route : cap = direction du segment
+      if (closestSegIdx < coords.length - 1) {
+        _navBearing = _calculateBearing(coords[closestSegIdx], coords[closestSegIdx + 1]);
+      }
+      _navUserPosition = snappedPosition;
+      _navCoordinateIndex = closestSegIdx;
+    } else {
+      // Hors route : garder le cap GPS brut
+      if (heading != null && heading >= 0 && (speedKmh == null || speedKmh > 2.0)) {
+        _navBearing = heading;
+      } else if (_navUserPosition != null) {
+        final dist = const Distance().as(LengthUnit.Meter, _navUserPosition!, newPos);
+        if (dist >= 3.0) {
+          _navBearing = _calculateBearing(_navUserPosition!, newPos);
+        }
+      }
+      _navUserPosition = newPos;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ARRIVÉE : Vérification de proximité avec la destination
+    // ═══════════════════════════════════════════════════════════════
     final destPos = coords.last;
     final distToDest = const Distance().as(LengthUnit.Meter, newPos, destPos);
     if (distToDest <= 30.0 && !_navCompleted) {
@@ -1082,26 +1209,31 @@ class CityFlowProvider extends ChangeNotifier {
       return;
     }
 
-    // Gestion intelligente de la détection Hors-Itinéraire (> 55 mètres)
+    // ═══════════════════════════════════════════════════════════════
+    // HORS-ITINÉRAIRE : Détection rapide + recalcul automatique immédiat
+    // Comportement Google Maps : dès que le conducteur quitte la route,
+    // un nouvel itinéraire est calculé et appliqué automatiquement.
+    // ═══════════════════════════════════════════════════════════════
     if (minDistance > 55.0 && distToDest > 50.0) {
       _offRouteConsecutiveDetections++;
+      // Détection rapide : 1 seule confirmation suffit si > 80m, sinon 2 confirmations
       if (_offRouteConsecutiveDetections >= 2 || minDistance > 80.0) {
-        _isOffRoute = true;
-
-        // Rappel vocal régulier avec cooldown de sécurité (14s)
-        final now = DateTime.now();
-        if (_lastOffRouteSpokenTime == null || now.difference(_lastOffRouteSpokenTime!).inSeconds >= 14) {
-          _lastOffRouteSpokenTime = now;
-          speakInstruction('Attention, vous avez quitté l\'itinéraire prévu. Recherche de nouveaux itinéraires depuis votre position.');
+        if (!_isOffRoute) {
+          _isOffRoute = true;
+          // Annonce vocale unique : "Recalcul en cours"
+          speakInstruction('Recalcul de l\'itinéraire en cours.');
         }
 
-        // Recalcul automatique et dynamique au fur et à mesure que le conducteur roule
+        // Recalcul automatique immédiat depuis la position actuelle
+        // Limite : 1 recalcul toutes les 3 secondes ou tous les 15m de déplacement
+        final now = DateTime.now();
         final shouldRecalc = _lastOffRouteRecalcPos == null ||
             _lastOffRouteRecalcTime == null ||
-            const Distance().as(LengthUnit.Meter, newPos, _lastOffRouteRecalcPos!) >= 25.0 ||
-            now.difference(_lastOffRouteRecalcTime!).inSeconds >= 6;
+            const Distance().as(LengthUnit.Meter, newPos, _lastOffRouteRecalcPos!) >= 15.0 ||
+            now.difference(_lastOffRouteRecalcTime!).inSeconds >= 3;
 
         if (shouldRecalc && !_isRecalculatingOffRoute) {
+          // Le recalcul applique automatiquement la meilleure route (voir recalculateOffRouteRoutes)
           recalculateOffRouteRoutes(fromPosition: newPos);
         }
       }
@@ -1113,12 +1245,11 @@ class CityFlowProvider extends ChangeNotifier {
         _offRouteAlternatives.clear();
         speakInstruction('Vous êtes de retour sur l\'itinéraire.');
       }
-      _navCoordinateIndex = closestIdx;
-    } else {
-      _navCoordinateIndex = closestIdx;
     }
 
-    // Progression des étapes au fur et à mesure que le conducteur roule
+    // ═══════════════════════════════════════════════════════════════
+    // PROGRESSION DES ÉTAPES : Avancement basé sur la proximité GPS
+    // ═══════════════════════════════════════════════════════════════
     if (!_isOffRoute && steps.isNotEmpty && _navStepIndex < steps.length - 1) {
       int targetIdx = _navStepIndex;
       if (targetIdx == 0 && steps.length > 1) {
@@ -1310,6 +1441,7 @@ class CityFlowProvider extends ChangeNotifier {
     required CitizenReportCategory category,
     required CitizenReportSeverity severity,
     LatLng? position,
+    String? photoBase64,
   }) async {
     final pos = position ?? (_selectedNode?.position ?? currentCityCenter);
     final created = await CityFlowMobileApiService.submitCitizenReport(
@@ -1319,6 +1451,7 @@ class CityFlowProvider extends ChangeNotifier {
       category: category,
       severity: severity,
       position: pos,
+      photoBase64: photoBase64,
     );
 
     if (created != null) {
@@ -1341,12 +1474,14 @@ class CityFlowProvider extends ChangeNotifier {
     required CitizenReportCategory category,
     required CitizenReportSeverity severity,
     LatLng? position,
+    String? photoBase64,
   }) => createCitizenReport(
     title: title,
     locationDescription: locationDescription,
     category: category,
     severity: severity,
     position: position,
+    photoBase64: photoBase64,
   );
 
   Future<void> voteReport(String reportId, String voteType) async {

@@ -413,6 +413,7 @@ void main() {
 
       expect(provider.selectedSmartRoute, isNotNull);
       final initialRoute = provider.selectedSmartRoute!;
+      final initialRouteId = initialRoute.id;
 
       await provider.startGpsNavigation();
       expect(provider.isGpsNavigating, true);
@@ -433,20 +434,16 @@ void main() {
       expect(provider.isOffRoute, true);
       expect(provider.distanceToRouteMeters > 55.0, true);
 
-      // 2. Recalcul d'itinéraires alternatifs depuis la position déviée
+      // 2. Recalcul automatique : la meilleure route est appliquée immédiatement
       await provider.recalculateOffRouteRoutes(fromPosition: deviatedPos, force: true);
-      expect(provider.offRouteAlternatives.isNotEmpty, true);
 
-      // 3. Choix et adoption d'un itinéraire alternatif proposé
-      final chosenAlternative = provider.offRouteAlternatives.first;
-      provider.acceptAlternativeRoute(chosenAlternative);
-
+      // Après recalcul, isOffRoute est false (nouvel itinéraire appliqué automatiquement)
       expect(provider.isOffRoute, false);
       expect(provider.offRouteAlternatives.isEmpty, true);
-      expect(provider.selectedSmartRoute?.id, chosenAlternative.id);
+      expect(provider.selectedSmartRoute, isNotNull);
       expect(provider.navStepIndex, 0);
 
-      // 4. Arrêt de la navigation et nettoyage
+      // 3. Arrêt de la navigation et nettoyage
       provider.stopGpsNavigation();
       expect(provider.isGpsNavigating, false);
       expect(provider.isOffRoute, false);

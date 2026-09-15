@@ -38,7 +38,9 @@ class CityFlowApp extends StatelessWidget {
       child: MaterialApp(
         title: 'CityFlow - Trafic & Itinéraires Yaoundé/Douala',
         debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
         theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
         home: const _AppRootGate(),
       ),
     );

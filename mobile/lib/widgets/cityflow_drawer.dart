@@ -301,11 +301,14 @@ class CityFlowDrawer extends StatelessWidget {
                   _buildDrawerTile(
                     context: context,
                     icon: Icons.event_note_rounded,
-                    title: 'Planifier & Météo',
-                    subtitle: 'Prédire votre trajet et la météo',
+                    title: 'Planifier un trajet',
+                    subtitle: 'Organiser un départ futur',
                     onTap: () {
                       Navigator.pop(context);
-                      onNavigateTab?.call(1);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TripPlannerScreen()),
+                      );
                     },
                   ),
                   _buildDrawerTile(

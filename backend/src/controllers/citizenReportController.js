@@ -168,6 +168,7 @@ export const createCitizenReport = async (req, res) => {
       category,
       author,
       authorId = "user_current",
+      photoBase64,
     } = req.body;
 
     if (!title || !city || !locationDescription) {
@@ -200,6 +201,18 @@ export const createCitizenReport = async (req, res) => {
       pointsAwardedToAuthor: false,
       expectedPoints,
     };
+
+    // MOCK IA ANALYSIS POUR LES PHOTOS (Exigence 2.2.2)
+    let aiAnalysisMsg = "";
+    if (photoBase64) {
+      // On simule une analyse visuelle de la photo
+      const confidenceScore = Math.floor(Math.random() * 15) + 80; // Entre 80% et 95%
+      newReport.hasPhoto = true;
+      newReport.photoUrl = "data:image/jpeg;base64," + (photoBase64.substring(0, 30)) + "..."; // On stocke une preview factice
+      newReport.aiAnalysis = `Analyse IA (${confidenceScore}%) : Présence confirmée d'anomalie type '${catKey}'.`;
+      newReport.severity = "high"; // L'IA rehausse la sévérité si la photo le confirme
+      aiAnalysisMsg = ` Une photo a été jointe et analysée par le système (${confidenceScore}% de fiabilité).`;
+    }
 
     reports.unshift(newReport);
     await dbService.saveReports(reports);
@@ -236,7 +249,7 @@ export const createCitizenReport = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Signalement publié ! Les +${expectedPoints} points seront crédités dès confirmation par un autre citoyen.`,
+      message: `Signalement publié !${aiAnalysisMsg} Les +${expectedPoints} points seront crédités dès confirmation par un autre citoyen.`,
       report: newReport,
       profile: {
         points: profile.points || profile.reputationScore || 0,

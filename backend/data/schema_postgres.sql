@@ -179,5 +179,11 @@ INSERT INTO users (
     'Ingénieur régulation du trafic urbain de Douala.',
     'Douala', 'traffic_manager', 'Régulateur Urbain / Communauté Urbaine', 'Poste Central de Contrôle',
     430, 96, 230, 1240, 110.50, 'whatsapp'
+),
+(
+    'usr_admin', 'Administrateur', 'admin_cityflow', '+237699000001', 'admin@cityflow.cm', 'password123',
+    'Administrateur de la plateforme CityFlow.',
+    'Yaoundé', 'admin', 'Administrateur', 'Aucun',
+    1000, 100, 0, 0, 0.00, 'email'
 )
 ON CONFLICT (email) DO UPDATE SET password = excluded.password, name = excluded.name;

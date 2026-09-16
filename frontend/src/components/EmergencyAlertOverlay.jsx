@@ -20,7 +20,7 @@ import "./EmergencyAlertOverlay.css";
 
 const API_BASE = "http://localhost:3000/api";
 
-export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehicle }) {
+export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehicle, alwaysShow = false }) {
   const { selectedCity } = useCity();
   const [activeAlert, setActiveAlert] = useState(null);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -31,6 +31,39 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
   const audioCtxRef = useRef(null);
   const alertIntervalRef = useRef(null);
   const speechDoneRef = useRef(false);
+
+  // Fonction pour calculer la distance entre deux points GPS (Haversine) en mètres
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3;
+    const phi1 = (lat1 * Math.PI) / 180;
+    const phi2 = (lat2 * Math.PI) / 180;
+    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Vérifie si la route de l'utilisateur croise la route d'urgence (rayon de 800m)
+  const isUserOnRoute = (userCoords, emergencyCoords, threshold = 800) => {
+    if (!userCoords || !userCoords.length) return false;
+    if (!emergencyCoords || !emergencyCoords.length) return false;
+
+    // Échantillonner pour éviter trop de calculs si les routes sont longues
+    const stepU = Math.max(1, Math.floor(userCoords.length / 50));
+    const stepE = Math.max(1, Math.floor(emergencyCoords.length / 50));
+
+    for (let i = 0; i < userCoords.length; i += stepU) {
+      const uCoord = userCoords[i];
+      for (let j = 0; j < emergencyCoords.length; j += stepE) {
+        const eCoord = emergencyCoords[j];
+        if (getDistance(uCoord[0], uCoord[1], eCoord[0], eCoord[1]) < threshold) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
 
   // Play audio warning chime using Web Audio API
   const playAlertChime = () => {
@@ -88,16 +121,21 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
       if (res.ok) {
         const data = await res.json();
         if (data.active && data.mission) {
-          setActiveAlert({
-            vehicleName: data.mission.vehicleName || "Ambulance SAMU 119",
-            destination: data.mission.destination || "Hôpital Central",
-            origin: data.mission.origin || "Poste Centrale",
-            currentIntersection: data.mission.intersections?.[data.mission.currentStepIndex]?.name || "Carrefour Principal",
-            color: data.mission.color || "#ef4444",
-            message: "Véhicule de secours prioritaire en approche. Dégagez l'axe central.",
-            advisedAction: "Serrez à droite et libérez le carrefour immédiatement",
-          });
-          setIsDismissed(false);
+          // Filtrer selon la trajectoire de l'utilisateur
+          const isOnRoute = isUserOnRoute(currentRouteCoords, data.mission.coordinates);
+          
+          if (alwaysShow || isOnRoute) {
+            setActiveAlert({
+              vehicleName: data.mission.vehicleName || "Ambulance SAMU 119",
+              destination: data.mission.destination || "Hôpital Central",
+              origin: data.mission.origin || "Poste Centrale",
+              currentIntersection: data.mission.intersections?.[data.mission.currentStepIndex]?.name || "Carrefour Principal",
+              color: data.mission.color || "#ef4444",
+              message: "Véhicule de secours prioritaire en approche. Dégagez l'axe central.",
+              advisedAction: "Serrez à droite et libérez le carrefour immédiatement",
+            });
+            setIsDismissed(false);
+          }
         } else if (!isDemoActive) {
           setActiveAlert(null);
         }
@@ -113,18 +151,23 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
     // Écoute WebSockets temps réel
     const unsubUpdate = wsService.on("EMERGENCY_MISSION_UPDATE", (data) => {
       if (data?.mission) {
-        setActiveAlert({
-          vehicleName: data.mission.vehicleName || "Ambulance SAMU 119",
-          destination: data.mission.destination || "Urgences",
-          origin: data.mission.origin || "Centre-Ville",
-          currentIntersection: data.mission.intersections?.[data.mission.currentStepIndex]?.name || "Carrefour Asservi",
-          color: data.mission.color || "#ef4444",
-          message: data.mission.broadcastAlert?.message || "Véhicule d'urgence en approche.",
-          advisedAction: data.mission.broadcastAlert?.advisedAction || "Serrez immédiatement à droite.",
-        });
-        setIsDismissed(false);
-        playAlertChime();
-        speakVoiceAlert("Attention conducteur, véhicule d'urgence en approche. Serrez à droite.");
+        // Filtrer selon la trajectoire
+        const isOnRoute = isUserOnRoute(currentRouteCoords, data.mission.coordinates);
+        
+        if (alwaysShow || isOnRoute) {
+          setActiveAlert({
+            vehicleName: data.mission.vehicleName || "Ambulance SAMU 119",
+            destination: data.mission.destination || "Urgences",
+            origin: data.mission.origin || "Centre-Ville",
+            currentIntersection: data.mission.intersections?.[data.mission.currentStepIndex]?.name || "Carrefour Asservi",
+            color: data.mission.color || "#ef4444",
+            message: data.mission.broadcastAlert?.message || "Véhicule d'urgence en approche.",
+            advisedAction: data.mission.broadcastAlert?.advisedAction || "Serrez immédiatement à droite.",
+          });
+          setIsDismissed(false);
+          playAlertChime();
+          speakVoiceAlert("Attention conducteur, véhicule d'urgence en approche. Serrez à droite.");
+        }
       }
     });
 

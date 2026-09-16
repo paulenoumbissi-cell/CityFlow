@@ -837,6 +837,20 @@
   background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
 }
 
+.plan-pricing-card.b2g-card {
+  border-top: 5px solid #dc2626;
+  background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%);
+}
+
+.b2g-card .plan-category-indicator {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.b2g-badge {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+}
+
 .plan-pricing-card.featured-plan {
   border-color: #bfdbfe;
   box-shadow: 0 8px 30px rgba(37, 99, 235, 0.12);
@@ -1045,6 +1059,18 @@
   background: #1e3a8a;
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(30, 64, 175, 0.35);
+}
+
+.btn-subscribe-plan.btn-b2g {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.25);
+}
+
+.btn-subscribe-plan.btn-b2g:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35);
 }
 
 /* ==========================================================================
@@ -1570,6 +1596,11 @@ body.dark .plan-pricing-card {
 [data-theme="dark"] .plan-pricing-card.b2b-card,
 body.dark .plan-pricing-card.b2b-card {
   background: linear-gradient(180deg, #131b2e 0%, #172554 100%);
+}
+
+[data-theme="dark"] .plan-pricing-card.b2g-card,
+body.dark .plan-pricing-card.b2g-card {
+  background: linear-gradient(180deg, #131b2e 0%, #450a0a 100%);
 }
 
 [data-theme="dark"] .plan-name,

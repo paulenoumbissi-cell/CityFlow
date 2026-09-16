@@ -90,6 +90,21 @@ const SUBSCRIPTION_PLANS = [
       "Support prioritaire dédié 24/7 & gestionnaire de compte",
     ],
   },
+  {
+    id: "plan_institution",
+    category: "b2g",
+    name: "Premium Institution",
+    subtitle: "SAMU, Police, Sapeurs-Pompiers",
+    priceFcfa: 9000,
+    period: "par mois",
+    beneficiaries: "30 personnes",
+    features: [
+      "Accès prioritaire aux alertes critiques",
+      "Coordination d'urgence en temps réel",
+      "Cartographie des zones d'intervention",
+      "Support dédié 24/7",
+    ],
+  },
 ];
 
 const DISCOUNT_REWARDS = [
@@ -102,6 +117,7 @@ const DISCOUNT_REWARDS = [
     description: "Sur le prochain abonnement",
     citizenPrice: 475,
     enterprisePrice: 11400,
+    institutionPrice: 8550,
   },
   {
     id: "tier_300",
@@ -112,6 +128,7 @@ const DISCOUNT_REWARDS = [
     description: "Sur le prochain abonnement",
     citizenPrice: 425,
     enterprisePrice: 10200,
+    institutionPrice: 7650,
   },
   {
     id: "tier_600",
@@ -122,6 +139,7 @@ const DISCOUNT_REWARDS = [
     description: "Sur l'abonnement Premium",
     citizenPrice: 0,
     enterprisePrice: 0,
+    institutionPrice: 0,
   },
 ];
 
@@ -140,6 +158,7 @@ export default function CommunityPage() {
   // Sélection du palier de réduction appliqué par formule
   const [selectedRewardCitizen, setSelectedRewardCitizen] = useState(null); // null | 'tier_100' | 'tier_300' | 'tier_600'
   const [selectedRewardEnterprise, setSelectedRewardEnterprise] = useState(null);
+  const [selectedRewardInstitution, setSelectedRewardInstitution] = useState(null);
   const [planTab, setPlanTab] = useState("b2c");
 
   // Modal de nouveau signalement
@@ -552,6 +571,12 @@ export default function CommunityPage() {
                 >
                   🏢 Pour les Entreprises
                 </button>
+                <button 
+                  className={`plan-tab-btn ${planTab === "institution" ? "active" : ""}`}
+                  onClick={() => setPlanTab("institution")}
+                >
+                  🚨 Institutions
+                </button>
               </div>
             </div>
 
@@ -743,6 +768,106 @@ export default function CommunityPage() {
                     <button
                       type="button"
                       className="btn-subscribe-plan btn-b2b"
+                      onClick={() => setSubscribeModal({ plan, rewardTier: activeTier, finalPrice })}
+                    >
+                      <CreditCard size={18} />
+                      <span>
+                        {isFree
+                          ? `Activer mon mois Gratuit (-${pointsCost} pts)`
+                          : `Souscrire (${finalPrice.toLocaleString()} FCFA ${pointsCost > 0 ? `• -${pointsCost} pts` : ""})`}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* CARTE 3 : 🚨 Premium Institution (9 000 FCFA / mois - 30 personnes) */}
+              {planTab === "institution" && (() => {
+                const plan = SUBSCRIPTION_PLANS[2];
+                const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardInstitution);
+                const discountPct = activeTier ? activeTier.discountPercent : 0;
+                const pointsCost = activeTier ? activeTier.pointsRequired : 0;
+                const finalPrice = activeTier ? activeTier.institutionPrice : plan.priceFcfa;
+                const isFree = finalPrice === 0;
+
+                return (
+                  <div className="plan-pricing-card b2g-card">
+                    <div className="plan-floating-badge b2g-badge">🚨 Institutions (30 Personnes)</div>
+
+                    <div className="plan-card-header">
+                      <div className="plan-category-indicator">
+                        <Shield size={18} />
+                        <span>30 personnes incluses</span>
+                      </div>
+                      <h3 className="plan-name">{plan.name}</h3>
+                      <p className="plan-subtitle">{plan.subtitle}</p>
+                    </div>
+
+                    {/* SÉLECTEUR DE RÉDUCTIONS PAR POINTS */}
+                    <div className="discount-tier-selector-box">
+                      <label>Appliquer une réduction par points :</label>
+                      <div className="tier-pills-row">
+                        <button
+                          type="button"
+                          className={`tier-pill-btn ${selectedRewardInstitution === null ? "active" : ""}`}
+                          onClick={() => setSelectedRewardInstitution(null)}
+                        >
+                          Plein Tarif (0 pt)
+                        </button>
+                        {DISCOUNT_REWARDS.map((tier) => {
+                          const canAfford = userPoints >= tier.pointsRequired;
+                          return (
+                            <button
+                              key={tier.id}
+                              type="button"
+                              disabled={!canAfford}
+                              className={`tier-pill-btn ${selectedRewardInstitution === tier.id ? "active" : ""} ${!canAfford ? "disabled" : ""}`}
+                              onClick={() => setSelectedRewardInstitution(tier.id)}
+                            >
+                              <strong>{tier.pointsRequired} pts</strong>
+                              <span>({tier.label})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* BLOC DE PRIX CALCULÉ */}
+                    <div className="plan-pricing-block">
+                      {discountPct > 0 && (
+                        <div className="price-discount-meta">
+                          <span className="original-price">{plan.priceFcfa.toLocaleString()} FCFA</span>
+                          <span className="discount-tag">-{discountPct}% ({pointsCost} pts déduits)</span>
+                        </div>
+                      )}
+
+                      <div className="final-price-row">
+                        <strong className="final-price-amount">
+                          {isFree ? "1 MOIS GRATUIT" : `${finalPrice.toLocaleString()} FCFA`}
+                        </strong>
+                        <span className="price-period">/ mois</span>
+                      </div>
+
+                      {discountPct > 0 && !isFree && (
+                        <div className="savings-inline-pill">
+                          <Sparkles size={13} color="#dc2626" />
+                          <span style={{color: "#991b1b"}}>Économie de <strong>{(plan.priceFcfa - finalPrice).toLocaleString()} FCFA</strong></span>
+                        </div>
+                      )}
+                    </div>
+
+                    <ul className="plan-features-list">
+                      {plan.features.map((feat, idx) => (
+                        <li key={idx}>
+                          <Check size={16} className="feature-check" />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button
+                      type="button"
+                      className="btn-subscribe-plan btn-b2g"
                       onClick={() => setSubscribeModal({ plan, rewardTier: activeTier, finalPrice })}
                     >
                       <CreditCard size={18} />

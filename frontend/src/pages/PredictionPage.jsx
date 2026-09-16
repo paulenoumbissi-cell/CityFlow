@@ -16,6 +16,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useCity } from "../context/CityContext";
 import { usePredictions } from "../context/PredictionContext.jsx";
+import EmergencyAlertOverlay from "../components/EmergencyAlertOverlay";
 import "./PredictionPage.css";
 import { apiService } from "../services/api";
 import { getWeatherByLocation } from "../services/weatherApi.js";
@@ -103,7 +104,7 @@ function MapBounds({ routeGeo, departureCoords, destinationCoords }) {
 
 function PredictionPage() {
   const { selectedCity, setSelectedCity, currentCityData } = useCity();
-  const { isPremium } = useAuth();
+  const { user, isPremium } = useAuth();
   const [selectedWeather, setSelectedWeather] = useState("dry");
   const [selectedHour, setSelectedHour] = useState(new Date().getHours());
   const [destination, setDestination] = useState(""); // Destination input
@@ -119,6 +120,7 @@ function PredictionPage() {
   const [mapConfig, setMapConfig] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [showMap, setShowMap] = useState(true); // toggle map visibility
+  const [showLimitModal, setShowLimitModal] = useState(false);
   // Récupérer les prédictions en temps réel (incluant météo) depuis le contexte WebSocket
 
 
@@ -222,6 +224,20 @@ function PredictionPage() {
 
   // Validate and Predict handler
   const handlePredict = async () => {
+    // Vérification de la limite Freemium (2 prédictions par jour)
+    if (!isPremium) {
+      const today = new Date().toISOString().split('T')[0];
+      const userId = user?.id || 'anonymous';
+      const storageKey = `cityflow_prediction_usage_${userId}_${today}`;
+      const count = parseInt(localStorage.getItem(storageKey) || '0', 10);
+      
+      if (count >= 2) {
+        setShowLimitModal(true);
+        return;
+      }
+      localStorage.setItem(storageKey, count + 1);
+    }
+
     setIsLoading(true);
     let newDepCoords = departureCoords;
     let newDestCoords = destinationCoords;
@@ -517,8 +533,9 @@ function PredictionPage() {
     );
   }
   return (
-    <main className="prediction-page">
-      {/* HEADER */}
+    <>
+      <main className="prediction-page">
+        {/* HEADER */}
       <section className="prediction-page-header" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px", marginBottom: "20px" }}>
         
         {/* City Selector moved here (above the toggle button) */}
@@ -1159,6 +1176,30 @@ function PredictionPage() {
       </section>
 
     </main>
+
+      {/* ALERTES URGENCES */}
+      <EmergencyAlertOverlay currentRouteCoords={routeGeo} />
+
+      {/* FREEMIUM LIMIT MODAL */}
+      {showLimitModal && (
+        <div className="limit-modal-overlay">
+          <div className="limit-modal-content">
+            <div className="limit-modal-header">
+              <Lock size={36} color="#f59e0b" />
+              <h3>Limite atteinte</h3>
+            </div>
+            <div className="limit-modal-body">
+              <p>Vous avez utilisé vos <strong>2 prédictions gratuites</strong> pour aujourd'hui.</p>
+              <p>Pour continuer à utiliser l'IA prédictive sans limite, passez à un abonnement <strong>Premium</strong> ou réessayez demain.</p>
+            </div>
+            <div className="limit-modal-actions">
+              <button className="btn-limit-close" onClick={() => setShowLimitModal(false)}>Fermer</button>
+              <a href="/community" className="btn-limit-upgrade">Découvrir Premium</a>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

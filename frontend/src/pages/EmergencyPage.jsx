@@ -1289,7 +1289,7 @@ export default function EmergencyPage() {
 
             <div className="leaflet-emergency-wrapper" style={{ position: "relative" }}>
               {/* POP-UP D'ALERTE CONDUCTEUR / DIFFUSION EN DIRECT */}
-              <EmergencyAlertOverlay onFocusVehicle={() => { setCameraFollow(true); }} />
+              <EmergencyAlertOverlay alwaysShow={true} onFocusVehicle={() => { setCameraFollow(true); }} />
 
               <MapContainer
                 center={mapCenter}

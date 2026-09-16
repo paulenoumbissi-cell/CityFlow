@@ -79,7 +79,7 @@ const SUBSCRIPTION_PLANS = [
     category: "b2b",
     name: "Premium Entreprise",
     subtitle: "Flottes d'entreprises, livraisons & équipes",
-    priceFcfa: 12000,
+    priceFcfa: 400,
     period: "par mois",
     beneficiaries: "30 personnes",
     features: [
@@ -95,7 +95,7 @@ const SUBSCRIPTION_PLANS = [
     category: "b2g",
     name: "Premium Institution",
     subtitle: "SAMU, Police, Sapeurs-Pompiers",
-    priceFcfa: 9000,
+    priceFcfa: 50,
     period: "par mois",
     beneficiaries: "30 personnes",
     features: [
@@ -116,8 +116,8 @@ const DISCOUNT_REWARDS = [
     label: "5 % de réduction",
     description: "Sur le prochain abonnement",
     citizenPrice: 475,
-    enterprisePrice: 11400,
-    institutionPrice: 8550,
+    enterprisePrice: 380,
+    institutionPrice: 48,
   },
   {
     id: "tier_300",
@@ -127,8 +127,8 @@ const DISCOUNT_REWARDS = [
     label: "15 % de réduction",
     description: "Sur le prochain abonnement",
     citizenPrice: 425,
-    enterprisePrice: 10200,
-    institutionPrice: 7650,
+    enterprisePrice: 340,
+    institutionPrice: 43,
   },
   {
     id: "tier_600",
@@ -581,7 +581,7 @@ export default function CommunityPage() {
             </div>
 
             <div className="plans-cards-grid">
-              {/* CARTE 1 : 👤 Premium Citoyen (2 000 FCFA / mois - 1 personne) */}
+              {/* CARTE 1 : Premium Citoyen (500 FCFA / mois - 1 personne) */}
               {planTab === "b2c" && (() => {
                 const plan = SUBSCRIPTION_PLANS[0];
                 const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardCitizen);
@@ -681,7 +681,7 @@ export default function CommunityPage() {
                 );
               })()}
 
-              {/* CARTE 2 : 🏢 Premium Entreprise (50 000 FCFA / mois - 30 personnes) */}
+              {/* CARTE 2 : Premium Entreprise (400 FCFA / mois - 30 personnes) */}
               {planTab === "b2b" && (() => {
                 const plan = SUBSCRIPTION_PLANS[1];
                 const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardEnterprise);
@@ -781,7 +781,7 @@ export default function CommunityPage() {
                 );
               })()}
 
-              {/* CARTE 3 : 🚨 Premium Institution (9 000 FCFA / mois - 30 personnes) */}
+              {/* CARTE 3 : Premium Institution (50 FCFA / mois - 30 personnes) */}
               {planTab === "institution" && (() => {
                 const plan = SUBSCRIPTION_PLANS[2];
                 const activeTier = DISCOUNT_REWARDS.find((r) => r.id === selectedRewardInstitution);

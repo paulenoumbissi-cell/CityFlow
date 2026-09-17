@@ -224,18 +224,27 @@ export const verifyOtp = async (req, res) => {
       user = newUserObj;
     }
   } else {
-    // Si c'est l'admin, on s'assure qu'il garde ses droits
-    if (cleanId === 'admin@cityflow.cm' || cleanId === '699000000') {
-      await db.run("UPDATE users SET role = 'admin', account_status = 'approved' WHERE id = ?", [user.id]);
+    let newRole = role || user.role;
+    let newAccountStatus = user.account_status;
+    
+    // Si l'utilisateur devient un service d'urgence ou gestionnaire de trafic, le remettre en attente
+    if ((newRole === 'emergency' || newRole === 'traffic_manager') && user.role !== newRole) {
+      newAccountStatus = 'pending';
     }
     
+    if (cleanId === 'admin@cityflow.cm' || cleanId === '699000000') {
+      newRole = 'admin';
+      newAccountStatus = 'approved';
+    }
+
     // Mettre à jour l'utilisateur existant
     await db.run(
       `
       UPDATE users SET
         name = COALESCE(?, name),
-        role = COALESCE(?, role),
-        role_label = COALESCE(?, role_label),
+        role = ?,
+        role_label = ?,
+        account_status = ?,
         city = COALESCE(?, city),
         vehicle_type = COALESCE(?, vehicle_type),
         password = COALESCE(?, password),
@@ -244,8 +253,9 @@ export const verifyOtp = async (req, res) => {
     `,
       [
         name || user.name,
-        role || user.role,
-        getRoleLabel(role || user.role),
+        newRole,
+        getRoleLabel(newRole),
+        newAccountStatus,
         city || user.city,
         vehicleType || user.vehicle_type,
         password || user.password,
@@ -253,6 +263,10 @@ export const verifyOtp = async (req, res) => {
         user.id,
       ]
     );
+
+    user.role = newRole;
+    user.role_label = getRoleLabel(newRole);
+    user.account_status = newAccountStatus;
     user = await findUserInDb(cleanId);
   }
 

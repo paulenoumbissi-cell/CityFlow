@@ -10,7 +10,7 @@ class CityFlowWebSocketService {
     this.subscribedCity = null;
   }
 
-  connect(url = import.meta.env.VITE_WS_URL || "ws://localhost:3000/ws") {
+  connect(url = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:3000/ws`) {
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }

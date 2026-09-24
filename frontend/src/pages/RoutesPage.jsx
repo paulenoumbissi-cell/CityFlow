@@ -72,7 +72,7 @@ const formatETA = (minutes) => {
   }
 };
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = `http://${window.location.hostname}:3000/api`;
 
 const CATEGORY_ICONS = {
   all: Search,

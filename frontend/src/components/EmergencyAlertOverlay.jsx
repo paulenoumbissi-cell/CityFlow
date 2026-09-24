@@ -18,15 +18,16 @@ import wsService from "../services/websocketService";
 import { useCity } from "../context/CityContext";
 import "./EmergencyAlertOverlay.css";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = `http://${window.location.hostname}:3000/api`;
 
 export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehicle, alwaysShow = false }) {
   const { selectedCity } = useCity();
   const [activeAlert, setActiveAlert] = useState(null);
   const [isDismissed, setIsDismissed] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [approachingDistanceMeters, setApproachingDistanceMeters] = useState(380);
+  const [approachingDistanceMeters, setApproachingDistanceMeters] = useState(0);
   const [isDemoActive, setIsDemoActive] = useState(false);
+  const [currentMission, setCurrentMission] = useState(null);
 
   const audioCtxRef = useRef(null);
   const alertIntervalRef = useRef(null);
@@ -63,6 +64,20 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
       }
     }
     return false;
+  };
+
+  // Calcule la distance de l'ambulance jusqu'au point le plus proche de la route de l'utilisateur
+  const calculateDistanceToUser = (mission, userCoords) => {
+    if (!mission || !userCoords || !userCoords.length) return 380; // fallback
+    const vehiclePos = mission.intersections?.[mission.currentStepIndex]?.position || mission.coordinates?.[0];
+    if (!vehiclePos) return 380;
+    
+    let minDist = Infinity;
+    for (const uCoord of userCoords) {
+      const d = getDistance(vehiclePos[0], vehiclePos[1], uCoord[0], uCoord[1]);
+      if (d < minDist) minDist = d;
+    }
+    return Math.round(minDist);
   };
 
   // Play audio warning chime using Web Audio API
@@ -125,6 +140,10 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
           const isOnRoute = isUserOnRoute(currentRouteCoords, data.mission.coordinates);
           
           if (alwaysShow || isOnRoute) {
+            setCurrentMission(data.mission);
+            const dist = calculateDistanceToUser(data.mission, currentRouteCoords);
+            setApproachingDistanceMeters(dist);
+
             setActiveAlert({
               vehicleName: data.mission.vehicleName || "Ambulance SAMU 119",
               destination: data.mission.destination || "Hôpital Central",
@@ -138,6 +157,7 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
           }
         } else if (!isDemoActive) {
           setActiveAlert(null);
+          setCurrentMission(null);
         }
       }
     } catch (err) {
@@ -155,6 +175,10 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
         const isOnRoute = isUserOnRoute(currentRouteCoords, data.mission.coordinates);
         
         if (alwaysShow || isOnRoute) {
+          setCurrentMission(data.mission);
+          const dist = calculateDistanceToUser(data.mission, currentRouteCoords);
+          setApproachingDistanceMeters(dist);
+
           setActiveAlert({
             vehicleName: data.mission.vehicleName || "Ambulance SAMU 119",
             destination: data.mission.destination || "Urgences",
@@ -174,6 +198,7 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
     const unsubCancel = wsService.on("EMERGENCY_MISSION_CANCELLED", () => {
       if (!isDemoActive) {
         setActiveAlert(null);
+        setCurrentMission(null);
         speechDoneRef.current = false;
       }
     });
@@ -184,18 +209,20 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
     };
   }, [selectedCity, isDemoActive, soundEnabled]);
 
-  // Simulation dynamique de la distance qui diminue
+  // Simulation dynamique de la distance qui diminue, ou mise à jour réelle si possible
   useEffect(() => {
-    if (activeAlert) {
+    if (activeAlert && !currentMission) {
       alertIntervalRef.current = setInterval(() => {
         setApproachingDistanceMeters((prev) => {
           if (prev <= 60) return 450; // loop
           return prev - 25;
         });
       }, 1200);
+    } else if (currentMission && currentRouteCoords) {
+      setApproachingDistanceMeters(calculateDistanceToUser(currentMission, currentRouteCoords));
     }
     return () => clearInterval(alertIntervalRef.current);
-  }, [activeAlert]);
+  }, [activeAlert, currentMission, currentRouteCoords]);
 
   // Déclencher une simulation de test d'alerte automobiliste
   const handleTriggerDemoAlert = () => {
@@ -250,7 +277,9 @@ export default function EmergencyAlertOverlay({ currentRouteCoords, onFocusVehic
     );
   }
 
-  const estimatedTimeSec = Math.max(5, Math.round(approachingDistanceMeters / 15));
+  const speedKmh = currentMission?.speedKmh || 75;
+  const speedMs = speedKmh * (1000 / 3600);
+  const estimatedTimeSec = Math.max(5, Math.round(approachingDistanceMeters / speedMs));
 
   return (
     <div className="emergency-motorist-alert-container animate-slide-down">

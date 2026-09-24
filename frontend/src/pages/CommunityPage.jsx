@@ -39,7 +39,7 @@ import { useAuth } from "../context/AuthContext";
 import wsService from "../services/websocketService";
 import "./CommunityPage.css";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = `http://${window.location.hostname}:3000/api`;
 
 const CATEGORY_CONFIG = {
   trafficBlock: { label: "Embouteillage", points: 10, icon: Car, color: "#EC4899", desc: "Signaler un embouteillage confirmé (+10 pts)" },

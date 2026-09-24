@@ -1,6 +1,6 @@
 import { YAOUNDE_NODES, DOUALA_NODES, INCIDENT_ALERTS, CITIES } from "../data/cityData";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3000/api`;
 
 export async function checkBackendHealth() {
   try {

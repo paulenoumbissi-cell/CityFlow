@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Link, useNavigate, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useNavigate, Navigate, useLocation } from "react-router-dom";
 import { Sparkles, Activity, Clock3, TrendingUp, MapPin, Zap } from "lucide-react";
 
 import Navbar from "./components/Navbar";
@@ -11,6 +11,7 @@ import PredictionPage from "./pages/PredictionPage";
 import EmergencyPage from "./pages/EmergencyPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
+import EmergencyAlertOverlay from "./components/EmergencyAlertOverlay";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import AboutPage from "./pages/AboutPage";
@@ -448,7 +449,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/connexion" replace />;
   }
   
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  if (allowedRoles && !allowedRoles.includes(role) && role !== 'admin') {
     return <Navigate to="/" replace />;
   }
   
@@ -473,7 +474,7 @@ function App() {
                   <Route 
                     path="/urgences" 
                     element={
-                      <ProtectedRoute allowedRoles={['emergency', 'traffic_manager', 'police']}>
+                      <ProtectedRoute allowedRoles={['emergency', 'traffic_manager', 'police', 'admin']}>
                         <EmergencyPage />
                       </ProtectedRoute>
                     } 

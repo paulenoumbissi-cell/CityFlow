@@ -27,10 +27,11 @@ import "../index.css";
 function Navbar() {
   const location = useLocation();
   const { selectedCity, setSelectedCity } = useCity();
-  const { user, isAuthenticated, role } = useAuth();
+  const { user, isAuthenticated, role, toggleAdminMode } = useAuth();
   const { toggleTheme, isDark } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected");
   const dropdownRef = useRef(null);
   let closeTimeoutRef = useRef(null);
@@ -85,6 +86,7 @@ function Navbar() {
   const closeAllMenus = () => {
     setMobileMenuOpen(false);
     setDropdownOpen(false);
+    setAdminDropdownOpen(false);
   };
 
   const isMobilityActive = ["/carte", "/routes", "/prediction"].includes(location.pathname);
@@ -194,53 +196,107 @@ function Navbar() {
           )}
         </div>
 
-        {/* COMMUNAUTÉ */}
-        <Link
-          to="/communaute"
-          className={`nav-link ${location.pathname === "/communaute" ? "active" : ""}`}
-          onClick={closeAllMenus}
-        >
-          <span className="nav-link-with-icon">
-            <Users size={16} />
-            Communauté
-          </span>
-        </Link>
-
-        {/* À PROPOS */}
-        <Link
-          to="/a-propos"
-          className={`nav-link ${location.pathname === "/a-propos" ? "active" : ""}`}
-          onClick={closeAllMenus}
-        >
-          <span className="nav-link-with-icon">
-            <Info size={16} />
-            À propos
-          </span>
-        </Link>
-
-        {/* URGENCES (Caché pour les citoyens) */}
-        {(role === 'emergency' || role === 'traffic_manager' || role === 'police' || role === 'admin') && (
+        {/* COMMUNAUTÉ (Caché pour les admins pour réduire les onglets) */}
+        {role !== 'admin' && (
           <Link
-            to="/urgences"
-            className={`nav-emergency-btn ${location.pathname === "/urgences" ? "active" : ""}`}
+            to="/communaute"
+            className={`nav-link ${location.pathname === "/communaute" ? "active" : ""}`}
             onClick={closeAllMenus}
           >
-            <Siren size={16} />
-            Urgences
+            <span className="nav-link-with-icon">
+              <Users size={16} />
+              Communauté
+            </span>
           </Link>
         )}
 
-        {/* ADMIN */}
-        {role === 'admin' && (
+        {/* À PROPOS (Caché pour les admins) */}
+        {role !== 'admin' && (
           <Link
-            to="/admin"
-            className={`nav-link ${location.pathname === "/admin" ? "active" : ""}`}
-            style={{ display: "flex", alignItems: "center", gap: "6px", color: "#3b82f6", fontWeight: "600" }}
+            to="/a-propos"
+            className={`nav-link ${location.pathname === "/a-propos" ? "active" : ""}`}
             onClick={closeAllMenus}
           >
-            <ShieldAlert size={16} />
-            Admin
+            <span className="nav-link-with-icon">
+              <Info size={16} />
+              À propos
+            </span>
           </Link>
+        )}
+
+        {/* PORTAIL PRO (Dropdown pour réduire l'encombrement) */}
+        {(role === 'emergency' || role === 'traffic_manager' || role === 'police' || role === 'admin') && (
+          <div 
+            className="nav-dropdown-wrapper"
+            onMouseEnter={() => {
+              if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+              setAdminDropdownOpen(true);
+            }}
+            onMouseLeave={() => {
+              closeTimeoutRef.current = setTimeout(() => {
+                setAdminDropdownOpen(false);
+              }, 220);
+            }}
+          >
+            <button 
+              type="button"
+              className={`nav-emergency-btn ${(location.pathname === "/urgences" || location.pathname === "/admin") ? "active" : ""}`}
+              onClick={() => setAdminDropdownOpen((prev) => !prev)}
+              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            >
+              <ShieldAlert size={16} />
+              <span>Portail Pro</span>
+              <ChevronDown size={15} className={`dropdown-chevron ${adminDropdownOpen ? "rotated" : ""}`} style={{ marginLeft: "4px" }} />
+            </button>
+
+            {adminDropdownOpen && (
+              <div 
+                className="nav-dropdown-menu"
+                onMouseEnter={() => {
+                  if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+                  setAdminDropdownOpen(true);
+                }}
+                onMouseLeave={() => {
+                  closeTimeoutRef.current = setTimeout(() => {
+                    setAdminDropdownOpen(false);
+                  }, 220);
+                }}
+                style={{ right: 0, left: 'auto', minWidth: '260px' }}
+              >
+                {/* URGENCES */}
+                <Link
+                  to="/urgences"
+                  className={`dropdown-item ${location.pathname === "/urgences" ? "active" : ""}`}
+                  onClick={closeAllMenus}
+                >
+                  <div className="dropdown-item-icon route-icon" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                    <Siren size={18} />
+                  </div>
+                  <div className="dropdown-item-text">
+                    <strong>Gestion Urgences</strong>
+                    <span>Onde Verte & Corridors</span>
+                  </div>
+                </Link>
+
+                {/* ADMIN */}
+                {role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className={`dropdown-item ${location.pathname === "/admin" ? "active" : ""}`}
+                    onClick={closeAllMenus}
+                  >
+                    <div className="dropdown-item-icon map-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                      <ShieldAlert size={18} />
+                    </div>
+                    <div className="dropdown-item-text">
+                      <strong>Tableau de Bord</strong>
+                      <span>Supervision & Administration</span>
+                    </div>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </nav>
 
@@ -258,6 +314,26 @@ function Navbar() {
             <option value="Douala">Douala</option>
           </select>
         </div>
+
+        {/* BOUTON BASCULE ADMIN / CITOYEN (POUR LES TESTS) */}
+        <button
+          type="button"
+          onClick={toggleAdminMode}
+          title={role === 'admin' ? "Passer en mode Citoyen" : "Passer en mode Administrateur"}
+          style={{
+            background: role === 'admin' ? "#ef4444" : "var(--cityflow-primary)",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            padding: "4px 8px",
+            fontSize: "11px",
+            fontWeight: "bold",
+            cursor: "pointer",
+            marginLeft: "8px",
+          }}
+        >
+          {role === 'admin' ? "Mode Admin" : "Mode Citoyen"}
+        </button>
 
         {/* BOUTON MODE SOMBRE / CLAIR */}
         <button

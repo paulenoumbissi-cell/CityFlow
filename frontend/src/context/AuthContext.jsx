@@ -219,6 +219,27 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("cityflow_user");
   };
 
+  const toggleAdminMode = () => {
+    if (user) {
+      const newRole = user.role === 'admin' ? 'citizen' : 'admin';
+      const updatedUser = { ...user, role: newRole };
+      setUser(updatedUser);
+      localStorage.setItem("cityflow_user", JSON.stringify(updatedUser));
+    } else {
+      const dummyUser = {
+        name: "Mode Test",
+        email: "test@cityflow.com",
+        role: "admin",
+        initials: "MT",
+        isAuthenticated: true,
+        score: 100,
+        id: "tester-123"
+      };
+      setUser(dummyUser);
+      localStorage.setItem("cityflow_user", JSON.stringify(dummyUser));
+    }
+  };
+
   const updateSubscriptionPlan = (newPlan) => {
     setUser(prev => {
       if (!prev) return prev;
@@ -236,7 +257,7 @@ export function AuthProvider({ children }) {
   // Helpers pour les privilèges Premium
   const isPremiumCitizen = user?.subscriptionPlan === "premium_b2c";
   const isPremiumEnterprise = user?.subscriptionPlan === "premium_b2b";
-  const isPremium = isPremiumCitizen || isPremiumEnterprise;
+  const isPremium = isPremiumCitizen || isPremiumEnterprise || user?.role === "admin";
 
   return (
     <AuthContext.Provider
@@ -259,6 +280,7 @@ export function AuthProvider({ children }) {
         deleteAccount,
         logout,
         setUser,
+        toggleAdminMode,
         isPremiumCitizen,
         isPremiumEnterprise,
         isPremium,

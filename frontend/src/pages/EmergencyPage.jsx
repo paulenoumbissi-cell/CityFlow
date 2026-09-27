@@ -31,7 +31,7 @@ import {
   Sliders,
   Crosshair, Layers, CloudRain, Thermometer, ThermometerSun, AlertOctagon, Navigation2, 
 } from "lucide-react";
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap, useMapEvents, Marker, Tooltip, LayersControl, LayerGroup, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, LayersControl, Polyline, CircleMarker, Popup, useMap, useMapEvents, Marker, Tooltip, LayerGroup, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
@@ -151,18 +151,18 @@ const createHospitalDivIcon = (isTarget = false) =>
   });
 
 // Map View Controller with Camera Auto-Follow
-function MapController({ coords, vehiclePos, cameraFollow, selectedCorridor }) {
+function MapController({ coords, vehiclePos, cameraFollow, selectedCorridor, selectedCity }) {
   const map = useMap();
   const prevCoordsRef = useRef(null);
 
   useEffect(() => {
-    if (cameraFollow && vehiclePos) {
+    if (cameraFollow && vehiclePos && coords && coords.length > 0) {
       map.panTo(vehiclePos, { animate: true, duration: 0.8 });
     }
-  }, [vehiclePos, cameraFollow, map]);
+  }, [vehiclePos, cameraFollow, map, coords]);
 
   useEffect(() => {
-    if (!cameraFollow && coords && coords.length > 0) {
+    if ((!cameraFollow || !vehiclePos) && coords && coords.length > 0) {
       const coordsKey = JSON.stringify(coords[0]) + JSON.stringify(coords[coords.length - 1]);
       if (prevCoordsRef.current !== coordsKey) {
         prevCoordsRef.current = coordsKey;
@@ -173,8 +173,12 @@ function MapController({ coords, vehiclePos, cameraFollow, selectedCorridor }) {
           // ignore
         }
       }
+    } else if (!coords || coords.length === 0) {
+      // Pan to city center if no route is active
+      const cityCenter = selectedCity === "Douala" ? [4.0511, 9.7679] : [3.8480, 11.5021];
+      map.setView(cityCenter, 13, { animate: true });
     }
-  }, [coords, cameraFollow, map, selectedCorridor]);
+  }, [coords, cameraFollow, vehiclePos, map, selectedCorridor, selectedCity]);
 
   return null;
 }
@@ -270,7 +274,11 @@ export default function EmergencyPage() {
         setActiveMission(null);
         if (statusData?.corridorsAvailable && statusData.corridorsAvailable.length > 0) {
           setCorridors(statusData.corridorsAvailable);
-          if (!selectedCorridor) setSelectedCorridor(statusData.corridorsAvailable[0]);
+          setSelectedCorridor((prev) => {
+            if (!prev) return statusData.corridorsAvailable[0];
+            const stillValid = statusData.corridorsAvailable.find(c => c.id === prev.id);
+            return stillValid ? prev : statusData.corridorsAvailable[0];
+          });
         }
       }
 
@@ -278,7 +286,11 @@ export default function EmergencyPage() {
       const hospData = await apiService.getEmergencyHospitals(currentCity);
       if (hospData?.hospitals && hospData.hospitals.length > 0) {
         setHospitals(hospData.hospitals);
-        if (!selectedHospital) setSelectedHospital(hospData.hospitals[0]);
+        setSelectedHospital((prev) => {
+          if (!prev) return hospData.hospitals[0];
+          const stillValid = hospData.hospitals.find(h => h.id === prev.id);
+          return stillValid ? prev : hospData.hospitals[0];
+        });
       }
 
       // 3. Historique
@@ -432,13 +444,12 @@ export default function EmergencyPage() {
     if (activeMission?.coordinates?.length) return activeMission.coordinates;
     if (customRoutePreview?.coordinates?.length) return customRoutePreview.coordinates;
     if (selectedCorridor?.coordinates?.length) return selectedCorridor.coordinates;
-    return [[3.8667, 11.5167], [3.8650, 11.5080]];
+    return [];
   }, [activeMission, customRoutePreview, selectedCorridor]);
 
-  // Calcul du point de la position courante du véhicule selon simProgress [0..1]
   const currentVehiclePosition = useMemo(() => {
     if (!activeMission || !activeCoordinates || activeCoordinates.length < 2) {
-      return activeCoordinates[0] || [3.8667, 11.5167];
+      return null;
     }
 
     const numSegments = activeCoordinates.length - 1;
@@ -1297,10 +1308,20 @@ export default function EmergencyPage() {
                 scrollWheelZoom={true}
                 className={`emergency-leaflet-container ${selectingMode ? "crosshair-cursor-map" : ""}`}
               >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png"
-                />
+                <LayersControl position="topright">
+                  <LayersControl.BaseLayer checked name="Tactique (OSM Fr)">
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png"
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.BaseLayer name="Sombre (CartoDB)">
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    />
+                  </LayersControl.BaseLayer>
+                </LayersControl>
 
                 <MapClickHandler selectingMode={selectingMode} setCustomOriginCoords={setCustomOriginCoords} setCustomOriginText={setCustomOriginText} setSelectingMode={setSelectingMode} setCustomDestinationCoords={setCustomDestinationCoords} setCustomDestinationText={setCustomDestinationText} setSelectedHospital={setSelectedHospital} />
                 <MapController
@@ -1308,10 +1329,12 @@ export default function EmergencyPage() {
                   vehiclePos={currentVehiclePosition}
                   cameraFollow={cameraFollow}
                   selectedCorridor={selectedCorridor}
+                  selectedCity={selectedCity}
                 />
 
                 {/* Tracé Polyline de l'Itinéraire */}
                 <Polyline
+                  key={activeCoordinates?.length ? `${activeCoordinates[0][0]}-${activeCoordinates[activeCoordinates.length-1][0]}` : 'empty'}
                   positions={activeCoordinates}
                   pathOptions={{
                     color: activeMission ? "#22c55e" : "#ef4444",

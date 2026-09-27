@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
+  LayersControl,
   CircleMarker,
   Marker,
   Popup,
@@ -788,13 +789,23 @@ export default function CityMap({
             </>
           )}
 
-          {/* CALQUE DE TUILES 100% GRATUIT ET SANS WATERMARK */}
-          <TileLayer
-            key={`${activeTileProvider}_${selectedCity}`}
-            url={currentTile.url}
-            attribution={currentTile.attribution}
-            maxZoom={19}
-          />
+          {/* CONTROLE DES CALQUES */}
+          <LayersControl position="topright">
+            <LayersControl.BaseLayer checked name="Plan (OSM)">
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png"
+                maxZoom={19}
+              />
+            </LayersControl.BaseLayer>
+            <LayersControl.BaseLayer name="Sombre (CartoDB)">
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                maxZoom={19}
+              />
+            </LayersControl.BaseLayer>
+          </LayersControl>
 
           {/* ========================================================
               BADGES PROMINENTS DES NOMS DES ZONES & QUARTIERS

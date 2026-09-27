@@ -21,7 +21,8 @@ import "./PredictionPage.css";
 import { apiService } from "../services/api";
 import { getWeatherByLocation } from "../services/weatherApi.js";
 import { fetchMapConfig } from "../services/mapApi.js";
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, LayersControl, CircleMarker } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, LayersControl, CircleMarker, Tooltip } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { YAOUNDE_NODES, DOUALA_NODES } from "../data/cityData.js";
 import { fetchRoute } from "../services/routeApi.js";
@@ -139,6 +140,9 @@ function PredictionPage() {
       setForecastData(cityPrediction);
     }
   }, [cityPrediction]);
+
+  // Coordonnées formatées pour la détection d'intersections avec l'ambulance
+  const activeRouteFormattedCoords = routeGeo?.coordinates?.map(c => [c[1], c[0]]) || [];
 
   // Fetch weather based on location input
   useEffect(() => {
@@ -365,15 +369,19 @@ function PredictionPage() {
   };
 
   const fallbackPredictions = [
+    { horizon: "Temps réel", congestionPercentage: 40, status: "" },
     { horizon: "+15 min", congestionPercentage: 45, status: "" },
     { horizon: "+30 min", congestionPercentage: 55, status: "" },
     { horizon: "+1 heure", congestionPercentage: 65, status: "" },
+    { horizon: "+2 heures", congestionPercentage: 60, status: "" },
   ];
 
   const basePredictions = forecastData?.globalForecast || (cityPrediction?.summary ? [
+    { horizon: "Temps réel", congestionPercentage: cityPrediction.summary.current || 40, status: "" },
     { horizon: "+15 min", congestionPercentage: cityPrediction.summary.in15m, status: "" },
     { horizon: "+30 min", congestionPercentage: cityPrediction.summary.in30m, status: "" },
     { horizon: "+1 heure", congestionPercentage: cityPrediction.summary.in60m, status: "" },
+    { horizon: "+2 heures", congestionPercentage: cityPrediction.summary.in120m || 60, status: "" },
   ] : fallbackPredictions);
 
   const weatherInfo = locationWeather || cityPrediction?.weather;
@@ -440,8 +448,8 @@ function PredictionPage() {
         return d < best.dist ? { node, dist: d } : best;
       }, { node: null, dist: Infinity });
       
-      // Si un nœud est très proche de l'itinéraire (< 800m environ) et qu'il est encombré (>40%)
-      if (nearestResult.node && nearestResult.dist < 0.008 && nearestResult.node.congestionValue > 40) {
+      // Si un nœud (point de repère) est très proche de l'itinéraire (< 1.5km environ), on l'ajoute
+      if (nearestResult.node && nearestResult.dist < 0.015) {
         congestedNodes.add(nearestResult.node.name);
       }
     }
@@ -449,7 +457,7 @@ function PredictionPage() {
     return Array.from(congestedNodes).slice(0, 3); // Limiter à 3 zones pour l'affichage
   };
 
-  const congestedZones = getCongestedLandmarks();
+  const routeLandmarks = getCongestedLandmarks();
 
   // Render dynamic congestion segments on the route
   const renderRouteSegments = () => {
@@ -534,6 +542,9 @@ function PredictionPage() {
   }
   return (
     <>
+      {/* L'alerte ne se déclenchera QUE si l'utilisateur est sur la trajectoire (alwaysShow={false}) */}
+      <EmergencyAlertOverlay currentRouteCoords={activeRouteFormattedCoords} alwaysShow={false} />
+      
       <main className="prediction-page">
         {/* HEADER */}
       <section className="prediction-page-header" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px", marginBottom: "20px" }}>
@@ -696,21 +707,34 @@ function PredictionPage() {
                       </Popup>
                     </Marker>
                   )}
-                  {congestedZones && congestedZones.map((z) => {
+                  {routeLandmarks && routeLandmarks.map((z) => {
                     const cityNodes = currentCityData?.name === "Yaoundé" ? YAOUNDE_NODES : DOUALA_NODES;
                     const node = cityNodes.find(n => n.name.includes(z) || z.includes(n.name));
                     if (!node) return null;
                     const congVal = node.congestionValue || 50;
                     const markerColor = congVal > 60 ? '#ef4444' : congVal > 40 ? '#f59e0b' : '#10b981';
+                    const markerHtml = `
+                      <div style="background: white; border: 2px solid ${markerColor}; padding: 4px 8px; border-radius: 20px; font-weight: bold; color: #1e293b; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background: ${markerColor}; border-radius: 50%;"></span>
+                        ${z}
+                      </div>
+                    `;
+                    
+                    const divIcon = L.divIcon({
+                      className: 'custom-landmark-icon',
+                      html: markerHtml,
+                      iconSize: null,
+                      iconAnchor: [0, 0] // Anchor it slightly offset from the exact coordinate
+                    });
+
                     return (
-                      <CircleMarker
+                      <Marker
                         key={z}
-                        center={node.position}
-                        radius={10}
-                        pathOptions={{ color: markerColor, fillColor: markerColor, fillOpacity: 0.7, weight: 3 }}
+                        position={node.position}
+                        icon={divIcon}
                       >
-                        <Popup><strong>{z}</strong><br/>Congestion : {congVal}%</Popup>
-                      </CircleMarker>
+                        <Popup><strong>{z}</strong><br/>Trafic : {congVal > 60 ? "Saturé" : congVal > 40 ? "Modéré" : "Fluide"}</Popup>
+                      </Marker>
                     );
                   })}
 {/* Render all alternative routes */}
@@ -814,9 +838,14 @@ function PredictionPage() {
                     <div style={{ fontSize: "13px", color: "var(--cityflow-muted)", marginBottom: "2px" }}>
                       Distance : <strong style={{ color: "var(--cityflow-text)" }}>{(routeAlternatives[0].distance / 1000).toFixed(1)} km</strong>
                     </div>
-                    <div style={{ fontSize: "13px", color: "var(--cityflow-muted)" }}>
+                    <div style={{ fontSize: "13px", color: "var(--cityflow-muted)", marginBottom: "6px" }}>
                       Temps estimé : <strong style={{ color: "#fcd34d" }}>{formatDuration(calculateEstimatedDuration(routeAlternatives[0]))}</strong>
                     </div>
+                    {routeLandmarks && routeLandmarks.length > 0 && (
+                      <div style={{ fontSize: "12px", color: "var(--cityflow-muted)", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "6px" }}>
+                        <span style={{ color: "var(--cityflow-text)", fontWeight: "500" }}>Via :</span> {routeLandmarks.join(" ➔ ")}
+                      </div>
+                    )}
                   </div>
                 )}
               </section>
@@ -946,6 +975,14 @@ function PredictionPage() {
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontSize: "13px" }}>
                         <span style={{ color: "var(--cityflow-muted)" }}>Météo à {String(selectedHour).padStart(2, "0")}:00 :</span>
                         <span style={{ color: "#60a5fa" }}>{weatherInfo.temperature}°C, {WEATHER_OPTIONS.find(w => w.key === selectedWeather)?.label || "Clair"}</span>
+                      </div>
+                    )}
+
+                    {/* Points de repère */}
+                    {congestedZones && congestedZones.length > 0 && (
+                      <div style={{ marginTop: "10px", fontSize: "13px", color: "var(--cityflow-muted)" }}>
+                        <span style={{ color: "var(--cityflow-text)", fontWeight: "600" }}>Points de repère sur le trajet : </span>
+                        {congestedZones.join(", ")}
                       </div>
                     )}
 
@@ -1084,7 +1121,7 @@ function PredictionPage() {
           {adjustedPredictions.map((p) => {
             const val = p.congestionPercentage;
             const levelClass = getLevelClass(val);
-            const isLocked = !isPremium && p.horizon === "+1 heure";
+            const isLocked = !isPremium && (p.horizon === "+1 heure" || p.horizon === "+2 heures");
             return (
               <article key={p.horizon} className={`prediction-time-card ${levelClass} ${isLocked ? 'locked' : ''}`}>
                 {isLocked ? (

@@ -43,6 +43,7 @@ import {
 import {
   MapContainer,
   TileLayer,
+  LayersControl,
   Polyline,
   CircleMarker,
   Popup,
@@ -54,7 +55,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
-// Landmarks will be fetched from backend API
+import { YAOUNDE_NODES, DOUALA_NODES } from "../data/cityData";
 import EmergencyAlertOverlay from "../components/EmergencyAlertOverlay";
 import wsService from "../services/websocketService";
 import apiService from "../services/api";
@@ -221,6 +222,32 @@ export default function RoutesPage() {
       unsubEmCancel();
     };
   }, [selectedCity]);
+
+  // Récupérer les points de repères sur le trajet sélectionné
+  const getCongestedLandmarks = () => {
+    if (!selectedRoute || !selectedRoute.coordinates) return [];
+    
+    const cityNodes = selectedCity === "Yaoundé" ? YAOUNDE_NODES : DOUALA_NODES;
+    let congestedNodes = new Set();
+    
+    const step = Math.max(1, Math.floor(selectedRoute.coordinates.length / 20));
+    
+    for (let i = 0; i < selectedRoute.coordinates.length; i += step) {
+      const point = selectedRoute.coordinates[i];
+      const nearestResult = cityNodes.reduce((best, node) => {
+        const d = Math.hypot(node.position[0] - point[0], node.position[1] - point[1]);
+        return d < best.dist ? { node, dist: d } : best;
+      }, { node: null, dist: Infinity });
+      
+      if (nearestResult.node && nearestResult.dist < 0.015) {
+        congestedNodes.add(nearestResult.node.name);
+      }
+    }
+    
+    return Array.from(congestedNodes).slice(0, 3);
+  };
+
+  const routeLandmarks = getCongestedLandmarks();
 
   // Fermer le dropdown si on clique à l'extérieur
   useEffect(() => {
@@ -833,6 +860,12 @@ export default function RoutesPage() {
                   </span>
                 </div>
 
+                {route.id === selectedRoute?.id && routeLandmarks && routeLandmarks.length > 0 && (
+                  <div className="route-landmarks-info" style={{ fontSize: "12px", color: "var(--cityflow-muted)", marginTop: "10px", padding: "8px", background: "rgba(0,0,0,0.03)", borderRadius: "6px" }}>
+                    <span style={{ fontWeight: "600", color: "var(--cityflow-text)" }}>Points de repère :</span> {routeLandmarks.join(" ➔ ")}
+                  </div>
+                )}
+
                 <div className="route-highlights-list">
                   {route.highlights?.map((h, i) => (
                     <div key={i} className="highlight-item">
@@ -874,10 +907,20 @@ export default function RoutesPage() {
               style={{ width: "100%", height: "100%", borderRadius: "18px" }}
               scrollWheelZoom={true}
             >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+              <LayersControl position="topright">
+                <LayersControl.BaseLayer checked name="Plan (OSM)">
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="Sombre (Dark)">
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  />
+                </LayersControl.BaseLayer>
+              </LayersControl>
 
               <RouteMapClickHandler onMapClick={handleMapClick} />
               {selectedRoute?.coordinates && <FitRouteBounds coords={selectedRoute.coordinates} />}
@@ -903,6 +946,56 @@ export default function RoutesPage() {
                   </CircleMarker>
                 </>
               )}
+
+              {/* POINTS DE REPÈRE (LANDMARKS) SUR LE TRAJET SÉLECTIONNÉ */}
+              {routeLandmarks && routeLandmarks.map((z) => {
+                const cityNodes = selectedCity === "Yaoundé" ? YAOUNDE_NODES : DOUALA_NODES;
+                const node = cityNodes.find(n => n.name.includes(z) || z.includes(n.name));
+                if (!node) return null;
+
+                // Snap the landmark position exactly onto the route polyline
+                let snappedPosition = node.position;
+                if (selectedRoute && selectedRoute.coordinates) {
+                  let minDiff = Infinity;
+                  let closest = node.position;
+                  for (let c of selectedRoute.coordinates) {
+                    const diff = Math.pow(c[0] - node.position[0], 2) + Math.pow(c[1] - node.position[1], 2);
+                    if (diff < minDiff) {
+                      minDiff = diff;
+                      closest = c;
+                    }
+                  }
+                  if (minDiff < 0.01) { // Snap only if it's reasonably close
+                    snappedPosition = closest;
+                  }
+                }
+
+                const congVal = node.congestionValue || 50;
+                const markerColor = congVal > 60 ? '#ef4444' : congVal > 40 ? '#f59e0b' : '#10b981';
+                const markerHtml = `
+                  <div class="landmark-hover-badge" style="--marker-color: ${markerColor}">
+                    <span class="landmark-dot"></span>
+                    <span class="landmark-name">${z}</span>
+                  </div>
+                `;
+                
+                const divIcon = L.divIcon({
+                  className: 'custom-landmark-icon',
+                  html: markerHtml,
+                  iconSize: null,
+                  iconAnchor: [11, 11]
+                });
+
+                return (
+                  <Marker
+                    key={z}
+                    position={snappedPosition}
+                    icon={divIcon}
+                  >
+                    <Popup><strong>{z}</strong><br/>Trafic : {congVal > 60 ? "Saturé" : congVal > 40 ? "Modéré" : "Fluide"}</Popup>
+                  </Marker>
+                );
+              })}
 
               {/* TRACÉS SECONDAIRES NON SÉLECTIONNÉS AVEC PASTILLES CLIQUABLES */}
               {routes

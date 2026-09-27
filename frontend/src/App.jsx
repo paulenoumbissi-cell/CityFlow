@@ -466,11 +466,11 @@ function App() {
               <div className="app">
                 <Navbar />
                 <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/carte" element={<MapPage />} />
-                  <Route path="/routes" element={<RoutesPage />} />
-                  <Route path="/prediction" element={<PredictionPage />} />
-                  <Route path="/communaute" element={<CommunityPage />} />
+                  <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                  <Route path="/carte" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
+                  <Route path="/routes" element={<ProtectedRoute><RoutesPage /></ProtectedRoute>} />
+                  <Route path="/prediction" element={<ProtectedRoute><PredictionPage /></ProtectedRoute>} />
+                  <Route path="/communaute" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
                   <Route 
                     path="/urgences" 
                     element={

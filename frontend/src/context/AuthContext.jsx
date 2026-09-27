@@ -5,7 +5,7 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("cityflow_user");
+    const saved = sessionStorage.getItem("cityflow_user");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -16,7 +16,6 @@ export function AuthProvider({ children }) {
         console.error(e);
       }
     }
-    // Aucun utilisateur connecté par défaut
     return null;
   });
 
@@ -25,9 +24,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem("cityflow_user", JSON.stringify(user));
+      sessionStorage.setItem("cityflow_user", JSON.stringify(user));
     } else {
-      localStorage.removeItem("cityflow_user");
+      sessionStorage.removeItem("cityflow_user");
     }
   }, [user]);
 

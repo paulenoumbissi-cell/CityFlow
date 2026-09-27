@@ -211,7 +211,8 @@
 =================================================== */
 .google-suggestions-dropdown {
   position: absolute;
-  top: 90px;
+  top: 100%;
+  margin-top: 8px;
   left: 24px;
   right: 24px;
   background: #ffffff;

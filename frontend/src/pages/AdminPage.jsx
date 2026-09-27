@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ShieldAlert, CheckCircle, XCircle, UserPlus, Users, Activity, AlertTriangle, MapPin, BarChart3, Clock, Mail, Lock, User, Loader } from "lucide-react";
+import { ShieldAlert, CheckCircle, XCircle, UserPlus, Users, Activity, AlertTriangle, MapPin, BarChart3, Clock, Mail, Lock, User, Loader, Eye, EyeOff } from "lucide-react";
 import apiService from "../services/api";
 import "./AdminPage.css";
 
@@ -7,6 +7,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("traffic");
   
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminStatus, setAdminStatus] = useState(null);
 
   // Accreditations State
@@ -257,12 +258,19 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', padding: '10px' }}>
                       <Lock size={16} style={{ color: "var(--cityflow-muted)", marginRight: "8px" }} />
                       <input 
-                        type="password" 
+                        type={showAdminPassword ? "text" : "password"} 
                         placeholder="••••••••" 
                         value={newAdmin.password} 
                         onChange={e => setNewAdmin({...newAdmin, password: e.target.value})}
                         style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--cityflow-text)', fontSize: '14px' }}
                       />
+                      <button 
+                        type="button"
+                        onClick={() => setShowAdminPassword(!showAdminPassword)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: 'var(--cityflow-muted)', display: 'flex', alignItems: 'center' }}
+                      >
+                        {showAdminPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                   </div>
 

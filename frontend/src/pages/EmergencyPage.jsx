@@ -442,10 +442,12 @@ export default function EmergencyPage() {
   // =========================================================================
   const activeCoordinates = useMemo(() => {
     if (activeMission?.coordinates?.length) return activeMission.coordinates;
-    if (customRoutePreview?.coordinates?.length) return customRoutePreview.coordinates;
+    if (activeTab === "custom") {
+      return customRoutePreview?.coordinates?.length ? customRoutePreview.coordinates : [];
+    }
     if (selectedCorridor?.coordinates?.length) return selectedCorridor.coordinates;
     return [];
-  }, [activeMission, customRoutePreview, selectedCorridor]);
+  }, [activeMission, customRoutePreview, selectedCorridor, activeTab]);
 
   const currentVehiclePosition = useMemo(() => {
     if (!activeMission || !activeCoordinates || activeCoordinates.length < 2) {
@@ -1333,16 +1335,16 @@ export default function EmergencyPage() {
                 />
 
                 {/* Tracé Polyline de l'Itinéraire */}
-                <Polyline
-                  key={activeCoordinates?.length ? `${activeCoordinates[0][0]}-${activeCoordinates[activeCoordinates.length-1][0]}` : 'empty'}
-                  positions={activeCoordinates}
-                  pathOptions={{
-                    color: activeMission ? "#22c55e" : "#ef4444",
-                    weight: activeMission ? 7 : 5,
-                    dashArray: activeMission ? undefined : "8, 8",
-                    opacity: 0.95,
-                  }}
-                />
+                {activeCoordinates && activeCoordinates.length > 0 && (
+                  <Polyline
+                    key={`route-${activeTab}-${activeMission ? 'active' : 'preview'}-${activeCoordinates.length}-${activeCoordinates[0][0]}`}
+                    positions={activeCoordinates}
+                    pathOptions={activeMission 
+                      ? { color: "#22c55e", weight: 7, opacity: 0.95 } 
+                      : { color: "#ef4444", weight: 5, dashArray: "8, 8", opacity: 0.95 }
+                    }
+                  />
+                )}
 
                 {/* Marqueurs des Hôpitaux */}
                 {hospitals.map((hosp) => (
@@ -1350,6 +1352,14 @@ export default function EmergencyPage() {
                     key={hosp.id}
                     position={hosp.position}
                     icon={createHospitalDivIcon(selectedHospital?.id === hosp.id || activeMission?.destination?.includes(hosp.name))}
+                    eventHandlers={{
+                      click: () => {
+                        setSelectedHospital(hosp);
+                        setCustomDestinationText(hosp.name);
+                        setCustomDestinationCoords(hosp.position);
+                        setActiveTab("custom");
+                      }
+                    }}
                   >
                     <Popup>
                       <div className="popup-emergency">

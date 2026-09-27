@@ -163,6 +163,7 @@ export default function RoutesPage() {
         setSearchResults(transformed);
       })
       .catch((err) => console.error('Search error', err));
+    
     return () => controller.abort();
   }, [searchQuery, selectedCity]);
 
@@ -327,10 +328,42 @@ export default function RoutesPage() {
       (pos) => {
         const coords = [pos.coords.latitude, pos.coords.longitude];
         setDepartureCoords(coords);
-        setDeparture("📍 Ma position GPS en direct");
+        
+        let nearestName = "";
+        let minDist = Infinity;
+        rawCityLandmarks.forEach(lm => {
+          if (lm.pos && lm.pos.length === 2 && !lm.name.startsWith("📍") && !lm.name.startsWith("Point GPS")) {
+            const d = Math.hypot(lm.pos[0] - coords[0], lm.pos[1] - coords[1]);
+            if (d < minDist) {
+              minDist = d;
+              nearestName = lm.name;
+            }
+          }
+        });
+
+        const locationName = nearestName && minDist < 0.03 
+          ? `📍 Ma position (Près de ${nearestName})` 
+          : "📍 Ma position GPS en direct";
+
+        setDeparture(locationName);
         setIsLocating(false);
         setActiveDropdown(null);
-        fetchRoutes("📍 Ma position GPS en direct", destination, coords, destinationCoords);
+        
+        // Répertorier ce nouveau lieu dans la liste
+        setRawCityLandmarks((prev) => {
+          if (!prev.find((p) => p.name === locationName)) {
+            return [{
+              name: locationName,
+              district: nearestName && minDist < 0.03 ? `Proche de ${nearestName}` : "GPS Local",
+              desc: "Position actuelle de votre appareil",
+              category: "landmark",
+              pos: coords
+            }, ...prev];
+          }
+          return prev;
+        });
+
+        fetchRoutes(locationName, destination, coords, destinationCoords);
       },
       (err) => {
         setIsLocating(false);
@@ -358,8 +391,39 @@ export default function RoutesPage() {
   // Clic sur la carte pour définir un point
   const handleMapClick = (coords) => {
     setDestinationCoords(coords);
-    const label = `Point GPS [${coords[0].toFixed(3)}, ${coords[1].toFixed(3)}]`;
+    
+    let nearestName = "";
+    let minDist = Infinity;
+    rawCityLandmarks.forEach(lm => {
+      if (lm.pos && lm.pos.length === 2 && !lm.name.startsWith("📍") && !lm.name.startsWith("Point GPS")) {
+        const d = Math.hypot(lm.pos[0] - coords[0], lm.pos[1] - coords[1]);
+        if (d < minDist) {
+          minDist = d;
+          nearestName = lm.name;
+        }
+      }
+    });
+
+    const label = nearestName && minDist < 0.03 
+      ? `📍 Près de ${nearestName}`
+      : `📍 Point GPS [${coords[0].toFixed(3)}, ${coords[1].toFixed(3)}]`;
+
     setDestination(label);
+    
+    // Répertorier ce nouveau lieu dans la liste
+    setRawCityLandmarks((prev) => {
+      if (!prev.find((p) => p.name === label)) {
+        return [{
+          name: label,
+          district: nearestName && minDist < 0.03 ? `Proche de ${nearestName}` : "Sur la carte",
+          desc: "Emplacement épinglé manuellement",
+          category: "landmark",
+          pos: coords
+        }, ...prev];
+      }
+      return prev;
+    });
+
     fetchRoutes(departure, label, departureCoords, coords);
   };
 
@@ -458,6 +522,71 @@ export default function RoutesPage() {
   const arrivalDate = new Date(Date.now() + remainingMinutes * 60 * 1000);
   const arrivalTimeStr = !isNaN(arrivalDate.getTime()) ? arrivalDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--";
 
+  const renderSuggestionsDropdown = () => (
+    <div className="google-suggestions-dropdown">
+      <div className="dropdown-header">
+        <div className="category-filter-pills">
+          {Object.keys(CATEGORY_LABELS).map((cat) => {
+            const Icon = CATEGORY_ICONS[cat] || Search;
+            const isActive = activeCategoryFilter === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                className={`cat-pill ${isActive ? "active" : ""}`}
+                onClick={() => setActiveCategoryFilter(cat)}
+              >
+                <Icon size={13} />
+                <span>{CATEGORY_LABELS[cat]}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="suggestions-list">
+        <div className="suggestion-item gps-item" onClick={handleUseCurrentLocation}>
+          <div className="sug-icon gps">
+            <Crosshair size={18} />
+          </div>
+          <div className="sug-info">
+            <strong>Utiliser votre position actuelle</strong>
+            <span>Localisation GPS précise du navigateur</span>
+          </div>
+        </div>
+
+        {filteredLandmarks.map((item) => {
+          const Icon = CATEGORY_ICONS[item.category] || Building2;
+          return (
+            <div
+              key={item.name}
+              className="suggestion-item"
+              onClick={() => handleSelectLandmark(item)}
+            >
+              <div className={`sug-icon ${item.category}`}>
+                <Icon size={17} />
+              </div>
+              <div className="sug-info">
+                <div className="sug-title-row">
+                  <strong>{item.name}</strong>
+                  <span className="sug-district">{item.district}</span>
+                </div>
+                <span className="sug-desc">{item.desc}</span>
+              </div>
+            </div>
+          );
+        })}
+
+        {filteredLandmarks.length === 0 && (
+          <div className="no-suggestions">
+            <Search size={24} />
+            <p>Aucun résultat trouvé pour "{searchQuery}". Cliquez sur la carte pour pointer cet endroit.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="routes-page">
       {/* HEADER */}
@@ -482,7 +611,7 @@ export default function RoutesPage() {
       <div className="route-search-card" ref={dropdownRef} style={{ position: "relative" }}>
         <div className="route-search-inputs-grid">
           {/* CHAMP DÉPART */}
-          <div className="route-input-group" style={{ position: "relative" }}>
+          <div className="route-input-group" style={{ position: "relative", zIndex: activeDropdown === "destination" ? 2000 : 1 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <label>Point de départ</label>
               <button
@@ -562,7 +691,7 @@ export default function RoutesPage() {
                 </button>
               )}
             </div>
-          </div>
+          {activeDropdown === "destination" && renderSuggestionsDropdown()}</div>
 
           {/* PREMIUM FEATURES (Locked for free users) */}
           <div className="premium-routing-features">
@@ -595,74 +724,6 @@ export default function RoutesPage() {
             <span>Calculer</span>
           </button>
         </div>
-
-        {/* DROPDOWN DE SUGGESTIONS GOOGLE MAPS */}
-        {activeDropdown && (
-          <div className="google-suggestions-dropdown">
-            <div className="dropdown-header">
-              <div className="category-filter-pills">
-                {Object.keys(CATEGORY_LABELS).map((cat) => {
-                  const Icon = CATEGORY_ICONS[cat] || Search;
-                  const isActive = activeCategoryFilter === cat;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      className={`cat-pill ${isActive ? "active" : ""}`}
-                      onClick={() => setActiveCategoryFilter(cat)}
-                    >
-                      <Icon size={13} />
-                      <span>{CATEGORY_LABELS[cat]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* OPTION POSITION GPS IMMÉDIATE */}
-            <div className="suggestions-list">
-              <div className="suggestion-item gps-item" onClick={handleUseCurrentLocation}>
-                <div className="sug-icon gps">
-                  <Crosshair size={18} />
-                </div>
-                <div className="sug-info">
-                  <strong>Utiliser votre position actuelle</strong>
-                  <span>Localisation GPS précise du navigateur</span>
-                </div>
-              </div>
-
-              {/* LISTE DES LIEUX FILTRÉS */}
-              {filteredLandmarks.map((item) => {
-                const Icon = CATEGORY_ICONS[item.category] || Building2;
-                return (
-                  <div
-                    key={item.name}
-                    className="suggestion-item"
-                    onClick={() => handleSelectLandmark(item)}
-                  >
-                    <div className={`sug-icon ${item.category}`}>
-                      <Icon size={17} />
-                    </div>
-                    <div className="sug-info">
-                      <div className="sug-title-row">
-                        <strong>{item.name}</strong>
-                        <span className="sug-district">{item.district}</span>
-                      </div>
-                      <span className="sug-desc">{item.desc}</span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {filteredLandmarks.length === 0 && (
-                <div className="no-suggestions">
-                  <Search size={24} />
-                  <p>Aucun résultat trouvé pour "{searchQuery}". Cliquez sur la carte pour pointer cet endroit.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* COMPARATEUR MULTI-MODAL */}
         {multimodal.length > 0 && !activeDropdown && (

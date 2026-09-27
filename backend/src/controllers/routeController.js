@@ -39,6 +39,20 @@ export const CITY_LANDMARKS = {
     "Carrefour Santa Barbara": { pos: [3.9010, 11.5250], category: "landmark", district: "Santa Barbara", desc: "Quartier résidentiel haut standing" },
     "Carrefour Nkolmesseng": { pos: [3.8850, 11.5620], category: "landmark", district: "Nkolmesseng", desc: "Zone collines Est Yaoundé" },
     "Carrefour Damas": { pos: [3.8380, 11.5080], category: "landmark", district: "Damas", desc: "Axe de liaison Biyem-Assi vers Nsam" },
+    "Carrefour Biyem-Assi (Acacia)": { pos: [3.8340, 11.4980], category: "landmark", district: "Biyem-Assi", desc: "Grand carrefour commercial" },
+    "Carrefour Mendong": { pos: [3.8210, 11.4720], category: "landmark", district: "Mendong", desc: "Zone résidentielle et commerciale Ouest" },
+    "Carrefour Jouvence": { pos: [3.8420, 11.4920], category: "landmark", district: "Biyem-Assi", desc: "Carrefour majeur vers Mendong" },
+    "Carrefour Meec": { pos: [3.8820, 11.5120], category: "landmark", district: "Bastos", desc: "Quartier chic et résidentiel" },
+    "Carrefour Etoudi (Présidence)": { pos: [3.9180, 11.5200], category: "landmark", district: "Etoudi", desc: "Axe Palais de l'Unité" },
+    "Carrefour Mvan (Complexe)": { pos: [3.8150, 11.5120], category: "transport", district: "Mvan", desc: "Agences de voyage et hub de transport Sud" },
+    "Carrefour Ahala": { pos: [3.7910, 11.5100], category: "landmark", district: "Ahala", desc: "Sortie Sud vers Douala" },
+    "Carrefour Nsam": { pos: [3.8350, 11.5140], category: "landmark", district: "Nsam", desc: "Zone industrielle et de transit" },
+    "Marché Mokolo": { pos: [3.8760, 11.4920], category: "mall", district: "Mokolo", desc: "Le plus grand marché de Yaoundé" },
+    "Marché Central (Yaoundé)": { pos: [3.8640, 11.5140], category: "mall", district: "Centre", desc: "Marché historique au centre-ville" },
+    "Hôpital Jamot": { pos: [3.8880, 11.5200], category: "hospital", district: "Mballa 2", desc: "Hôpital spécialisé" },
+    "Stade Ahmadou Ahidjo (Omnisports)": { pos: [3.8820, 11.5360], category: "landmark", district: "Omnisports", desc: "Grand stade national" },
+    "Mairie de Yaoundé": { pos: [3.8680, 11.5190], category: "landmark", district: "Centre", desc: "Hôtel de ville de Yaoundé" },
+
 
     // --- Hôpitaux & Urgences ---
     "Hôpital Central de Yaoundé (CHU)": { pos: [3.8650, 11.5080], category: "hospital", district: "Centre", desc: "Grand Centre Hospitalier Universitaire & Urgences 24/7" },
@@ -90,6 +104,19 @@ export const CITY_LANDMARKS = {
     "Carrefour Logpom (Carrefour Andem)": { pos: [4.0890, 9.7620], category: "landmark", district: "Logpom", desc: "Zone résidentielle en plein essor" },
     "Carrefour Japoma (Stade Olympique)": { pos: [3.9780, 9.8210], category: "landmark", district: "Japoma", desc: "Grand Stade Omnisports de Japoma (50 000 places)" },
     "Carrefour Denver (Makepe)": { pos: [4.0810, 9.7390], category: "landmark", district: "Denver", desc: "Zone résidentielle haut standing" },
+    "Carrefour Deido (Grand Moulin)": { pos: [4.0660, 9.7020], category: "landmark", district: "Deido", desc: "Nœud de transit majeur" },
+    "Carrefour Ndokoti (Gare)": { pos: [4.0450, 9.7420], category: "transport", district: "Ndokoti", desc: "Gare ferroviaire et routière Est" },
+    "Carrefour Cité Sic": { pos: [4.0480, 9.7350], category: "landmark", district: "Cité Sic", desc: "Quartier universitaire et résidentiel" },
+    "Carrefour PK8": { pos: [4.0550, 9.7620], category: "landmark", district: "PK8", desc: "Route de Ndokoti" },
+    "Carrefour PK10": { pos: [4.0620, 9.7780], category: "landmark", district: "PK10", desc: "Axe Lourd Est" },
+    "Carrefour PK12": { pos: [4.0720, 9.7920], category: "landmark", district: "PK12", desc: "Périphérie Est de Douala" },
+    "Carrefour Nelson Mandela": { pos: [4.0320, 9.7320], category: "landmark", district: "Nylon", desc: "Carrefour majeur zone Nylon" },
+    "Marché Dakar": { pos: [4.0410, 9.7350], category: "mall", district: "Dakar", desc: "Marché populaire Douala" },
+    "Marché Deido": { pos: [4.0640, 9.7050], category: "mall", district: "Deido", desc: "Grand marché Deido" },
+    "Hôpital de District de Deido": { pos: [4.0650, 9.7060], category: "hospital", district: "Deido", desc: "Hôpital de zone" },
+    "Hôpital de District de Nylon": { pos: [4.0350, 9.7380], category: "hospital", district: "Nylon", desc: "Hôpital de référence zone Est" },
+    "Stade de la Réunification": { pos: [4.0470, 9.7280], category: "landmark", district: "Bépanda", desc: "Stade historique" },
+
 
     // --- Hôpitaux & Urgences ---
     "Hôpital Laquintinie de Douala": { pos: [4.0550, 9.7020], category: "hospital", district: "Akwa/Deido", desc: "Grand Centre Hospitalier Régional & Urgences 24/7" },
@@ -333,8 +360,8 @@ function generatePolyline(start, end, variant = 0) {
   return points;
 }
 
-// Découpeur d'itinéraire en segments de trafic style YANGO / GOOGLE MAPS TRAFFIC
-export function buildTrafficSegments(coordinates, congestionMultiplier = 1.0) {
+// Découpeur d'itinéraire en segments de trafic temps réel (Real-Time)
+export function buildTrafficSegments(coordinates, baseMultiplier = 1.0) {
   if (!coordinates || coordinates.length < 2) return [];
 
   const segments = [];
@@ -342,35 +369,57 @@ export function buildTrafficSegments(coordinates, congestionMultiplier = 1.0) {
   const chunkCount = Math.min(5, Math.max(3, Math.floor(totalPoints / 6)));
   const chunkSize = Math.max(2, Math.floor(totalPoints / chunkCount));
 
+  const hour = new Date().getHours();
+  let timeFactor = 1.0;
+  if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19)) {
+    timeFactor = 1.8;
+  } else if (hour >= 10 && hour <= 15) {
+    timeFactor = 1.2;
+  } else if (hour >= 20 || hour <= 5) {
+    timeFactor = 0.4;
+  }
+
+  const congestionMultiplier = baseMultiplier * timeFactor;
+
   for (let i = 0; i < totalPoints - 1; i += chunkSize - 1) {
     const slice = coordinates.slice(i, Math.min(totalPoints, i + chunkSize));
     if (slice.length < 2) continue;
 
     let status = "fluid";
-    let color = "#10B981"; // Vert fluide
-    let speedKmh = 46;
+    let color = "#10B981";
+    let speedKmh = 50;
     let delay = 0;
 
     const progressRatio = i / totalPoints;
+    const randomJitter = (Math.random() * 0.4) - 0.2; 
+    const currentCongestion = congestionMultiplier + randomJitter;
 
-    if (progressRatio > 0.25 && progressRatio < 0.65) {
-      // Zone médiane / carrefour souvent dense
-      if (congestionMultiplier > 1.25) {
+    if (progressRatio > 0.20 && progressRatio < 0.70) {
+      if (currentCongestion > 1.6) {
         status = "jammed";
-        color = "#EF4444"; // Rouge vif bouchon
-        speedKmh = 10;
-        delay = 12;
-      } else {
+        color = "#EF4444";
+        speedKmh = 10 + Math.floor(Math.random() * 5);
+        delay = Math.floor(6 * currentCongestion);
+      } else if (currentCongestion > 1.0) {
         status = "moderate";
-        color = "#F59E0B"; // Orange
-        speedKmh = 24;
-        delay = 5;
+        color = "#F59E0B";
+        speedKmh = 25 + Math.floor(Math.random() * 10);
+        delay = Math.floor(3 * currentCongestion);
       }
-    } else if (progressRatio >= 0.65 && progressRatio < 0.85) {
-      status = "moderate";
-      color = "#F59E0B"; // Orange
-      speedKmh = 30;
-      delay = 3;
+    } else if (progressRatio >= 0.70 && progressRatio < 0.85) {
+      if (currentCongestion > 1.3) {
+        status = "moderate";
+        color = "#F59E0B";
+        speedKmh = 30;
+        delay = 3;
+      }
+    }
+
+    if (timeFactor <= 0.5) {
+      status = "fluid";
+      color = "#10B981";
+      speedKmh = 60;
+      delay = 0;
     }
 
     segments.push({
@@ -438,7 +487,7 @@ export async function fetchOsrmRoutes(startCoords, endCoords, originName = "Dép
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5500);
 
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { signal: controller.signal, headers: { "User-Agent": "CityFlow-App/1.0" } });
     clearTimeout(timeoutId);
 
     if (!response.ok) throw new Error(`OSRM HTTP error ${response.status}`);
